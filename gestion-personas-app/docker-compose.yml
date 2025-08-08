@@ -1,0 +1,160 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15
+    container_name: personas_db
+    environment:
+      POSTGRES_DB: personas_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+  # Redis para cache y sesiones
+  redis:
+    image: redis:7-alpine
+    container_name: personas_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # Vector Database para RAG
+  qdrant:
+    image: qdrant/qdrant
+    container_name: personas_vectordb
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - app-network
+
+  # API Gateway
+  gateway:
+    build: ./gateway
+    container_name: api_gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PERSONAS_SERVICE_URL=http://personas-service:3002
+      - CONSULTA_SERVICE_URL=http://consulta-service:3003
+      - NLP_SERVICE_URL=http://nlp-service:3004
+      - LOG_SERVICE_URL=http://log-service:3005
+    depends_on:
+      - auth-service
+      - personas-service
+      - consulta-service
+      - nlp-service
+      - log-service
+    networks:
+      - app-network
+
+  # Servicio de Autenticación
+  auth-service:
+    build: ./services/auth
+    container_name: auth_service
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=your-secret-key
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - app-network
+
+  # Servicio de Gestión de Personas (CRUD)
+  personas-service:
+    build: ./services/personas
+    container_name: personas_service
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+      - LOG_SERVICE_URL=http://log-service:3005
+    depends_on:
+      - postgres
+      - log-service
+    networks:
+      - app-network
+
+  # Servicio de Consultas (escalable)
+  consulta-service:
+    build: ./services/consulta
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+      - REDIS_URL=redis://redis:6379
+      - LOG_SERVICE_URL=http://log-service:3005
+    depends_on:
+      - postgres
+      - redis
+      - log-service
+    networks:
+      - app-network
+
+  # Servicio de NLP con RAG
+  nlp-service:
+    build: ./services/nlp
+    container_name: nlp_service
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - QDRANT_URL=http://qdrant:6333
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+      - LOG_SERVICE_URL=http://log-service:3005
+    depends_on:
+      - postgres
+      - qdrant
+      - log-service
+    networks:
+      - app-network
+
+  # Servicio de Logs
+  log-service:
+    build: ./services/log
+    container_name: log_service
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  # Frontend Streamlit
+  frontend:
+    build: ./frontend
+    container_name: streamlit_app
+    ports:
+      - "8501:8501"
+    environment:
+      - API_GATEWAY_URL=http://gateway:8000
+    depends_on:
+      - gateway
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  qdrant_data:
+
+networks:
+  app-network:
+    driver: bridge
