@@ -6,10 +6,11 @@ WORKDIR /app
 RUN mkdir -p /uploads
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 COPY . .
 
 EXPOSE 3002
 
 CMD ["node", "index.js"]
+

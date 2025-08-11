@@ -1,0 +1,267 @@
+/* Custom styles for Sistema de Gestión de Personas */
+
+/* General styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Card hover effects */
+.card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease-in-out;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Quick action cards */
+a.card {
+    color: inherit;
+    transition: all 0.2s ease-in-out;
+}
+
+a.card:hover {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Form styling */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-color: #ced4da;
+}
+
+/* Alert styling */
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+/* Login page styling */
+.min-vh-100 {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* Dashboard cards */
+.stats-card {
+    border-left: 4px solid;
+}
+
+.stats-card.border-primary {
+    border-left-color: #0d6efd !important;
+}
+
+.stats-card.border-success {
+    border-left-color: #198754 !important;
+}
+
+.stats-card.border-info {
+    border-left-color: #0dcaf0 !important;
+}
+
+.stats-card.border-warning {
+    border-left-color: #ffc107 !important;
+}
+
+/* Table styling */
+.table {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+/* Photo display */
+.person-photo {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.person-photo-large {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .navbar-nav .dropdown-menu {
+        position: static;
+        float: none;
+        width: auto;
+        margin-top: 0;
+        background-color: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* File upload styling */
+.file-upload-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.file-upload-wrapper input[type=file] {
+    position: absolute;
+    left: -9999px;
+}
+
+/* Status badges */
+.badge-status {
+    font-size: 0.75em;
+    padding: 0.25em 0.5em;
+}
+
+/* Chart containers */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+/* Validation styling */
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.is-valid {
+    border-color: #198754;
+}
+
+.invalid-feedback {
+    display: block;
+}
+
+/* Success states */
+.success-icon {
+    color: #198754;
+    font-size: 1.2em;
+}
+
+.error-icon {
+    color: #dc3545;
+    font-size: 1.2em;
+}
+
+.warning-icon {
+    color: #ffc107;
+    font-size: 1.2em;
+}
+
+.info-icon {
+    color: #0dcaf0;
+    font-size: 1.2em;
+}
+
+/* Custom button styles */
+.btn-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b3fa0 100%);
+    color: white;
+}
+
+/* Search form styling */
+.search-form {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Results styling */
+.results-container {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* NLP Query styling */
+.nlp-examples {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+}
+
+.nlp-examples li {
+    transition: all 0.2s ease-in-out;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.nlp-examples li:hover {
+    background-color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .bg-light {
+        background-color: #212529 !important;
+    }
+    
+    .card {
+        background-color: #343a40;
+        border-color: #495057;
+    }
+    
+    .text-muted {
+        color: #adb5bd !important;
+    }
+}

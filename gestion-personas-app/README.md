@@ -12,7 +12,7 @@ El sistema está construido con una arquitectura de microservicios:
 - **Consulta Service**: Servicio escalable de consultas con cache Redis
 - **NLP Service**: Consultas en lenguaje natural usando Google Gemini y RAG con Qdrant
 - **Log Service**: Registro y consulta de todas las transacciones
-- **Frontend**: Interfaz web con Streamlit
+- **Frontend**: Interfaz web con Flask
 
 ## 📋 Requisitos Previos
 

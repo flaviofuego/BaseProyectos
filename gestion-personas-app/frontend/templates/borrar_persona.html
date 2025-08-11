@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar Persona - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-trash text-danger"></i> Eliminar Persona
+        </h1>
+    </div>
+</div>
+
+{% if not persona %}
+<!-- Search form -->
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Buscar Persona a Eliminar
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Advertencia:</strong> Esta acción eliminará permanentemente la persona del sistema.
+                </div>
+                
+                <form method="POST">
+                    <input type="hidden" name="action" value="buscar">
+                    <div class="mb-3">
+                        <label for="numero_documento" class="form-label">Número de Documento</label>
+                        <input type="text" class="form-control" id="numero_documento" name="numero_documento" 
+                               placeholder="Ingresa el número de documento" required>
+                        <div class="form-text">Ingresa el número de documento de la persona que deseas eliminar</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-search"></i> Buscar Persona
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Confirmation form -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle"></i> ¡Acción irreversible!
+                    </h6>
+                    <p class="mb-0">
+                        Estás a punto de eliminar permanentemente esta persona del sistema. 
+                        Esta acción no se puede deshacer.
+                    </p>
+                </div>
+
+                <!-- Person details -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">Datos de la persona a eliminar:</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h5>{{ persona.primer_nombre }} 
+                                    {% if persona.segundo_nombre %}{{ persona.segundo_nombre }} {% endif %}
+                                    {{ persona.apellidos }}
+                                </h5>
+                                <div class="row">
+                                    <div class="col-sm-6">
+                                        <p class="mb-1"><strong>Documento:</strong> {{ persona.tipo_documento }} {{ persona.numero_documento }}</p>
+                                        <p class="mb-1"><strong>Fecha de Nacimiento:</strong> {{ persona.fecha_nacimiento.split('T')[0] if persona.fecha_nacimiento else 'N/A' }}</p>
+                                        <p class="mb-1"><strong>Género:</strong> {{ persona.genero }}</p>
+                                        {% if persona.edad %}
+                                        <p class="mb-1"><strong>Edad:</strong> {{ persona.edad }} años</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <p class="mb-1"><strong>Email:</strong> {{ persona.correo_electronico }}</p>
+                                        <p class="mb-1"><strong>Celular:</strong> {{ persona.celular }}</p>
+                                        <p class="mb-1"><strong>Registrado:</strong> {{ persona.created_at.split('T')[0] if persona.created_at else 'N/A' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if persona.foto_url %}
+                            <div class="col-md-4 text-center">
+                                <img src="{{ persona.foto_url }}" class="person-photo-large img-thumbnail" alt="Foto de {{ persona.primer_nombre }}">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirmation form -->
+                <form method="POST">
+                    <input type="hidden" name="action" value="eliminar">
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirm" name="confirm" value="true" required>
+                            <label class="form-check-label text-danger" for="confirm">
+                                <strong>Confirmo que deseo eliminar permanentemente esta persona del sistema</strong>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <a href="{{ url_for('borrar_persona') }}" class="btn btn-secondary">
+                                <i class="fas fa-search"></i> Buscar Otra Persona
+                            </a>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger" id="deleteBtn" disabled>
+                                <i class="fas fa-trash"></i> Eliminar Definitivamente
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enable/disable delete button based on confirmation checkbox
+    const confirmCheckbox = document.getElementById('confirm');
+    const deleteBtn = document.getElementById('deleteBtn');
+    
+    if (confirmCheckbox && deleteBtn) {
+        confirmCheckbox.addEventListener('change', function() {
+            deleteBtn.disabled = !this.checked;
+            if (this.checked) {
+                deleteBtn.classList.remove('disabled');
+            } else {
+                deleteBtn.classList.add('disabled');
+            }
+        });
+
+        // Additional confirmation on submit
+        deleteBtn.addEventListener('click', function(e) {
+            if (!confirm('¿Estás completamente seguro de que deseas eliminar esta persona? Esta acción NO se puede deshacer.')) {
+                e.preventDefault();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

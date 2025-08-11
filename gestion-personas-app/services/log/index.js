@@ -373,3 +373,4 @@ app.delete('/cleanup', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Log service running on port ${PORT}`);
 });
+

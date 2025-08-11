@@ -351,3 +351,4 @@ app.listen(PORT, () => {
   console.log(`Consulta service running on port ${PORT}`);
   console.log(`Instance: ${process.env.HOSTNAME || 'unknown'}`);
 });
+

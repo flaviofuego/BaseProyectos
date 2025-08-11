@@ -437,3 +437,4 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Personas service running on port ${PORT}`);
 });
+

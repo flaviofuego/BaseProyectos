@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Consulta en Lenguaje Natural - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-robot"></i> Consulta en Lenguaje Natural
+            <small class="text-muted">Utiliza inteligencia artificial para hacer preguntas</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Ejemplos de preguntas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-lightbulb"></i> Ejemplos de preguntas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-chevron-right text-info"></i>
+                                ¿Cuál es el empleado más joven que se ha registrado?
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-chevron-right text-info"></i>
+                                ¿Cuántas personas de género femenino hay en el sistema?
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-chevron-right text-info"></i>
+                                Muéstrame las estadísticas generales del sistema
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-chevron-right text-info"></i>
+                                ¿Quién es la persona más vieja registrada?
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-chevron-right text-info"></i>
+                                ¿Cuántas personas hay con cédula?
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-chevron-right text-info"></i>
+                                ¿Cuál es la edad promedio de las personas registradas?
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario de consulta -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Hacer una pregunta</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="pregunta" class="form-label">Escribe tu pregunta:</label>
+                        <textarea class="form-control" id="pregunta" name="pregunta" rows="4" 
+                                  placeholder="Ejemplo: ¿Cuál es el empleado más joven que se ha registrado?"
+                                  required>{{ request.form.pregunta if request.form.pregunta }}</textarea>
+                        <div class="form-text">
+                            Puedes hacer preguntas en español sobre las personas registradas en el sistema.
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Enviar Pregunta
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resultado de la consulta -->
+{% if resultado %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-check-circle"></i> Respuesta de la IA
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <h6 class="alert-heading">Pregunta:</h6>
+                    <p class="mb-0"><em>"{{ resultado.pregunta }}"</em></p>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Respuesta:</h6>
+                    <p class="lead">{{ resultado.respuesta }}</p>
+                </div>
+
+                <!-- Datos encontrados -->
+                {% if resultado.datos %}
+                <div class="mb-3">
+                    <h6>Datos encontrados:</h6>
+                    
+                    {% if resultado.datos is mapping and 'primer_nombre' in resultado.datos %}
+                        <!-- Single person -->
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <h6 class="card-title">
+                                            {{ resultado.datos.primer_nombre }}
+                                            {% if resultado.datos.segundo_nombre %}{{ resultado.datos.segundo_nombre }}{% endif %}
+                                            {{ resultado.datos.apellidos }}
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-sm-6">
+                                                <p class="mb-1"><strong>Documento:</strong> {{ resultado.datos.tipo_documento }} {{ resultado.datos.numero_documento }}</p>
+                                                <p class="mb-1"><strong>Fecha de Nacimiento:</strong> {{ resultado.datos.fecha_nacimiento.split('T')[0] }}</p>
+                                                <p class="mb-1"><strong>Género:</strong> {{ resultado.datos.genero }}</p>
+                                            </div>
+                                            <div class="col-sm-6">
+                                                <p class="mb-1"><strong>Email:</strong> {{ resultado.datos.correo_electronico }}</p>
+                                                <p class="mb-1"><strong>Celular:</strong> {{ resultado.datos.celular }}</p>
+                                                {% if resultado.datos.edad %}
+                                                <p class="mb-1"><strong>Edad:</strong> {{ resultado.datos.edad }} años</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% if resultado.datos.foto_url %}
+                                    <div class="col-md-4 text-center">
+                                        <img src="{{ resultado.datos.foto_url }}" class="img-thumbnail" alt="Foto" style="max-width: 120px;">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif resultado.datos is iterable and resultado.datos is not string %}
+                        <!-- Multiple persons or data -->
+                        {% for item in resultado.datos %}
+                            {% if item is mapping and 'primer_nombre' in item %}
+                                <!-- Person card -->
+                                <div class="card mb-2">
+                                    <div class="card-body py-2">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-8">
+                                                <h6 class="mb-1">
+                                                    {{ item.primer_nombre }}
+                                                    {% if item.segundo_nombre %}{{ item.segundo_nombre }}{% endif %}
+                                                    {{ item.apellidos }}
+                                                </h6>
+                                                <small class="text-muted">
+                                                    {{ item.tipo_documento }} {{ item.numero_documento }} | 
+                                                    {% if item.edad %}{{ item.edad }} años{% endif %} | 
+                                                    {{ item.genero }}
+                                                </small>
+                                            </div>
+                                            {% if item.foto_url %}
+                                            <div class="col-md-4 text-center">
+                                                <img src="{{ item.foto_url }}" class="img-thumbnail" alt="Foto" style="max-width: 60px;">
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+
+                    {% else %}
+                        <!-- Other data (statistics, counts, etc.) -->
+                        <div class="card">
+                            <div class="card-body">
+                                <pre class="mb-0">{{ resultado.datos | tojson(indent=2) }}</pre>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Metadata -->
+                {% if resultado.metadata %}
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#metadata" aria-expanded="false">
+                        <i class="fas fa-cog"></i> Ver detalles técnicos
+                    </button>
+                    <div class="collapse mt-2" id="metadata">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <small><pre>{{ resultado.metadata | tojson(indent=2) }}</pre></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus on textarea
+    const preguntaField = document.getElementById('pregunta');
+    if (preguntaField && !preguntaField.value) {
+        preguntaField.focus();
+    }
+
+    // Example questions click handler
+    const exampleQuestions = document.querySelectorAll('.card-body ul li');
+    exampleQuestions.forEach(function(li) {
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', function() {
+            const questionText = this.textContent.trim();
+            preguntaField.value = questionText;
+            preguntaField.focus();
+        });
+    });
+});
+</script>
+{% endblock %}

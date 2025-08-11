@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Persona - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-plus"></i> Crear Nueva Persona
+        </h1>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Formulario de Registro</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="row">
+                        <!-- Columna Izquierda -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="numero_documento" class="form-label">Número de Documento *</label>
+                                <input type="text" class="form-control" id="numero_documento" name="numero_documento" 
+                                       maxlength="10" pattern="[0-9]+" required
+                                       placeholder="Solo números, máximo 10 caracteres">
+                                <div class="form-text">Solo números, máximo 10 caracteres</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tipo_documento" class="form-label">Tipo de Documento *</label>
+                                <select class="form-select" id="tipo_documento" name="tipo_documento" required>
+                                    <option value="">Seleccionar...</option>
+                                    <option value="Tarjeta de identidad">Tarjeta de identidad</option>
+                                    <option value="Cédula">Cédula</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="primer_nombre" class="form-label">Primer Nombre *</label>
+                                <input type="text" class="form-control" id="primer_nombre" name="primer_nombre" 
+                                       maxlength="30" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+" required
+                                       placeholder="Solo letras, máximo 30 caracteres">
+                                <div class="form-text">Solo letras, máximo 30 caracteres</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="segundo_nombre" class="form-label">Segundo Nombre</label>
+                                <input type="text" class="form-control" id="segundo_nombre" name="segundo_nombre" 
+                                       maxlength="30" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*"
+                                       placeholder="Solo letras, máximo 30 caracteres">
+                                <div class="form-text">Opcional</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="apellidos" class="form-label">Apellidos *</label>
+                                <input type="text" class="form-control" id="apellidos" name="apellidos" 
+                                       maxlength="60" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+" required
+                                       placeholder="Solo letras, máximo 60 caracteres">
+                                <div class="form-text">Solo letras, máximo 60 caracteres</div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Derecha -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento *</label>
+                                <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" 
+                                       min="1900-01-01" max="{{ today_iso }}" required>
+                                <div class="form-text">No puede ser fecha futura</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="genero" class="form-label">Género *</label>
+                                <select class="form-select" id="genero" name="genero" required>
+                                    <option value="">Seleccionar...</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Femenino">Femenino</option>
+                                    <option value="No binario">No binario</option>
+                                    <option value="Prefiero no reportar">Prefiero no reportar</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="correo_electronico" class="form-label">Correo Electrónico *</label>
+                                <input type="email" class="form-control" id="correo_electronico" name="correo_electronico" 
+                                       required placeholder="ejemplo@correo.com">
+                                <div class="form-text">Formato de email válido</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="celular" class="form-label">Celular *</label>
+                                <input type="text" class="form-control" id="celular" name="celular" 
+                                       pattern="[0-9]{10}" maxlength="10" required
+                                       placeholder="Exactamente 10 dígitos">
+                                <div class="form-text">Exactamente 10 dígitos numéricos</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="foto" class="form-label">Foto</label>
+                                <input type="file" class="form-control" id="foto" name="foto" 
+                                       accept="image/jpeg,image/jpg,image/png,image/gif">
+                                <div class="form-text">Formatos: JPG, JPEG, PNG, GIF. Máximo 2MB</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Crear Persona
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // File size validation
+    const fotoInput = document.getElementById('foto');
+    fotoInput.addEventListener('change', function() {
+        if (this.files[0] && this.files[0].size > 2 * 1024 * 1024) {
+            alert('La foto no puede superar los 2MB');
+            this.value = '';
+        }
+    });
+
+    // Pattern validation for text fields
+    const textFields = ['primer_nombre', 'segundo_nombre', 'apellidos'];
+    textFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        field.addEventListener('input', function() {
+            const value = this.value;
+            const pattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+            if (!pattern.test(value)) {
+                this.setCustomValidity('Solo se permiten letras y espacios');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    });
+
+    // Document number validation
+    const numeroDocumento = document.getElementById('numero_documento');
+    numeroDocumento.addEventListener('input', function() {
+        const value = this.value;
+        const pattern = /^[0-9]*$/;
+        if (!pattern.test(value)) {
+            this.setCustomValidity('Solo se permiten números');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+
+    // Phone validation
+    const celular = document.getElementById('celular');
+    celular.addEventListener('input', function() {
+        const value = this.value;
+        const pattern = /^[0-9]*$/;
+        if (!pattern.test(value)) {
+            this.setCustomValidity('Solo se permiten números');
+        } else if (value.length !== 10 && value.length !== 0) {
+            this.setCustomValidity('Debe tener exactamente 10 dígitos');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+});
+</script>
+{% endblock %}

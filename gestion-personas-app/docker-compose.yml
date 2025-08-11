@@ -138,14 +138,15 @@ services:
     networks:
       - app-network
 
-  # Frontend Streamlit
+  # Frontend Flask
   frontend:
     build: ./frontend
-    container_name: streamlit_app
+    container_name: flask_app
     ports:
-      - "8501:8501"
+      - "5000:5000"
     environment:
       - API_GATEWAY_URL=http://gateway:8000
+      - FLASK_SECRET_KEY=your-flask-secret-key-change-in-production
     depends_on:
       - gateway
     networks:

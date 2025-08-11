@@ -117,3 +117,4 @@ Ve al frontend (http://localhost:8501) y prueba una consulta en lenguaje natural
 - [Google AI Studio](https://makersuite.google.com/)
 - [Gemini API Documentation](https://ai.google.dev/docs)
 - [Pricing](https://ai.google.dev/pricing)
+

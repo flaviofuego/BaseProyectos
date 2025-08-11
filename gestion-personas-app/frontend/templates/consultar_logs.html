@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Consultar Logs - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-clipboard-list"></i> Consultar Logs
+            <small class="text-muted">Auditoría del sistema</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-filter"></i> Filtros de Búsqueda
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="transaction_type" class="form-label">Tipo de Transacción</label>
+                            <select class="form-select" id="transaction_type" name="transaction_type">
+                                <option value="">Todos</option>
+                                <option value="CREATE" {{ 'selected' if request.args.transaction_type == 'CREATE' }}>CREATE</option>
+                                <option value="READ" {{ 'selected' if request.args.transaction_type == 'READ' }}>READ</option>
+                                <option value="UPDATE" {{ 'selected' if request.args.transaction_type == 'UPDATE' }}>UPDATE</option>
+                                <option value="DELETE" {{ 'selected' if request.args.transaction_type == 'DELETE' }}>DELETE</option>
+                                <option value="LOGIN" {{ 'selected' if request.args.transaction_type == 'LOGIN' }}>LOGIN</option>
+                                <option value="LOGOUT" {{ 'selected' if request.args.transaction_type == 'LOGOUT' }}>LOGOUT</option>
+                                <option value="NLP_QUERY" {{ 'selected' if request.args.transaction_type == 'NLP_QUERY' }}>NLP_QUERY</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="entity_type" class="form-label">Tipo de Entidad</label>
+                            <select class="form-select" id="entity_type" name="entity_type">
+                                <option value="">Todos</option>
+                                <option value="persona" {{ 'selected' if request.args.entity_type == 'persona' }}>Persona</option>
+                                <option value="user" {{ 'selected' if request.args.entity_type == 'user' }}>Usuario</option>
+                                <option value="nlp" {{ 'selected' if request.args.entity_type == 'nlp' }}>NLP</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="status" class="form-label">Estado</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">Todos</option>
+                                <option value="success" {{ 'selected' if request.args.status == 'success' }}>Exitoso</option>
+                                <option value="error" {{ 'selected' if request.args.status == 'error' }}>Error</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="numero_documento" class="form-label">Número de Documento</label>
+                            <input type="text" class="form-control" id="numero_documento" name="numero_documento" 
+                                   value="{{ request.args.numero_documento or '' }}"
+                                   placeholder="Filtrar por documento">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                                   value="{{ request.args.fecha_inicio or '' }}">
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                                   value="{{ request.args.fecha_fin or '' }}">
+                        </div>
+                        
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <div class="btn-group w-100" role="group">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <button type="submit" name="show_stats" value="true" class="btn btn-info">
+                                    <i class="fas fa-chart-bar"></i> Estadísticas
+                                </button>
+                                <a href="{{ url_for('consultar_logs') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics -->
+{% if stats %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> Estadísticas de Logs
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h4 class="text-primary">{{ stats.total_logs or 0 }}</h4>
+                                <p class="mb-0">Total de Logs</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if stats.por_tipo %}
+                    <div class="col-md-9">
+                        <h6>Distribución por Tipo de Transacción:</h6>
+                        <div class="row">
+                            {% for tipo, count in stats.por_tipo.items() %}
+                            <div class="col-sm-6 col-md-4 mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-secondary">{{ tipo }}</span>
+                                    <strong>{{ count }}</strong>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if stats.por_estado %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Distribución por Estado:</h6>
+                        <div class="row">
+                            {% for estado, count in stats.por_estado.items() %}
+                            <div class="col-sm-6 col-md-3 mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge {{ 'bg-success' if estado == 'success' else 'bg-danger' }}">
+                                        {{ 'Exitoso' if estado == 'success' else 'Error' }}
+                                    </span>
+                                    <strong>{{ count }}</strong>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Logs Results -->
+{% if logs %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list"></i> Registros de Logs
+                    <span class="badge bg-primary">{{ logs|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha/Hora</th>
+                                <th>Tipo</th>
+                                <th>Entidad</th>
+                                <th>Estado</th>
+                                <th>Usuario</th>
+                                <th>Documento</th>
+                                <th>Detalles</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>
+                                    <small>
+                                        {{ log.timestamp.split('T')[0] }}<br>
+                                        {{ log.timestamp.split('T')[1].split('.')[0] if 'T' in log.timestamp }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'primary' if log.transaction_type == 'CREATE' else 'info' if log.transaction_type == 'READ' else 'warning' if log.transaction_type == 'UPDATE' else 'danger' if log.transaction_type == 'DELETE' else 'success' if log.transaction_type == 'LOGIN' else 'secondary' }}">
+                                        {{ log.transaction_type }}
+                                    </span>
+                                </td>
+                                <td>{{ log.entity_type or 'N/A' }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if log.status == 'success' else 'danger' }}">
+                                        <i class="fas fa-{{ 'check' if log.status == 'success' else 'times' }}"></i>
+                                        {{ 'Exitoso' if log.status == 'success' else 'Error' }}
+                                    </span>
+                                </td>
+                                <td>{{ log.user_id or 'N/A' }}</td>
+                                <td>{{ log.numero_documento or 'N/A' }}</td>
+                                <td>
+                                    {% if log.details %}
+                                    <button class="btn btn-sm btn-outline-info" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#details{{ loop.index }}" 
+                                            aria-expanded="false">
+                                        <i class="fas fa-eye"></i> Ver
+                                    </button>
+                                    <div class="collapse mt-2" id="details{{ loop.index }}">
+                                        <div class="card card-body bg-light">
+                                            <small><pre>{{ log.details | tojson(indent=2) if log.details is not string else log.details }}</pre></small>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <small class="text-muted">Sin detalles</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Empty state -->
+{% if not logs and not stats and (request.args.transaction_type or request.args.entity_type or request.args.status or request.args.numero_documento or request.args.fecha_inicio or request.args.fecha_fin) %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-search fa-2x mb-3"></i>
+            <h5>No se encontraron registros</h5>
+            <p>Intenta con otros criterios de búsqueda.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Initial state -->
+{% if not logs and not stats %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-light text-center border">
+            <i class="fas fa-info-circle fa-2x text-primary mb-3"></i>
+            <h5>Consulta los logs del sistema</h5>
+            <p>Usa los filtros de arriba para buscar registros específicos o ver estadísticas generales.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

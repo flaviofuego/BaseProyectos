@@ -19,7 +19,17 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+// Evitar errores por cuerpo inválido: usar body-parser con límites y manejador de errores
+app.use(express.json({ limit: '1mb' }));
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Payload too large' });
+  }
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON payload' });
+  }
+  return next(err);
+});
 app.use(passport.initialize());
 
 // Database connection
@@ -219,7 +229,9 @@ app.post('/register', async (req, res) => {
     }
 
     // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Usar menos rounds en desarrollo para mejor rendimiento
+    const saltRounds = process.env.NODE_ENV === 'production' ? 10 : 4;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // Create user
     const result = await pool.query(
@@ -334,3 +346,4 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Auth service running on port ${PORT}`);
 });
+

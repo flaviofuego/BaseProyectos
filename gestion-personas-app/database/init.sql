@@ -88,6 +88,8 @@ SELECT
 FROM personas p;
 
 -- Datos de prueba inicial
+-- Usuario: admin | Contraseña: admin123 (bcrypt rounds: 4 para desarrollo)
 INSERT INTO users (username, email, password_hash, provider) 
-VALUES ('admin', 'admin@example.com', '$2b$10$YourHashedPasswordHere', 'local')
+VALUES ('admin', 'admin@example.com', '$2b$04$K8lgAt.ZHurAIqx4YmMuv.ry2BQ3vT4f6A/OgwGRBBqgf9nJgOGhu', 'local')
 ON CONFLICT DO NOTHING;
+

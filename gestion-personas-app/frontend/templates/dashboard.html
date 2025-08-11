@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+            <small class="text-muted">Bienvenido, {{ user.username }}</small>
+        </h1>
+        {% if session.token and session.token.startswith('temp-') %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Modo Temporal Activado:</strong> La autenticación está funcionando en modo temporal mientras se resuelven problemas de conectividad con el backend.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if stats %}
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h3 class="card-title">{{ stats.total_personas or 0 }}</h3>
+                <p class="card-text text-muted">Total Personas</p>
+            </div>
+        </div>
+    </div>
+    
+    {% if stats.estadisticas_edad %}
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <i class="fas fa-birthday-cake fa-2x text-success mb-2"></i>
+                <h3 class="card-title">{{ stats.estadisticas_edad.promedio }}años</h3>
+                <p class="card-text text-muted">Edad Promedio</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-arrow-down fa-2x text-info mb-2"></i>
+                <h3 class="card-title">{{ stats.estadisticas_edad.minima }} años</h3>
+                <p class="card-text text-muted">Edad Mínima</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-arrow-up fa-2x text-warning mb-2"></i>
+                <h3 class="card-title">{{ stats.estadisticas_edad.maxima }} años</h3>
+                <p class="card-text text-muted">Edad Máxima</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Charts -->
+<div class="row">
+    {% if stats.por_genero %}
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie"></i> Distribución por Género
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="genderChart"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if stats.por_tipo_documento %}
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> Distribución por Tipo de Documento
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="documentChart"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if stats.por_grupo_edad %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> Distribución por Grupo de Edad
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="ageChart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Youngest Person -->
+{% if stats.persona_mas_joven %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-star"></i> Persona más joven registrada
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>{{ stats.persona_mas_joven.primer_nombre }} {{ stats.persona_mas_joven.apellidos }}</h6>
+                <p class="mb-0">Edad: {{ stats.persona_mas_joven.edad }} años</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<!-- No Data Message -->
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle fa-2x mb-3"></i>
+            <h4>No hay datos disponibles</h4>
+            <p>Comienza agregando personas al sistema para ver las estadísticas.</p>
+            <a href="{{ url_for('crear_persona') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Crear Primera Persona
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <h4>Acciones Rápidas</h4>
+        <div class="row">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <a href="{{ url_for('crear_persona') }}" class="card text-decoration-none">
+                    <div class="card-body text-center">
+                        <i class="fas fa-plus fa-2x text-primary mb-2"></i>
+                        <h6 class="card-title">Crear Persona</h6>
+                        <p class="card-text text-muted small">Agregar nueva persona al sistema</p>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <a href="{{ url_for('consultar_personas') }}" class="card text-decoration-none">
+                    <div class="card-body text-center">
+                        <i class="fas fa-search fa-2x text-success mb-2"></i>
+                        <h6 class="card-title">Consultar</h6>
+                        <p class="card-text text-muted small">Buscar y consultar personas</p>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <a href="{{ url_for('consulta_nlp') }}" class="card text-decoration-none">
+                    <div class="card-body text-center">
+                        <i class="fas fa-robot fa-2x text-info mb-2"></i>
+                        <h6 class="card-title">Consulta IA</h6>
+                        <p class="card-text text-muted small">Preguntas en lenguaje natural</p>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <a href="{{ url_for('consultar_logs') }}" class="card text-decoration-none">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clipboard-list fa-2x text-warning mb-2"></i>
+                        <h6 class="card-title">Ver Logs</h6>
+                        <p class="card-text text-muted small">Auditoría y registro de actividades</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if stats %}
+// Gender Chart
+{% if stats.por_genero %}
+var genderData = [
+    {% for genero, count in stats.por_genero.items() %}
+    { values: [{{ count }}], labels: ['{{ genero }}'], type: 'pie', name: '{{ genero }}' },
+    {% endfor %}
+];
+
+var genderLayout = {
+    height: 300,
+    showlegend: true,
+    margin: { t: 0, b: 0, l: 0, r: 0 }
+};
+
+Plotly.newPlot('genderChart', [
+    {
+        values: [{% for count in stats.por_genero.values() %}{{ count }},{% endfor %}],
+        labels: [{% for genero in stats.por_genero.keys() %}'{{ genero }}',{% endfor %}],
+        type: 'pie'
+    }
+], genderLayout);
+{% endif %}
+
+// Document Chart
+{% if stats.por_tipo_documento %}
+Plotly.newPlot('documentChart', [
+    {
+        x: [{% for tipo in stats.por_tipo_documento.keys() %}'{{ tipo }}',{% endfor %}],
+        y: [{% for count in stats.por_tipo_documento.values() %}{{ count }},{% endfor %}],
+        type: 'bar',
+        marker: { color: '#28a745' }
+    }
+], {
+    height: 300,
+    margin: { t: 20, b: 40, l: 40, r: 20 },
+    xaxis: { title: 'Tipo de Documento' },
+    yaxis: { title: 'Cantidad' }
+});
+{% endif %}
+
+// Age Chart
+{% if stats.por_grupo_edad %}
+Plotly.newPlot('ageChart', [
+    {
+        x: [{% for grupo in stats.por_grupo_edad.keys() %}'{{ grupo }}',{% endfor %}],
+        y: [{% for count in stats.por_grupo_edad.values() %}{{ count }},{% endfor %}],
+        type: 'bar',
+        marker: { color: '#17a2b8' }
+    }
+], {
+    height: 300,
+    margin: { t: 20, b: 60, l: 40, r: 20 },
+    xaxis: { title: 'Grupo de Edad' },
+    yaxis: { title: 'Cantidad' }
+});
+{% endif %}
+
+{% endif %}
+</script>
+{% endblock %}

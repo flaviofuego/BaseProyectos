@@ -15,8 +15,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY . .
 
-# Expose Streamlit port
-EXPOSE 8501
+# Create upload directory
+RUN mkdir -p uploads
 
-# Run Streamlit
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Expose Flask port
+EXPOSE 5000
+
+# Run Flask
+CMD ["python", "app.py"]
+

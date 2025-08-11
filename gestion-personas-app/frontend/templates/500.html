@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Error del servidor - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <div class="card border-danger">
+                    <div class="card-body p-5">
+                        <i class="fas fa-exclamation-circle fa-4x text-danger mb-4"></i>
+                        <h1 class="display-4 text-danger">500</h1>
+                        <h3 class="mb-3">Error interno del servidor</h3>
+                        <p class="lead mb-4">
+                            Ha ocurrido un error inesperado en el servidor. 
+                            Por favor, inténtalo de nuevo más tarde.
+                        </p>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a href="{{ url_for('dashboard') if session.authenticated else url_for('login') }}" 
+                               class="btn btn-primary">
+                                <i class="fas fa-home"></i> 
+                                {{ 'Ir al Dashboard' if session.authenticated else 'Ir al Login' }}
+                            </a>
+                            <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver Atrás
+                            </a>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-top">
+                            <small class="text-muted">
+                                Si el problema persiste, contacta al administrador del sistema.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

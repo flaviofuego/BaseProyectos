@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Consultar Personas - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-search"></i> Consultar Personas
+        </h1>
+    </div>
+</div>
+
+<!-- Search Forms -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user"></i> Búsqueda Individual
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="mb-3">
+                        <label for="numero_documento" class="form-label">Número de Documento</label>
+                        <input type="text" class="form-control" id="numero_documento" name="numero_documento" 
+                               value="{{ request.args.numero_documento or '' }}"
+                               placeholder="Ingresa el número de documento">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-filter"></i> Búsqueda Avanzada
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="tipo_documento" class="form-label">Tipo de Documento</label>
+                            <select class="form-select" id="tipo_documento" name="tipo_documento">
+                                <option value="">Todos</option>
+                                <option value="Tarjeta de identidad" {{ 'selected' if request.args.tipo_documento == 'Tarjeta de identidad' }}>Tarjeta de identidad</option>
+                                <option value="Cédula" {{ 'selected' if request.args.tipo_documento == 'Cédula' }}>Cédula</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="genero" class="form-label">Género</label>
+                            <select class="form-select" id="genero" name="genero">
+                                <option value="">Todos</option>
+                                <option value="Masculino" {{ 'selected' if request.args.genero == 'Masculino' }}>Masculino</option>
+                                <option value="Femenino" {{ 'selected' if request.args.genero == 'Femenino' }}>Femenino</option>
+                                <option value="No binario" {{ 'selected' if request.args.genero == 'No binario' }}>No binario</option>
+                                <option value="Prefiero no reportar" {{ 'selected' if request.args.genero == 'Prefiero no reportar' }}>Prefiero no reportar</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edad_min" class="form-label">Edad Mínima</label>
+                            <input type="number" class="form-control" id="edad_min" name="edad_min" 
+                                   value="{{ request.args.edad_min or '' }}" min="0" max="120"
+                                   placeholder="Ej: 18">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edad_max" class="form-label">Edad Máxima</label>
+                            <input type="number" class="form-control" id="edad_max" name="edad_max" 
+                                   value="{{ request.args.edad_max or '' }}" min="0" max="120"
+                                   placeholder="Ej: 65">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('consultar_personas') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results -->
+{% if personas %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list"></i> Resultados
+                    <span class="badge bg-primary">{{ personas|length }}</span>
+                </h5>
+                {% if personas|length > 1 %}
+                <small class="text-muted">Se encontraron {{ personas|length }} personas</small>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if personas|length == 1 %}
+                    <!-- Single person detailed view -->
+                    {% set persona = personas[0] %}
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>{{ persona.primer_nombre }} 
+                                {% if persona.segundo_nombre %}{{ persona.segundo_nombre }} {% endif %}
+                                {{ persona.apellidos }}
+                            </h4>
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <p><strong>Documento:</strong> {{ persona.tipo_documento }} {{ persona.numero_documento }}</p>
+                                    <p><strong>Fecha de Nacimiento:</strong> {{ persona.fecha_nacimiento.split('T')[0] }}</p>
+                                    <p><strong>Género:</strong> {{ persona.genero }}</p>
+                                    {% if persona.edad %}
+                                    <p><strong>Edad:</strong> {{ persona.edad }} años</p>
+                                    {% endif %}
+                                </div>
+                                <div class="col-sm-6">
+                                    <p><strong>Email:</strong> {{ persona.correo_electronico }}</p>
+                                    <p><strong>Celular:</strong> {{ persona.celular }}</p>
+                                    <p><strong>Registrado:</strong> {{ persona.created_at.split('T')[0] if persona.created_at else 'N/A' }}</p>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <a href="{{ url_for('modificar_persona') }}?numero_documento={{ persona.numero_documento }}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i> Modificar
+                                </a>
+                                <a href="{{ url_for('borrar_persona') }}?numero_documento={{ persona.numero_documento }}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </a>
+                            </div>
+                        </div>
+                        {% if persona.foto_url %}
+                        <div class="col-md-4 text-center">
+                            <img src="{{ persona.foto_url }}" class="person-photo-large img-thumbnail" alt="Foto de {{ persona.primer_nombre }}">
+                        </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <!-- Multiple persons table view -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Foto</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Documento</th>
+                                    <th>Género</th>
+                                    <th>Edad</th>
+                                    <th>Email</th>
+                                    <th>Celular</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for persona in personas %}
+                                <tr>
+                                    <td>
+                                        {% if persona.foto_url %}
+                                        <img src="{{ persona.foto_url }}" class="person-photo" alt="Foto">
+                                        {% else %}
+                                        <i class="fas fa-user-circle fa-2x text-muted"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ persona.primer_nombre }}
+                                        {% if persona.segundo_nombre %}{{ persona.segundo_nombre }} {% endif %}
+                                        {{ persona.apellidos }}</strong>
+                                    </td>
+                                    <td>{{ persona.tipo_documento }}<br><small>{{ persona.numero_documento }}</small></td>
+                                    <td>{{ persona.genero }}</td>
+                                    <td>{% if persona.edad %}{{ persona.edad }} años{% else %}N/A{% endif %}</td>
+                                    <td>{{ persona.correo_electronico }}</td>
+                                    <td>{{ persona.celular }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('consultar_personas') }}?numero_documento={{ persona.numero_documento }}" 
+                                               class="btn btn-outline-info" title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('modificar_persona') }}?numero_documento={{ persona.numero_documento }}" 
+                                               class="btn btn-outline-warning" title="Modificar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ url_for('borrar_persona') }}?numero_documento={{ persona.numero_documento }}" 
+                                               class="btn btn-outline-danger" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Empty state -->
+{% if not personas and (request.args.numero_documento or request.args.tipo_documento or request.args.genero or request.args.edad_min or request.args.edad_max) %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-search fa-2x mb-3"></i>
+            <h5>No se encontraron resultados</h5>
+            <p>Intenta con otros criterios de búsqueda.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Initial state -->
+{% if not personas and not (request.args.numero_documento or request.args.tipo_documento or request.args.genero or request.args.edad_min or request.args.edad_max) %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-light text-center border">
+            <i class="fas fa-info-circle fa-2x text-primary mb-3"></i>
+            <h5>Realiza una búsqueda</h5>
+            <p>Usa los formularios de arriba para buscar personas en el sistema.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
