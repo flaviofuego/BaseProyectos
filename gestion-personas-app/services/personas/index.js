@@ -18,6 +18,9 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded images
+app.use('/uploads', express.static('/uploads'));
+
 // Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
@@ -252,6 +255,13 @@ app.get('/:numero_documento', async (req, res) => {
     // Log successful query
     await logTransaction('QUERY', persona.id, numero_documento, null, 'SUCCESS', req, persona);
 
+    // Add headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     res.json(persona);
   } catch (error) {
     console.error('Error getting persona:', error);
@@ -343,6 +353,13 @@ app.put('/:numero_documento', upload.single('foto'), async (req, res) => {
     // Log successful update
     await logTransaction('UPDATE', persona.id, numero_documento, null, 'SUCCESS', req, persona);
 
+    // Add headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     res.json({
       message: 'Persona actualizada exitosamente',
       persona
@@ -406,6 +423,13 @@ app.get('/', async (req, res) => {
 
     // Log query
     await logTransaction('QUERY_ALL', null, null, null, 'SUCCESS', req, { count: result.rows.length });
+
+    // Add headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
 
     res.json({
       personas: result.rows,

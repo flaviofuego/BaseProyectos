@@ -31,10 +31,10 @@ const services = {
   log: process.env.LOG_SERVICE_URL || 'http://log-service:3005'
 };
 
-// Middleware para verificar autenticación (excepto para login y health)
+// Middleware para verificar autenticación (excepto para login, health y uploads)
 const authMiddleware = async (req, res, next) => {
   console.log('DEBUG: Auth middleware called for:', req.method, req.path);
-  const publicPaths = ['/api/auth/login', '/api/auth/register', '/health'];
+  const publicPaths = ['/api/auth/login', '/api/auth/register', '/health', '/uploads'];
   
   if (publicPaths.some(path => req.path.startsWith(path))) {
     return next();
@@ -209,7 +209,16 @@ app.use('/api/logs', createProxyMiddleware({
   }
 }));
 
-// Health check
+// Servir imágenes desde el servicio de personas
+app.use('/uploads', createProxyMiddleware({
+  target: services.personas,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/uploads': '/uploads'
+  }
+}));
+
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 

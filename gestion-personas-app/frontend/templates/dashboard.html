@@ -8,6 +8,21 @@
         <h1 class="mb-4">
             <i class="fas fa-tachometer-alt"></i> Dashboard
             <small class="text-muted">Bienvenido, {{ user.username }}</small>
+            
+            <!-- Auto-refresh controls -->
+            <div class="float-end">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-success" id="start-refresh" onclick="startAutoRefresh()" title="Activar actualización automática">
+                        <i class="fas fa-play"></i> Auto
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="stop-refresh" onclick="stopAutoRefresh()" style="display:none;" title="Detener actualización automática">
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="manual-refresh" onclick="manualRefresh()" title="Actualizar manualmente">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
         </h1>
         {% if session.token and session.token.startswith('temp-') %}
         <div class="alert alert-info">
@@ -257,6 +272,131 @@ Plotly.newPlot('ageChart', [
     yaxis: { title: 'Cantidad' }
 });
 {% endif %}
+
+// Auto-refresh functionality
+let refreshInterval;
+
+function refreshDashboard() {
+    fetch('/api/dashboard/stats')
+    .then(response => response.json())
+    .then(stats => {
+        // Update stats cards
+        updateStatsCards(stats);
+        
+        // Update charts
+        updateCharts(stats);
+        
+        console.log('Dashboard refreshed at', new Date().toLocaleTimeString());
+    })
+    .catch(error => {
+        console.error('Error refreshing dashboard:', error);
+    });
+}
+
+function updateStatsCards(stats) {
+    // Update total personas
+    const totalElement = document.querySelector('.card-body h3');
+    if (totalElement && stats.total_personas !== undefined) {
+        const newValue = stats.total_personas || 0;
+        if (totalElement.textContent !== newValue.toString()) {
+            totalElement.textContent = newValue;
+            highlightChange(totalElement.parentElement);
+        }
+    }
+    
+    // Update average age
+    const ageElements = document.querySelectorAll('.card-body h3');
+    if (ageElements[1] && stats.estadisticas_edad && stats.estadisticas_edad.promedio) {
+        const newValue = `${stats.estadisticas_edad.promedio}años`;
+        if (ageElements[1].textContent !== newValue) {
+            ageElements[1].textContent = newValue;
+            highlightChange(ageElements[1].parentElement);
+        }
+    }
+}
+
+function updateCharts(stats) {
+    // Update document type chart
+    if (stats.por_tipo_documento && document.getElementById('documentChart')) {
+        const labels = Object.keys(stats.por_tipo_documento);
+        const values = Object.values(stats.por_tipo_documento);
+        
+        Plotly.redraw('documentChart', [{
+            x: labels,
+            y: values,
+            type: 'bar',
+            marker: { color: '#007bff' }
+        }]);
+    }
+    
+    // Update age group chart
+    if (stats.por_grupo_edad && document.getElementById('ageChart')) {
+        const labels = Object.keys(stats.por_grupo_edad);
+        const values = Object.values(stats.por_grupo_edad);
+        
+        Plotly.redraw('ageChart', [{
+            x: labels,
+            y: values,
+            type: 'bar',
+            marker: { color: '#17a2b8' }
+        }]);
+    }
+}
+
+function highlightChange(element) {
+    element.style.backgroundColor = '#d4edda';
+    setTimeout(() => {
+        element.style.backgroundColor = '';
+    }, 1000);
+}
+
+// Control buttons for auto-refresh
+function startAutoRefresh() {
+    if (refreshInterval) return;
+    
+    refreshInterval = setInterval(refreshDashboard, 30000); // Refresh every 30 seconds
+    
+    // Add indicator
+    const indicator = document.createElement('div');
+    indicator.id = 'refresh-indicator';
+    indicator.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Actualizando cada 30s';
+    indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #28a745; color: white; padding: 10px; border-radius: 5px; z-index: 1000; font-size: 12px;';
+    document.body.appendChild(indicator);
+    
+    document.getElementById('start-refresh').style.display = 'none';
+    document.getElementById('stop-refresh').style.display = 'inline-block';
+}
+
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+    
+    const indicator = document.getElementById('refresh-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+    
+    document.getElementById('start-refresh').style.display = 'inline-block';
+    document.getElementById('stop-refresh').style.display = 'none';
+}
+
+// Manual refresh
+function manualRefresh() {
+    refreshDashboard();
+    
+    // Show temporary feedback
+    const btn = document.getElementById('manual-refresh');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }, 1000);
+}
 
 {% endif %}
 </script>

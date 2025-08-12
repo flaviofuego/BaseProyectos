@@ -21,12 +21,19 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-product
 # API Configuration
 API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://localhost:8000')
 
+def build_image_url(foto_url):
+    """Build complete image URL using the gateway"""
+    if foto_url and foto_url.startswith('/uploads/'):
+        return f"{API_BASE_URL}{foto_url}"
+    return foto_url
+
 # Jinja context: expose date/datetime to templates
 @app.context_processor
 def inject_datetime_tools():
     return {
         'date': date,
-        'datetime': datetime
+        'datetime': datetime,
+        'build_image_url': build_image_url
     }
 
 # Also register as Jinja globals to ensure availability in all render paths
@@ -37,7 +44,10 @@ DEFAULT_HTTP_TIMEOUT_SECONDS = float(os.getenv('HTTP_TIMEOUT_SECONDS', '6'))
 # Helper functions
 def make_request(method, endpoint, data=None, files=None, params=None, timeout_seconds: float = DEFAULT_HTTP_TIMEOUT_SECONDS):
     """Make authenticated API request with sane timeouts and graceful failures"""
-    headers = {}
+    headers = {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+    }
     if session.get('token'):
         headers['Authorization'] = f'Bearer {session["token"]}'
 
@@ -90,38 +100,57 @@ def login():
     if request.method == 'POST':
         login_method = request.form.get('login_method')
         
+        app.logger.info(f"DEBUG: Login attempt - method: {login_method}")
+        flash(f'DEBUG: Método de login: {login_method}', 'info')
+        
         if login_method == 'local':
             username = request.form.get('username')
             password = request.form.get('password')
             
+            app.logger.info(f"DEBUG: Local login - username: {username}")
+            flash(f'DEBUG: Intentando login con usuario: {username}', 'info')
+            
             if username and password:
-                # TEMPORAL: Login directo mientras se arregla el backend
-                if username == 'admin' and password == 'admin123':
-                    session['authenticated'] = True
-                    session['token'] = 'temp-admin-token'
-                    session['user'] = {
-                        'id': 1,
-                        'username': 'admin',
-                        'email': 'admin@example.com'
-                    }
-                    flash('✅ Inicio de sesión exitoso (modo temporal)', 'success')
-                    return redirect(url_for('dashboard'))
-                else:
-                    # Intentar con el backend normal
-                    response = make_request('POST', '/api/auth/login', {
-                        'username': username,
-                        'password': password
-                    })
-                    
-                    if response and response.status_code == 200:
+                # Intentar con el backend de autenticación
+                response = make_request('POST', '/api/auth/login', {
+                    'username': username,
+                    'password': password
+                })
+                
+                if response and response.status_code == 200:
+                    try:
                         data = response.json()
                         session['authenticated'] = True
                         session['token'] = data['token']
                         session['user'] = data['user']
                         flash('Inicio de sesión exitoso', 'success')
                         return redirect(url_for('dashboard'))
+                    except Exception as e:
+                        app.logger.error(f"Error processing login response: {e}")
+                        flash(f'Error procesando respuesta del servidor: {e}', 'error')
+                else:
+                    if response:
+                        try:
+                            error_text = response.text
+                            flash(f'Error del servidor: {error_text}', 'error')
+                        except:
+                            flash('Error desconocido del servidor', 'error')
                     else:
-                        flash('Credenciales inválidas', 'error')
+                        flash('Error de conexión con el servidor', 'error')
+                    flash(f'DEBUG: Login falló - status: {response.status_code if response else "None"}', 'warning')
+                    # Fallback para admin en caso de emergencia
+                    if username == 'admin' and password == 'admin123':
+                        session['authenticated'] = True
+                        session['token'] = 'temp-admin-token'
+                        session['user'] = {
+                            'id': 1,
+                            'username': 'admin',
+                            'email': 'admin@example.com'
+                        }
+                        flash('✅ Inicio de sesión exitoso (modo de emergencia)', 'warning')
+                        return redirect(url_for('dashboard'))
+                    else:
+                        flash('Credenciales inválidas o error de conexión', 'error')
             else:
                 flash('Por favor, completa todos los campos', 'warning')
         
@@ -144,37 +173,26 @@ def register():
             return render_template('register.html')
         
         if username and email and password:
-            # TEMPORAL: Crear usuario mock mientras se arregla el backend
-            if len(username) >= 3 and '@' in email and len(password) >= 6:
+            # Intentar registrar con el backend de autenticación
+            response = make_request('POST', '/api/auth/register', {
+                'username': username,
+                'email': email,
+                'password': password
+            })
+            
+            if response and response.status_code == 201:
+                data = response.json()
                 session['authenticated'] = True
-                session['token'] = f'temp-{username}-token'
-                session['user'] = {
-                    'id': hash(username) % 1000,
-                    'username': username,
-                    'email': email
-                }
-                flash(f'✅ Usuario {username} registrado exitosamente (modo temporal)', 'success')
+                session['token'] = data['token']
+                session['user'] = data['user']
+                flash('Registro exitoso', 'success')
                 return redirect(url_for('dashboard'))
+            elif response and response.status_code == 409:
+                flash('Usuario o email ya existe', 'error')
             else:
-                # Intentar con el backend normal
-                response = make_request('POST', '/api/auth/register', {
-                    'username': username,
-                    'email': email,
-                    'password': password
-                })
-                
-                if response and response.status_code == 201:
-                    data = response.json()
-                    session['authenticated'] = True
-                    session['token'] = data['token']
-                    session['user'] = data['user']
-                    flash('Registro exitoso', 'success')
-                    return redirect(url_for('dashboard'))
-                elif response and response.status_code == 409:
-                    flash('Usuario o email ya existe', 'error')
-                else:
-                    flash('Error al registrar usuario (usando modo temporal)', 'warning')
-                    # Fallback al modo temporal
+                # Solo como último recurso, crear usuario temporal
+                if len(username) >= 3 and '@' in email and len(password) >= 6:
+                    flash('Error de conexión con el servidor. Usando modo temporal.', 'warning')
                     session['authenticated'] = True
                     session['token'] = f'temp-{username}-token'
                     session['user'] = {
@@ -183,6 +201,8 @@ def register():
                         'email': email
                     }
                     return redirect(url_for('dashboard'))
+                else:
+                    flash('Error al registrar usuario. Revisa que el username tenga al menos 3 caracteres, el email sea válido y la contraseña al menos 6 caracteres.', 'error')
         else:
             flash('Por favor, completa todos los campos', 'warning')
     
@@ -213,6 +233,17 @@ def dashboard():
             flash('El servicio de estadisticas esta lento o no disponible. Mostrando el panel sin datos.', 'info')
     
     return render_template('dashboard.html', stats=stats, user=session.get('user'))
+
+@app.route('/api/dashboard/stats')
+@login_required
+def dashboard_stats_api():
+    """API endpoint for dashboard statistics (for auto-refresh)"""
+    response = make_request('GET', '/api/consulta/stats')
+    
+    if response and response.status_code == 200:
+        return jsonify(response.json())
+    else:
+        return jsonify({}), 500
 
 @app.route('/personas/crear', methods=['GET', 'POST'])
 @login_required
@@ -272,10 +303,38 @@ def modificar_persona():
     def today_iso():
         return date.today().isoformat()
     
-    if request.method == 'POST':
-        action = request.form.get('action')
+    # Handle GET request with numero_documento parameter
+    if request.method == 'GET':
+        # Check if we want to force a clean state (after limpiar_busqueda)
+        force_clean = request.args.get('clean') == 'true'
+        numero_documento = request.args.get('numero_documento')
+        app.logger.info(f"DEBUG: GET request - force_clean: {force_clean}, numero_documento: {numero_documento}")
         
-        if action == 'buscar':
+        if numero_documento and not force_clean:
+            response = make_request('GET', f'/api/personas/{numero_documento}')
+            
+            if response and response.status_code == 200:
+                persona = response.json()
+                session['persona_to_modify'] = persona
+            elif response and response.status_code == 404:
+                flash('Persona no encontrada', 'error')
+            else:
+                flash('Error al buscar la persona', 'error')
+        elif 'persona_to_modify' in session and not force_clean:
+            persona = session['persona_to_modify']
+    
+    elif request.method == 'POST':
+        action = request.form.get('action')
+        app.logger.info(f"DEBUG: POST action received: {action}")
+        
+        if action == 'limpiar_busqueda':
+            # Clear session and redirect to clean state
+            app.logger.info("DEBUG: Limpiando búsqueda y redirigiendo")
+            session.pop('persona_to_modify', None)
+            flash('Búsqueda reiniciada', 'info')
+            return redirect(url_for('modificar_persona', clean='true'))
+        
+        elif action == 'buscar':
             numero_documento = request.form.get('numero_documento')
             if numero_documento:
                 response = make_request('GET', f'/api/personas/{numero_documento}')
@@ -323,15 +382,23 @@ def modificar_persona():
             if response:
                 if response.status_code == 200:
                     flash('✅ Persona actualizada exitosamente', 'success')
+                    # Clear the session cache
                     session.pop('persona_to_modify', None)
-                    return redirect(url_for('dashboard'))
+                    
+                    # Redirect to view the updated person to show fresh data
+                    numero_documento = persona.get('numero_documento') if persona else None
+                    if numero_documento:
+                        return redirect(url_for('consultar_personas', numero_documento=numero_documento))
+                    else:
+                        return redirect(url_for('dashboard'))
                 elif response.status_code == 400:
                     error_data = response.json()
                     flash(f'Error de validación: {error_data.get("error", "Error desconocido")}', 'error')
                 else:
                     flash('Error al actualizar la persona', 'error')
     
-    if 'persona_to_modify' in session:
+    # Ensure we have the persona data for the template
+    if not persona and 'persona_to_modify' in session:
         persona = session['persona_to_modify']
     
     return render_template('modificar_persona.html', persona=persona, today_iso=today_iso())
@@ -361,6 +428,7 @@ def consultar_personas():
     
     elif any([tipo_documento, genero, edad_min, edad_max]):
         # Advanced search
+        app.logger.info(f"DEBUG: Búsqueda avanzada - params: tipo_documento={tipo_documento}, genero={genero}, edad_min={edad_min}, edad_max={edad_max}")
         params = {}
         if tipo_documento and tipo_documento != 'Todos':
             params['tipo_documento'] = tipo_documento
@@ -371,11 +439,14 @@ def consultar_personas():
         if edad_max:
             params['edad_max'] = edad_max
         
+        app.logger.info(f"DEBUG: Enviando solicitud a /api/consulta/search con params: {params}")
         response = make_request('GET', '/api/consulta/search', params=params)
+        app.logger.info(f"DEBUG: Respuesta recibida - status: {response.status_code if response else 'None'}")
         
         if response and response.status_code == 200:
             data = response.json()
             personas = data.get('personas', [])
+            app.logger.info(f"DEBUG: Personas encontradas: {len(personas)}")
             if personas:
                 flash(f'Se encontraron {len(personas)} personas', 'success')
             else:

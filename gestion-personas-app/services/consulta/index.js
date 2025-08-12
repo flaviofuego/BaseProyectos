@@ -94,22 +94,19 @@ app.get('/persona/:numero_documento', async (req, res) => {
   const startTime = Date.now();
   try {
     const { numero_documento } = req.params;
-    const cacheKey = getCacheKey('persona', { numero_documento });
-
-    // Check cache first
-    const cachedData = await redisClient.get(cacheKey);
-    if (cachedData) {
-      const persona = JSON.parse(cachedData);
-      
-      // Log cached response
-      await logTransaction('QUERY_CACHED', persona.id, numero_documento, 'SUCCESS', req, persona);
-      
-      return res.json({
-        ...persona,
-        _cache: true,
-        _responseTime: Date.now() - startTime
-      });
-    }
+    
+    // Disable caching for real-time updates
+    // const cacheKey = getCacheKey('persona', { numero_documento });
+    // const cachedData = await redisClient.get(cacheKey);
+    // if (cachedData) {
+    //   const persona = JSON.parse(cachedData);
+    //   await logTransaction('QUERY_CACHED', persona.id, numero_documento, 'SUCCESS', req, persona);
+    //   return res.json({
+    //     ...persona,
+    //     _cache: true,
+    //     _responseTime: Date.now() - startTime
+    //   });
+    // }
 
     // Query database
     const result = await pool.query(
@@ -124,11 +121,18 @@ app.get('/persona/:numero_documento', async (req, res) => {
 
     const persona = result.rows[0];
 
-    // Cache the result
-    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(persona));
+    // Disable caching for real-time updates
+    // await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(persona));
 
     // Log successful query
     await logTransaction('QUERY', persona.id, numero_documento, 'SUCCESS', req, persona);
+
+    // Add headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
 
     res.json({
       ...persona,
@@ -155,21 +159,18 @@ app.get('/search', async (req, res) => {
       limit = 10
     } = req.query;
 
-    const cacheKey = getCacheKey('search', req.query);
-
-    // Check cache
-    const cachedData = await redisClient.get(cacheKey);
-    if (cachedData) {
-      const result = JSON.parse(cachedData);
-      
-      await logTransaction('SEARCH_CACHED', null, null, 'SUCCESS', req, { count: result.personas.length });
-      
-      return res.json({
-        ...result,
-        _cache: true,
-        _responseTime: Date.now() - startTime
-      });
-    }
+    // Disable caching for real-time updates
+    // const cacheKey = getCacheKey('search', req.query);
+    // const cachedData = await redisClient.get(cacheKey);
+    // if (cachedData) {
+    //   const result = JSON.parse(cachedData);
+    //   await logTransaction('SEARCH_CACHED', null, null, 'SUCCESS', req, { count: result.personas.length });
+    //   return res.json({
+    //     ...result,
+    //     _cache: true,
+    //     _responseTime: Date.now() - startTime
+    //   });
+    // }
 
     // Build query
     let query = 'SELECT * FROM personas_con_edad WHERE 1=1';
@@ -223,11 +224,18 @@ app.get('/search', async (req, res) => {
       }
     };
 
-    // Cache the result
-    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(response));
+    // Disable caching for real-time updates
+    // await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(response));
 
     // Log search
     await logTransaction('SEARCH', null, null, 'SUCCESS', req, { count: result.rows.length, filters: req.query });
+
+    // Add headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
 
     res.json({
       ...response,

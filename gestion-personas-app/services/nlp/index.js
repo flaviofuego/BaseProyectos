@@ -22,8 +22,8 @@ const pool = new Pool({
 
 // Google Gemini configuration
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
 // Qdrant vector database client
 const qdrantClient = new QdrantClient({
@@ -120,7 +120,7 @@ async function processNLQuery(query) {
   try {
     // First, try to understand the query intent using Gemini
     const prompt = `Eres un asistente que ayuda a interpretar consultas sobre personas en una base de datos.
-Las personas tienen los siguientes campos: nombre, apellidos, documento, edad, género, email, celular.
+Las personas tienen los siguientes campos: primer_nombre, segundo_nombre, apellidos, numero_documento, tipo_documento, edad, genero, correo_electronico, celular.
 Debes identificar qué tipo de consulta es y extraer los parámetros relevantes.
 Responde ÚNICAMENTE en formato JSON con la estructura: { "intent": "tipo_consulta", "parameters": {...} }
 
@@ -128,8 +128,16 @@ Tipos de consulta posibles:
 - "youngest": buscar la persona más joven
 - "oldest": buscar la persona más vieja  
 - "count": contar personas con ciertos criterios
-- "search": buscar personas por criterios específicos
+- "search": buscar personas por criterios específicos usando búsqueda semántica
 - "stats": obtener estadísticas generales
+- "name_starts_with": buscar personas cuyo nombre empiece con una letra o string específico
+- "direct_search": búsqueda directa por campos específicos (nombre, apellido, documento, etc.)
+
+Ejemplos:
+- "dame la lista de personas que su nombre empiece con F" → {"intent": "name_starts_with", "parameters": {"letter": "F", "field": "primer_nombre"}}
+- "personas con apellido García" → {"intent": "direct_search", "parameters": {"apellidos": "García"}}
+- "busca personas mayores de 30 años" → {"intent": "direct_search", "parameters": {"edad_min": 30}}
+- "cuántas mujeres hay" → {"intent": "count", "parameters": {"genero": "Femenino"}}
 
 Consulta: ${query}
 
@@ -249,6 +257,78 @@ Respuesta JSON:`;
           data: statsData,
           intent: intent
         };
+
+      case 'name_starts_with':
+        const letter = intent.parameters.letter || '';
+        const field = intent.parameters.field || 'primer_nombre';
+        
+        result = await pool.query(`
+          SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad
+          FROM personas 
+          WHERE ${field} ILIKE $1
+          ORDER BY ${field}, apellidos
+        `, [`${letter}%`]);
+
+        if (result.rows.length > 0) {
+          return {
+            answer: `Encontré ${result.rows.length} persona(s) cuyo ${field} empieza con "${letter}": ${result.rows.map(p => `${p.primer_nombre} ${p.segundo_nombre || ''} ${p.apellidos}`).join(', ')}.`,
+            data: result.rows,
+            intent: intent
+          };
+        } else {
+          return {
+            answer: `No encontré personas cuyo ${field} empiece con "${letter}".`,
+            data: [],
+            intent: intent
+          };
+        }
+
+      case 'direct_search':
+        let searchQuery = 'SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad FROM personas WHERE 1=1';
+        const searchParams = [];
+        let searchParamIndex = 1;
+
+        // Build dynamic query based on parameters
+        Object.keys(intent.parameters).forEach(key => {
+          const value = intent.parameters[key];
+          if (value !== undefined && value !== null) {
+            if (key === 'edad_min') {
+              searchQuery += ` AND EXTRACT(YEAR FROM AGE(fecha_nacimiento)) >= $${searchParamIndex}`;
+              searchParams.push(value);
+              searchParamIndex++;
+            } else if (key === 'edad_max') {
+              searchQuery += ` AND EXTRACT(YEAR FROM AGE(fecha_nacimiento)) <= $${searchParamIndex}`;
+              searchParams.push(value);
+              searchParamIndex++;
+            } else if (key === 'primer_nombre' || key === 'apellidos') {
+              searchQuery += ` AND ${key} ILIKE $${searchParamIndex}`;
+              searchParams.push(`%${value}%`);
+              searchParamIndex++;
+            } else {
+              searchQuery += ` AND ${key} = $${searchParamIndex}`;
+              searchParams.push(value);
+              searchParamIndex++;
+            }
+          }
+        });
+
+        searchQuery += ' ORDER BY primer_nombre, apellidos';
+
+        result = await pool.query(searchQuery, searchParams);
+
+        if (result.rows.length > 0) {
+          return {
+            answer: `Encontré ${result.rows.length} persona(s) que coinciden con los criterios: ${result.rows.map(p => `${p.primer_nombre} ${p.segundo_nombre || ''} ${p.apellidos}`).join(', ')}.`,
+            data: result.rows,
+            intent: intent
+          };
+        } else {
+          return {
+            answer: 'No encontré personas que coincidan con los criterios especificados.',
+            data: [],
+            intent: intent
+          };
+        }
 
       default:
         // Fallback to semantic search
