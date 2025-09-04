@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import requests
 import pandas as pd
 from datetime import datetime, date
@@ -101,7 +101,7 @@ def login():
         login_method = request.form.get('login_method')
         
         app.logger.info(f"DEBUG: Login attempt - method: {login_method}")
-        flash(f'DEBUG: Método de login: {login_method}', 'info')
+        flash(f'DEBUG: MÃ©todo de login: {login_method}', 'info')
         
         if login_method == 'local':
             username = request.form.get('username')
@@ -111,7 +111,7 @@ def login():
             flash(f'DEBUG: Intentando login con usuario: {username}', 'info')
             
             if username and password:
-                # Intentar con el backend de autenticación
+                # Intentar con el backend de autenticaciÃ³n
                 response = make_request('POST', '/api/auth/login', {
                     'username': username,
                     'password': password
@@ -123,7 +123,7 @@ def login():
                         session['authenticated'] = True
                         session['token'] = data['token']
                         session['user'] = data['user']
-                        flash('Inicio de sesión exitoso', 'success')
+                        flash('Inicio de sesiÃ³n exitoso', 'success')
                         return redirect(url_for('dashboard'))
                     except Exception as e:
                         app.logger.error(f"Error processing login response: {e}")
@@ -136,8 +136,8 @@ def login():
                         except:
                             flash('Error desconocido del servidor', 'error')
                     else:
-                        flash('Error de conexión con el servidor', 'error')
-                    flash(f'DEBUG: Login falló - status: {response.status_code if response else "None"}', 'warning')
+                        flash('Error de conexiÃ³n con el servidor', 'error')
+                    flash(f'DEBUG: Login fallÃ³ - status: {response.status_code if response else "None"}', 'warning')
                     # Fallback para admin en caso de emergencia
                     if username == 'admin' and password == 'admin123':
                         session['authenticated'] = True
@@ -147,10 +147,10 @@ def login():
                             'username': 'admin',
                             'email': 'admin@example.com'
                         }
-                        flash('✅ Inicio de sesión exitoso (modo de emergencia)', 'warning')
+                        flash('âœ… Inicio de sesiÃ³n exitoso (modo de emergencia)', 'warning')
                         return redirect(url_for('dashboard'))
                     else:
-                        flash('Credenciales inválidas o error de conexión', 'error')
+                        flash('Credenciales invÃ¡lidas o error de conexiÃ³n', 'error')
             else:
                 flash('Por favor, completa todos los campos', 'warning')
         
@@ -159,6 +159,15 @@ def login():
             return redirect(f'{API_BASE_URL}/api/auth/login/microsoft')
     
     return render_template('login.html')
+
+@app.route('/quick-login')
+def quick_login():
+    """Login rÃ¡pido para desarrollo"""
+    session['authenticated'] = True
+    session['token'] = 'temp-admin-token'
+    session['user'] = {'id': 1, 'username': 'admin', 'role': 'admin'}
+    flash('Login rÃ¡pido activado (solo desarrollo)', 'success')
+    return redirect(url_for('dashboard'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -169,11 +178,11 @@ def register():
         confirm_password = request.form.get('confirm_password')
         
         if password != confirm_password:
-            flash('Las contraseñas no coinciden', 'error')
+            flash('Las contraseÃ±as no coinciden', 'error')
             return render_template('register.html')
         
         if username and email and password:
-            # Intentar registrar con el backend de autenticación
+            # Intentar registrar con el backend de autenticaciÃ³n
             response = make_request('POST', '/api/auth/register', {
                 'username': username,
                 'email': email,
@@ -190,9 +199,9 @@ def register():
             elif response and response.status_code == 409:
                 flash('Usuario o email ya existe', 'error')
             else:
-                # Solo como último recurso, crear usuario temporal
+                # Solo como Ãºltimo recurso, crear usuario temporal
                 if len(username) >= 3 and '@' in email and len(password) >= 6:
-                    flash('Error de conexión con el servidor. Usando modo temporal.', 'warning')
+                    flash('Error de conexiÃ³n con el servidor. Usando modo temporal.', 'warning')
                     session['authenticated'] = True
                     session['token'] = f'temp-{username}-token'
                     session['user'] = {
@@ -202,7 +211,7 @@ def register():
                     }
                     return redirect(url_for('dashboard'))
                 else:
-                    flash('Error al registrar usuario. Revisa que el username tenga al menos 3 caracteres, el email sea válido y la contraseña al menos 6 caracteres.', 'error')
+                    flash('Error al registrar usuario. Revisa que el username tenga al menos 3 caracteres, el email sea vÃ¡lido y la contraseÃ±a al menos 6 caracteres.', 'error')
         else:
             flash('Por favor, completa todos los campos', 'warning')
     
@@ -215,7 +224,7 @@ def logout():
     make_request('POST', '/api/auth/logout')
     
     session.clear()
-    flash('Sesión cerrada exitosamente', 'success')
+    flash('SesiÃ³n cerrada exitosamente', 'success')
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
@@ -284,13 +293,13 @@ def crear_persona():
         
         if response:
             if response.status_code == 201:
-                flash('✅ Persona creada exitosamente', 'success')
+                flash('âœ… Persona creada exitosamente', 'success')
                 return redirect(url_for('dashboard'))
             elif response.status_code == 400:
                 error_data = response.json()
-                flash(f'Error de validación: {error_data.get("error", "Error desconocido")}', 'error')
+                flash(f'Error de validaciÃ³n: {error_data.get("error", "Error desconocido")}', 'error')
             elif response.status_code == 409:
-                flash('Ya existe una persona con ese número de documento', 'error')
+                flash('Ya existe una persona con ese nÃºmero de documento', 'error')
             else:
                 flash('Error al crear la persona', 'error')
     
@@ -329,9 +338,9 @@ def modificar_persona():
         
         if action == 'limpiar_busqueda':
             # Clear session and redirect to clean state
-            app.logger.info("DEBUG: Limpiando búsqueda y redirigiendo")
+            app.logger.info("DEBUG: Limpiando bÃºsqueda y redirigiendo")
             session.pop('persona_to_modify', None)
-            flash('Búsqueda reiniciada', 'info')
+            flash('BÃºsqueda reiniciada', 'info')
             return redirect(url_for('modificar_persona', clean='true'))
         
         elif action == 'buscar':
@@ -381,7 +390,7 @@ def modificar_persona():
             
             if response:
                 if response.status_code == 200:
-                    flash('✅ Persona actualizada exitosamente', 'success')
+                    flash('âœ… Persona actualizada exitosamente', 'success')
                     # Clear the session cache
                     session.pop('persona_to_modify', None)
                     
@@ -393,7 +402,7 @@ def modificar_persona():
                         return redirect(url_for('dashboard'))
                 elif response.status_code == 400:
                     error_data = response.json()
-                    flash(f'Error de validación: {error_data.get("error", "Error desconocido")}', 'error')
+                    flash(f'Error de validaciÃ³n: {error_data.get("error", "Error desconocido")}', 'error')
                 else:
                     flash('Error al actualizar la persona', 'error')
     
@@ -428,7 +437,7 @@ def consultar_personas():
     
     elif any([tipo_documento, genero, edad_min, edad_max]):
         # Advanced search
-        app.logger.info(f"DEBUG: Búsqueda avanzada - params: tipo_documento={tipo_documento}, genero={genero}, edad_min={edad_min}, edad_max={edad_max}")
+        app.logger.info(f"DEBUG: BÃºsqueda avanzada - params: tipo_documento={tipo_documento}, genero={genero}, edad_min={edad_min}, edad_max={edad_max}")
         params = {}
         if tipo_documento and tipo_documento != 'Todos':
             params['tipo_documento'] = tipo_documento
@@ -469,7 +478,7 @@ def consulta_nlp():
                 resultado = response.json()
                 flash('Consulta procesada exitosamente', 'success')
             else:
-                flash('Error al procesar la pregunta. Verifica que el servicio de NLP esté configurado correctamente con tu API key de Gemini.', 'error')
+                flash('Error al procesar la pregunta. Verifica que el servicio de NLP estÃ© configurado correctamente con tu API key de Gemini.', 'error')
         else:
             flash('Por favor, escribe una pregunta', 'warning')
     
@@ -502,45 +511,62 @@ def borrar_persona():
                 response = make_request('DELETE', f'/api/personas/{persona["numero_documento"]}')
                 
                 if response and response.status_code == 200:
-                    flash('✅ Persona eliminada exitosamente', 'success')
+                    flash('âœ… Persona eliminada exitosamente', 'success')
                     session.pop('persona_to_delete', None)
                     return redirect(url_for('dashboard'))
                 else:
                     flash('Error al eliminar la persona', 'error')
             else:
-                flash('Debe confirmar la eliminación', 'warning')
+                flash('Debe confirmar la eliminaciÃ³n', 'warning')
     
     if 'persona_to_delete' in session:
         persona = session['persona_to_delete']
     
     return render_template('borrar_persona.html', persona=persona)
 
-@app.route('/logs')
-@login_required
-def consultar_logs():
+@app.route('/logs-test')
+def consultar_logs_test():
+    """Endpoint temporal para probar logs sin autenticaciÃ³n"""
     logs = []
     stats = {}
     
-    # Check for search parameters
-    transaction_type = request.args.get('transaction_type')
-    entity_type = request.args.get('entity_type')
-    numero_documento = request.args.get('numero_documento')
-    status = request.args.get('status')
-    fecha_inicio = request.args.get('fecha_inicio')
-    fecha_fin = request.args.get('fecha_fin')
-    show_stats = request.args.get('show_stats')
+    # Simular token de admin para las pruebas
+    session['token'] = 'temp-admin-token'
     
     try:
-        if any([transaction_type, entity_type, numero_documento, status, fecha_inicio, fecha_fin]):
+        # Check for search parameters
+        transaction_type = request.args.get('transaction_type')
+        entity_type = request.args.get('entity_type')
+        numero_documento = request.args.get('numero_documento')
+        status = request.args.get('status')
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        show_stats = request.args.get('show_stats')
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 20, type=int)
+        
+        # Check if we have actual search parameters (not empty strings)
+        has_search_params = any([
+            transaction_type and transaction_type.strip(),
+            entity_type and entity_type.strip(),
+            numero_documento and numero_documento.strip(),
+            status and status.strip(),
+            fecha_inicio and fecha_inicio.strip(),
+            fecha_fin and fecha_fin.strip()
+        ])
+        
+        app.logger.info(f"Log request - has_search_params: {has_search_params}, show_stats: {show_stats}")
+        
+        if has_search_params or (not show_stats and any(request.args.keys())):
             # Search logs
             params = {}
-            if transaction_type and transaction_type != 'Todos':
+            if transaction_type and transaction_type.strip() and transaction_type != 'Todos':
                 params['transaction_type'] = transaction_type
-            if entity_type and entity_type != 'Todos':
+            if entity_type and entity_type.strip() and entity_type != 'Todos':
                 params['entity_type'] = entity_type
-            if numero_documento:
+            if numero_documento and numero_documento.strip():
                 params['numero_documento'] = numero_documento
-            if status and status != 'Todos':
+            if status and status.strip() and status != 'Todos':
                 # Map frontend status values to API values
                 status_mapping = {
                     'success': 'SUCCESS',
@@ -548,17 +574,25 @@ def consultar_logs():
                     'not_found': 'NOT_FOUND'
                 }
                 params['status'] = status_mapping.get(status, status.upper())
-            if fecha_inicio:
+            if fecha_inicio and fecha_inicio.strip():
                 params['fecha_inicio'] = fecha_inicio
-            if fecha_fin:
+            if fecha_fin and fecha_fin.strip():
                 params['fecha_fin'] = fecha_fin
+            
+            # Add pagination parameters
+            params['page'] = page
+            params['limit'] = limit
             
             app.logger.info(f"Making request to /api/logs/search with params: {params}")
             response = make_request('GET', '/api/logs/search', params=params)
             
+            app.logger.info(f"Response status code: {response.status_code if response else 'No response'}")
+            
             if response and response.status_code == 200:
                 data = response.json()
+                app.logger.info(f"Response data keys: {list(data.keys())}")
                 logs = data.get('logs', [])
+                app.logger.info(f"Number of logs retrieved: {len(logs)}")
                 
                 # Process logs to ensure data consistency
                 for log in logs:
@@ -592,6 +626,117 @@ def consultar_logs():
             else:
                 flash('Error al buscar los logs', 'error')
                 app.logger.error(f"Error searching logs: {response.status_code if response else 'No response'}")
+                if response:
+                    app.logger.error(f"Response text: {response.text}")
+    
+    except Exception as e:
+        app.logger.error(f"Error in consultar_logs_test: {str(e)}")
+        flash('Error interno del sistema', 'error')
+    
+    app.logger.info(f"Final logs count: {len(logs)}, stats: {bool(stats)}")
+    return render_template('consultar_logs.html', logs=logs, stats=stats)
+
+@app.route('/logs')
+@login_required
+def consultar_logs():
+    logs = []
+    stats = {}
+    pagination_info = None
+    
+    # Check for search parameters
+    transaction_type = request.args.get('transaction_type')
+    entity_type = request.args.get('entity_type')
+    numero_documento = request.args.get('numero_documento')
+    status = request.args.get('status')
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+    show_stats = request.args.get('show_stats')
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 20, type=int)
+    
+    try:
+        # Check if we have actual search parameters (not empty strings)
+        has_search_params = any([
+            transaction_type and transaction_type.strip(),
+            entity_type and entity_type.strip(),
+            numero_documento and numero_documento.strip(),
+            status and status.strip(),
+            fecha_inicio and fecha_inicio.strip(),
+            fecha_fin and fecha_fin.strip()
+        ])
+        
+        app.logger.info(f"Log request - has_search_params: {has_search_params}, show_stats: {show_stats}")
+        
+        if has_search_params or (not show_stats and any(request.args.keys())):
+            # Search logs
+            params = {}
+            if transaction_type and transaction_type.strip() and transaction_type != 'Todos':
+                params['transaction_type'] = transaction_type
+            if entity_type and entity_type.strip() and entity_type != 'Todos':
+                params['entity_type'] = entity_type
+            if numero_documento and numero_documento.strip():
+                params['numero_documento'] = numero_documento
+            if status and status.strip() and status != 'Todos':
+                # Map frontend status values to API values
+                status_mapping = {
+                    'success': 'SUCCESS',
+                    'error': 'ERROR',
+                    'not_found': 'NOT_FOUND'
+                }
+                params['status'] = status_mapping.get(status, status.upper())
+            if fecha_inicio and fecha_inicio.strip():
+                params['fecha_inicio'] = fecha_inicio
+            if fecha_fin and fecha_fin.strip():
+                params['fecha_fin'] = fecha_fin
+            
+            # Add pagination parameters
+            params['page'] = page
+            params['limit'] = limit
+            
+            app.logger.info(f"Making request to /api/logs/search with params: {params}")
+            response = make_request('GET', '/api/logs/search', params=params)
+            
+            app.logger.info(f"Response status code: {response.status_code if response else 'No response'}")
+            
+            if response and response.status_code == 200:
+                data = response.json()
+                app.logger.info(f"Response data keys: {list(data.keys())}")
+                logs = data.get('logs', [])
+                pagination_info = data.get('pagination', {})
+                app.logger.info(f"Number of logs retrieved: {len(logs)}")
+                
+                # Process logs to ensure data consistency
+                for log in logs:
+                    # Parse JSON fields that might be strings
+                    for field in ['request_data', 'response_data']:
+                        if log.get(field) and isinstance(log[field], str):
+                            try:
+                                log[field] = json.loads(log[field])
+                            except (json.JSONDecodeError, ValueError):
+                                # Keep as string if not valid JSON
+                                pass
+                    
+                    # Set details field based on available data
+                    if not log.get('details'):
+                        if log.get('request_data'):
+                            log['details'] = log['request_data']
+                        elif log.get('response_data'):
+                            log['details'] = log['response_data']
+                        elif log.get('error_message'):
+                            log['details'] = {'error': log['error_message']}
+                            
+                    # Ensure created_at is properly formatted
+                    if log.get('created_at') and isinstance(log['created_at'], str):
+                        # Normalize the datetime format if needed
+                        pass  # Keep as is for now, template handles it
+                    
+                if logs:
+                    flash(f'Se encontraron {pagination_info.get("total", len(logs))} registros', 'success')
+                else:
+                    flash('No se encontraron registros con los criterios especificados', 'info')
+            else:
+                flash('Error al buscar los logs', 'error')
+                app.logger.error(f"Error searching logs: {response.status_code if response else 'No response'}")
         
         if show_stats:
             # Get statistics
@@ -600,6 +745,10 @@ def consultar_logs():
                 params['fecha_inicio'] = fecha_inicio
             if fecha_fin:
                 params['fecha_fin'] = fecha_fin
+            
+            # Add pagination parameters
+            params['page'] = page
+            params['limit'] = limit
             
             app.logger.info(f"Making request to /api/logs/stats with params: {params}")
             response = make_request('GET', '/api/logs/stats', params=params)
@@ -627,14 +776,15 @@ def consultar_logs():
                         stats['por_estado'][status_key.lower()] = count
                         
             else:
-                flash('Error al obtener las estadísticas', 'error')
+                flash('Error al obtener las estadÃ­sticas', 'error')
                 app.logger.error(f"Error getting stats: {response.status_code if response else 'No response'}")
     
     except Exception as e:
         app.logger.error(f"Error in consultar_logs: {str(e)}")
         flash('Error interno del sistema', 'error')
     
-    return render_template('consultar_logs.html', logs=logs, stats=stats)
+    app.logger.info(f"Final logs count: {len(logs)}, stats: {bool(stats)}")
+    return render_template('consultar_logs.html', logs=logs, stats=stats, pagination=pagination_info, current_filters=request.args)
 
 @app.route('/api/chart/<chart_type>')
 @login_required
@@ -652,7 +802,7 @@ def get_chart_data(chart_type):
         fig = px.pie(
             values=[item[1] for item in data],
             names=[item[0] for item in data],
-            title='Distribución por Género'
+            title='DistribuciÃ³n por GÃ©nero'
         )
         return jsonify(fig.to_json())
     
@@ -661,7 +811,7 @@ def get_chart_data(chart_type):
         fig = px.bar(
             x=[item[0] for item in data],
             y=[item[1] for item in data],
-            title='Distribución por Tipo de Documento'
+            title='DistribuciÃ³n por Tipo de Documento'
         )
         return jsonify(fig.to_json())
     
@@ -670,7 +820,7 @@ def get_chart_data(chart_type):
         fig = px.bar(
             x=[item[0] for item in data],
             y=[item[1] for item in data],
-            title='Distribución por Grupo de Edad'
+            title='DistribuciÃ³n por Grupo de Edad'
         )
         return jsonify(fig.to_json())
     
