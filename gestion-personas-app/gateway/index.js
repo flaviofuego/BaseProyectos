@@ -7,8 +7,10 @@ const rateLimit = require('express-rate-limit');
 const axios = require('axios');
 require('dotenv').config();
 
+console.log('🚀 Iniciando API Gateway en modo desarrollo con hot reload...');
+
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8001;
 
 // Middleware de seguridad
 app.use(helmet());
@@ -239,7 +241,9 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`API Gateway running on port ${PORT}`);
+  console.log(`🚀 API Gateway running on port ${PORT} - HOT RELOAD FUNCIONANDO!`);
   console.log('Services:', services);
+  console.log('✅ Modo desarrollo activo');
 });
 
+// Comentario para probar hot reload - 09/04/2025 09:25:19

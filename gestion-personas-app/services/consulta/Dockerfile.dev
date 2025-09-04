@@ -1,0 +1,20 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install nodemon for hot reload
+RUN npm install -g nodemon
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm install
+
+# Copy source code
+COPY . .
+
+EXPOSE 3003
+
+# Use nodemon for development with hot reload
+CMD ["nodemon", "index.js"]

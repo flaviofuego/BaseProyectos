@@ -1,0 +1,88 @@
+
+
+services:
+  # API Gateway - Development Override
+  gateway:
+    build: 
+      context: ./gateway
+      dockerfile: Dockerfile.dev
+    container_name: api_gateway_dev
+    volumes:
+      - ./gateway:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  # Servicio de Autenticación - Development Override
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile.dev
+    container_name: auth_service_dev
+    volumes:
+      - ./services/auth:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  # Servicio de Gestión de Personas - Development Override
+  personas-service:
+    build:
+      context: ./services/personas
+      dockerfile: Dockerfile.dev
+    container_name: personas_service_dev
+    volumes:
+      - ./services/personas:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  # Servicio de Consultas - Development Override
+  consulta-service:
+    build:
+      context: ./services/consulta
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./services/consulta:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    deploy:
+      replicas: 1  # Override to 1 replica for development
+
+  # Servicio de NLP - Development Override
+  nlp-service:
+    build:
+      context: ./services/nlp
+      dockerfile: Dockerfile.dev
+    container_name: nlp_service_dev
+    volumes:
+      - ./services/nlp:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  # Servicio de Logs - Development Override
+  log-service:
+    build:
+      context: ./services/log
+      dockerfile: Dockerfile.dev
+    container_name: log_service_dev
+    volumes:
+      - ./services/log:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  # Frontend Flask - Development Override
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: flask_app_dev
+    volumes:
+      - ./frontend:/app
+      - /app/__pycache__
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1

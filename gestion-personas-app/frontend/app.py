@@ -19,7 +19,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # API Configuration
-API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://localhost:8000')
+API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://localhost:8001')
 
 def build_image_url(foto_url):
     """Build complete image URL using the gateway"""

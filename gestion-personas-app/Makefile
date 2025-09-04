@@ -3,34 +3,72 @@
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  make build    - Build all Docker images"
-	@echo "  make up       - Start all services"
-	@echo "  make down     - Stop all services"
-	@echo "  make logs     - Show logs from all services"
-	@echo "  make clean    - Stop services and remove volumes"
-	@echo "  make test     - Run tests"
-	@echo "  make init-db  - Initialize database with sample data"
+	@echo ""
+	@echo "🏗️  BUILD COMMANDS:"
+	@echo "  make build       - Build all Docker images for production"
+	@echo "  make build-dev   - Build all Docker images for development"
+	@echo ""
+	@echo "🚀 START/STOP COMMANDS:"
+	@echo "  make up          - Start all services (production mode)"
+	@echo "  make dev         - Start all services in development mode with hot reload"
+	@echo "  make down        - Stop all services (production)"
+	@echo "  make down-dev    - Stop all services (development)"
+	@echo ""
+	@echo "📋 MONITORING COMMANDS:"
+	@echo "  make logs        - Show logs from all services (production)"
+	@echo "  make logs-dev    - Show logs from all services (development)"
+	@echo ""
+	@echo "🧹 MAINTENANCE COMMANDS:"
+	@echo "  make clean       - Stop services and remove volumes"
+	@echo "  make test        - Run tests"
+	@echo "  make init-db     - Initialize database with sample data"
+	@echo ""
+	@echo "🤖 NLP/AI COMMANDS:"
 	@echo "  make sync-embeddings - Synchronize embeddings with Gemini"
-	@echo "  make test-nlp - Test NLP functionality"
+	@echo "  make test-nlp    - Test NLP functionality"
+	@echo ""
+	@echo "💡 For development, use: make dev"
+	@echo "💡 For production, use: make up"
 
 # Build all Docker images
 build:
 	docker-compose build
 
-# Start all services
+# Build development images
+build-dev:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml build
+
+# Start all services (production)
 up:
 	docker-compose up -d
 	@echo "Waiting for services to be ready..."
 	@sleep 10
 	@echo "Services are starting up. Access the application at http://localhost:8501"
 
+# Start all services in development mode with hot reload
+dev:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+	@echo "Waiting for services to be ready..."
+	@sleep 10
+	@echo "Development services are starting up with hot reload enabled."
+	@echo "Access the application at http://localhost:5000"
+	@echo "API Gateway at http://localhost:8000"
+
 # Stop all services
 down:
 	docker-compose down
 
+# Stop development services
+down-dev:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+
 # Show logs
 logs:
 	docker-compose logs -f
+
+# Show development logs
+logs-dev:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
 
 # Clean everything (including volumes)
 clean:
