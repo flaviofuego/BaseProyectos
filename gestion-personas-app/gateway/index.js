@@ -37,8 +37,9 @@ const services = {
 const authMiddleware = async (req, res, next) => {
   console.log('DEBUG: Auth middleware called for:', req.method, req.path);
   const publicPaths = ['/api/auth/login', '/api/auth/register', '/health', '/uploads'];
+  const healthPaths = ['/api/auth/health', '/api/personas/health', '/api/consulta/health', '/api/nlp/health', '/api/logs/health'];
   
-  if (publicPaths.some(path => req.path.startsWith(path))) {
+  if (publicPaths.some(path => req.path.startsWith(path)) || healthPaths.includes(req.path)) {
     return next();
   }
 

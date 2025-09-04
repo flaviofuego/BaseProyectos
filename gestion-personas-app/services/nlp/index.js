@@ -104,22 +104,72 @@ async function updatePersonaEmbedding(persona) {
 
 // Search similar personas using embeddings
 async function searchSimilarPersonas(query, limit = 5) {
-  const queryEmbedding = await generateEmbedding(query);
-  
-  const searchResult = await qdrantClient.search(COLLECTION_NAME, {
-    vector: queryEmbedding,
-    limit: limit,
-    with_payload: true
-  });
+  try {
+    const queryEmbedding = await generateEmbedding(query);
+    
+    const searchResult = await qdrantClient.search(COLLECTION_NAME, {
+      vector: queryEmbedding,
+      limit: limit,
+      with_payload: true
+    });
 
-  return searchResult;
+    return searchResult;
+  } catch (error) {
+    console.log('Vector search not available, using fallback search');
+    return []; // Return empty array as fallback
+  }
+}
+
+// Fallback query classification (when Gemini is not available)
+function classifyQueryFallback(query) {
+  const lowerQuery = query.toLowerCase();
+  
+  // Check for system/security queries first
+  if (lowerQuery.includes('.env') || lowerQuery.includes('variable') || lowerQuery.includes('configuración')) {
+    return { intent: 'security_blocked', parameters: {} };
+  }
+  
+  // Check for common patterns
+  if (lowerQuery.includes('más joven') || lowerQuery.includes('menor edad')) {
+    return { intent: 'youngest', parameters: {} };
+  }
+  
+  if (lowerQuery.includes('más viejo') || lowerQuery.includes('más vieja') || lowerQuery.includes('mayor edad')) {
+    return { intent: 'oldest', parameters: {} };
+  }
+  
+  if (lowerQuery.includes('cuántas') || lowerQuery.includes('cuantas') || lowerQuery.includes('contar')) {
+    return { intent: 'count', parameters: {} };
+  }
+  
+  if (lowerQuery.includes('estadística') || lowerQuery.includes('estadisticas') || lowerQuery.includes('total')) {
+    return { intent: 'stats', parameters: {} };
+  }
+  
+  if (lowerQuery.includes('empiec') || lowerQuery.includes('empiez')) {
+    // Extract letter from query
+    const letterMatch = lowerQuery.match(/empiec[ae]n?\s+con\s+([a-z])/i);
+    if (letterMatch) {
+      return { 
+        intent: 'name_starts_with', 
+        parameters: { letter: letterMatch[1].toUpperCase(), field: 'primer_nombre' }
+      };
+    }
+  }
+  
+  // Default to search for most queries
+  return { intent: 'search', parameters: {} };
 }
 
 // Process natural language query
 async function processNLQuery(query) {
   try {
-    // First, try to understand the query intent using Gemini
-    const prompt = `Eres un asistente que ayuda a interpretar consultas sobre personas en una base de datos.
+    // Try to classify the query using simple rules first (fallback)
+    let intent = classifyQueryFallback(query);
+    
+    // If we have Gemini available and it's not a quota error, try to use it
+    try {
+      const prompt = `Eres un asistente que ayuda a interpretar consultas sobre personas en una base de datos.
 Las personas tienen los siguientes campos: primer_nombre, segundo_nombre, apellidos, numero_documento, tipo_documento, edad, genero, correo_electronico, celular.
 Debes identificar qué tipo de consulta es y extraer los parámetros relevantes.
 Responde ÚNICAMENTE en formato JSON con la estructura: { "intent": "tipo_consulta", "parameters": {...} }
@@ -143,20 +193,29 @@ Consulta: ${query}
 
 Respuesta JSON:`;
 
-    const intentResponse = await model.generateContent(prompt);
-    const responseText = intentResponse.response.text();
-    
-    // Extract JSON from response (in case there's extra text)
-    const jsonMatch = responseText.match(/\{.*\}/s);
-    if (!jsonMatch) {
-      throw new Error('No se pudo extraer JSON de la respuesta');
+      const intentResponse = await model.generateContent(prompt);
+      const responseText = intentResponse.response.text();
+      
+      // Extract JSON from response (in case there's extra text)
+      const jsonMatch = responseText.match(/\{.*\}/s);
+      if (jsonMatch) {
+        intent = JSON.parse(jsonMatch[0]);
+      }
+    } catch (geminiError) {
+      console.log('Usando clasificación local (Gemini no disponible):', geminiError.message);
+      // Usar el intent del fallback
     }
-    
-    const intent = JSON.parse(jsonMatch[0]);
 
     // Execute query based on intent
     let result;
     switch (intent.intent) {
+      case 'security_blocked':
+        return {
+          answer: 'Lo siento, no puedo proporcionar información sobre configuraciones del sistema o variables de entorno por razones de seguridad. Solo puedo ayudarte con consultas sobre las personas registradas en la base de datos.',
+          data: null,
+          intent: intent
+        };
+
       case 'youngest':
         result = await pool.query(`
           SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad
@@ -219,7 +278,7 @@ Respuesta JSON:`;
           // Get full data for top results
           const ids = searchResults.map(r => r.id);
           result = await pool.query(
-            'SELECT * FROM personas WHERE id = ANY($1::int[])',
+            'SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad FROM personas WHERE id = ANY($1::int[])',
             [ids]
           );
 
@@ -230,9 +289,16 @@ Respuesta JSON:`;
             similarity_scores: searchResults.map(r => ({ id: r.id, score: r.score }))
           };
         } else {
+          // Fallback: return all persons when vector search fails
+          result = await pool.query(`
+            SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad 
+            FROM personas 
+            ORDER BY primer_nombre, apellidos
+          `);
+          
           return {
-            answer: 'No encontré personas que coincidan con tu búsqueda.',
-            data: [],
+            answer: `Búsqueda general: encontré ${result.rows.length} personas registradas en el sistema.`,
+            data: result.rows,
             intent: intent
           };
         }
@@ -288,6 +354,9 @@ Respuesta JSON:`;
         const searchParams = [];
         let searchParamIndex = 1;
 
+        // Valid database columns for direct search
+        const validColumns = ['primer_nombre', 'segundo_nombre', 'apellidos', 'numero_documento', 'tipo_documento', 'genero', 'correo_electronico', 'celular'];
+
         // Build dynamic query based on parameters
         Object.keys(intent.parameters).forEach(key => {
           const value = intent.parameters[key];
@@ -300,15 +369,17 @@ Respuesta JSON:`;
               searchQuery += ` AND EXTRACT(YEAR FROM AGE(fecha_nacimiento)) <= $${searchParamIndex}`;
               searchParams.push(value);
               searchParamIndex++;
-            } else if (key === 'primer_nombre' || key === 'apellidos') {
-              searchQuery += ` AND ${key} ILIKE $${searchParamIndex}`;
-              searchParams.push(`%${value}%`);
-              searchParamIndex++;
-            } else {
-              searchQuery += ` AND ${key} = $${searchParamIndex}`;
-              searchParams.push(value);
+            } else if (validColumns.includes(key)) {
+              if (key === 'primer_nombre' || key === 'apellidos') {
+                searchQuery += ` AND ${key} ILIKE $${searchParamIndex}`;
+                searchParams.push(`%${value}%`);
+              } else {
+                searchQuery += ` AND ${key} = $${searchParamIndex}`;
+                searchParams.push(value);
+              }
               searchParamIndex++;
             }
+            // Skip invalid columns to prevent SQL errors
           }
         });
 

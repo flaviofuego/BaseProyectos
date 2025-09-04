@@ -39,7 +39,7 @@ const searchSchema = Joi.object({
   transaction_type: Joi.string(),
   entity_type: Joi.string(),
   numero_documento: Joi.string(),
-  user_id: Joi.string(),
+  user_id: Joi.alternatives().try(Joi.number(), Joi.string()),
   status: Joi.string().valid('SUCCESS', 'ERROR', 'NOT_FOUND'),
   fecha_inicio: Joi.date().iso(),
   fecha_fin: Joi.date().iso(),
@@ -130,9 +130,13 @@ app.get('/search', async (req, res) => {
       status,
       fecha_inicio,
       fecha_fin,
-      page,
-      limit
+      page = 1,
+      limit = 20
     } = req.query;
+
+    // Validate and sanitize pagination parameters
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 20));
 
     // Build dynamic query
     let query = 'SELECT * FROM transaction_logs WHERE 1=1';
@@ -158,9 +162,12 @@ app.get('/search', async (req, res) => {
     }
 
     if (user_id) {
-      query += ` AND user_id = $${paramCount}`;
-      params.push(user_id);
-      paramCount++;
+      const userId = parseInt(user_id);
+      if (!isNaN(userId)) {
+        query += ` AND user_id = $${paramCount}`;
+        params.push(userId);
+        paramCount++;
+      }
     }
 
     if (status) {
@@ -187,9 +194,9 @@ app.get('/search', async (req, res) => {
     const totalCount = parseInt(countResult.rows[0].count);
 
     // Add pagination
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
     query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
-    params.push(parseInt(limit), offset);
+    params.push(limitNum, offset);
 
     // Execute query
     const result = await pool.query(query, params);
@@ -197,10 +204,10 @@ app.get('/search', async (req, res) => {
     res.json({
       logs: result.rows,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / parseInt(limit))
+        totalPages: Math.ceil(totalCount / limitNum)
       },
       filters: {
         transaction_type,
