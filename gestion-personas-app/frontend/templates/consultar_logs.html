@@ -54,6 +54,7 @@
                                 <option value="">Todos</option>
                                 <option value="success" {{ 'selected' if request.args.status == 'success' }}>Exitoso</option>
                                 <option value="error" {{ 'selected' if request.args.status == 'error' }}>Error</option>
+                                <option value="not_found" {{ 'selected' if request.args.status == 'not_found' }}>No Encontrado</option>
                             </select>
                         </div>
                         
@@ -183,6 +184,7 @@
                                 <th>Estado</th>
                                 <th>Usuario</th>
                                 <th>Documento</th>
+                                <th>IP/Agente</th>
                                 <th>Detalles</th>
                             </tr>
                         </thead>
@@ -191,8 +193,13 @@
                             <tr>
                                 <td>
                                     <small>
-                                        {{ log.created_at.split('T')[0] if log.created_at }}<br>
-                                        {{ log.created_at.split('T')[1].split('.')[0] if log.created_at and 'T' in log.created_at }}
+                                        {% if log.created_at %}
+                                            {% set dt_parts = log.created_at.split('T') %}
+                                            {{ dt_parts[0] if dt_parts|length > 0 }}<br>
+                                            {{ dt_parts[1].split('.')[0] if dt_parts|length > 1 else dt_parts[1] if dt_parts|length > 1 }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
                                     </small>
                                 </td>
                                 <td>
@@ -202,15 +209,28 @@
                                 </td>
                                 <td>{{ log.entity_type or 'N/A' }}</td>
                                 <td>
-                                    <span class="badge bg-{{ 'success' if log.status == 'SUCCESS' else 'danger' }}">
-                                        <i class="fas fa-{{ 'check' if log.status == 'SUCCESS' else 'times' }}"></i>
-                                        {{ 'Exitoso' if log.status == 'SUCCESS' else 'Error' }}
+                                    <span class="badge bg-{{ 'success' if log.status == 'SUCCESS' else 'warning' if log.status == 'NOT_FOUND' else 'danger' }}">
+                                        <i class="fas fa-{{ 'check' if log.status == 'SUCCESS' else 'exclamation-triangle' if log.status == 'NOT_FOUND' else 'times' }}"></i>
+                                        {{ 'Exitoso' if log.status == 'SUCCESS' else 'No Encontrado' if log.status == 'NOT_FOUND' else 'Error' }}
                                     </span>
                                 </td>
                                 <td>{{ log.user_id or 'N/A' }}</td>
                                 <td>{{ log.numero_documento or 'N/A' }}</td>
                                 <td>
-                                    {% if log.details %}
+                                    <small>
+                                        {% if log.ip_address %}
+                                        <div><strong>IP:</strong> {{ log.ip_address }}</div>
+                                        {% endif %}
+                                        {% if log.user_agent %}
+                                        <div title="{{ log.user_agent }}"><strong>Agente:</strong> {{ log.user_agent[:30] }}{% if log.user_agent|length > 30 %}...{% endif %}</div>
+                                        {% endif %}
+                                        {% if not log.ip_address and not log.user_agent %}
+                                        N/A
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if log.details or log.request_data or log.response_data or log.error_message %}
                                     <button class="btn btn-sm btn-outline-info" type="button" 
                                             data-bs-toggle="collapse" data-bs-target="#details{{ loop.index }}" 
                                             aria-expanded="false">
@@ -218,7 +238,27 @@
                                     </button>
                                     <div class="collapse mt-2" id="details{{ loop.index }}">
                                         <div class="card card-body bg-light">
-                                            <small><pre>{{ log.details | tojson(indent=2) if log.details is not string else log.details }}</pre></small>
+                                            {% if log.details %}
+                                            <strong>Detalles:</strong>
+                                            <pre class="mb-2"><small>{{ log.details | tojson(indent=2) if log.details is not string else log.details }}</small></pre>
+                                            {% endif %}
+                                            
+                                            {% if log.request_data and log.request_data != log.details %}
+                                            <strong>Datos de Petición:</strong>
+                                            <pre class="mb-2"><small>{{ log.request_data | tojson(indent=2) if log.request_data is not string else log.request_data }}</small></pre>
+                                            {% endif %}
+                                            
+                                            {% if log.response_data and log.response_data != log.details %}
+                                            <strong>Datos de Respuesta:</strong>
+                                            <pre class="mb-2"><small>{{ log.response_data | tojson(indent=2) if log.response_data is not string else log.response_data }}</small></pre>
+                                            {% endif %}
+                                            
+                                            {% if log.error_message %}
+                                            <strong>Mensaje de Error:</strong>
+                                            <div class="alert alert-danger py-1 mb-0">
+                                                <small>{{ log.error_message }}</small>
+                                            </div>
+                                            {% endif %}
                                         </div>
                                     </div>
                                     {% else %}
@@ -243,7 +283,18 @@
         <div class="alert alert-info text-center">
             <i class="fas fa-search fa-2x mb-3"></i>
             <h5>No se encontraron registros</h5>
-            <p>Intenta con otros criterios de búsqueda.</p>
+            <p>No hay logs que coincidan con los filtros aplicados. Intenta con otros criterios de búsqueda o elimina algunos filtros.</p>
+            <div class="mt-3">
+                <strong>Filtros activos:</strong>
+                <div class="mt-2">
+                    {% if request.args.transaction_type %}<span class="badge bg-secondary me-1">Tipo: {{ request.args.transaction_type }}</span>{% endif %}
+                    {% if request.args.entity_type %}<span class="badge bg-secondary me-1">Entidad: {{ request.args.entity_type }}</span>{% endif %}
+                    {% if request.args.status %}<span class="badge bg-secondary me-1">Estado: {{ request.args.status }}</span>{% endif %}
+                    {% if request.args.numero_documento %}<span class="badge bg-secondary me-1">Doc: {{ request.args.numero_documento }}</span>{% endif %}
+                    {% if request.args.fecha_inicio %}<span class="badge bg-secondary me-1">Desde: {{ request.args.fecha_inicio }}</span>{% endif %}
+                    {% if request.args.fecha_fin %}<span class="badge bg-secondary me-1">Hasta: {{ request.args.fecha_fin }}</span>{% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>

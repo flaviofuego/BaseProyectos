@@ -530,44 +530,109 @@ def consultar_logs():
     fecha_fin = request.args.get('fecha_fin')
     show_stats = request.args.get('show_stats')
     
-    if any([transaction_type, entity_type, numero_documento, status, fecha_inicio, fecha_fin]):
-        # Search logs
-        params = {}
-        if transaction_type and transaction_type != 'Todos':
-            params['transaction_type'] = transaction_type
-        if entity_type and entity_type != 'Todos':
-            params['entity_type'] = entity_type
-        if numero_documento:
-            params['numero_documento'] = numero_documento
-        if status and status != 'Todos':
-            params['status'] = status
-        if fecha_inicio:
-            params['fecha_inicio'] = fecha_inicio
-        if fecha_fin:
-            params['fecha_fin'] = fecha_fin
-        
-        response = make_request('GET', '/api/logs/search', params=params)
-        
-        if response and response.status_code == 200:
-            data = response.json()
-            logs = data.get('logs', [])
-            if logs:
-                flash(f'Se encontraron {data["pagination"]["total"]} registros', 'success')
+    try:
+        if any([transaction_type, entity_type, numero_documento, status, fecha_inicio, fecha_fin]):
+            # Search logs
+            params = {}
+            if transaction_type and transaction_type != 'Todos':
+                params['transaction_type'] = transaction_type
+            if entity_type and entity_type != 'Todos':
+                params['entity_type'] = entity_type
+            if numero_documento:
+                params['numero_documento'] = numero_documento
+            if status and status != 'Todos':
+                # Map frontend status values to API values
+                status_mapping = {
+                    'success': 'SUCCESS',
+                    'error': 'ERROR',
+                    'not_found': 'NOT_FOUND'
+                }
+                params['status'] = status_mapping.get(status, status.upper())
+            if fecha_inicio:
+                params['fecha_inicio'] = fecha_inicio
+            if fecha_fin:
+                params['fecha_fin'] = fecha_fin
+            
+            app.logger.info(f"Making request to /api/logs/search with params: {params}")
+            response = make_request('GET', '/api/logs/search', params=params)
+            
+            if response and response.status_code == 200:
+                data = response.json()
+                logs = data.get('logs', [])
+                
+                # Process logs to ensure data consistency
+                for log in logs:
+                    # Parse JSON fields that might be strings
+                    for field in ['request_data', 'response_data']:
+                        if log.get(field) and isinstance(log[field], str):
+                            try:
+                                log[field] = json.loads(log[field])
+                            except (json.JSONDecodeError, ValueError):
+                                # Keep as string if not valid JSON
+                                pass
+                    
+                    # Set details field based on available data
+                    if not log.get('details'):
+                        if log.get('request_data'):
+                            log['details'] = log['request_data']
+                        elif log.get('response_data'):
+                            log['details'] = log['response_data']
+                        elif log.get('error_message'):
+                            log['details'] = {'error': log['error_message']}
+                            
+                    # Ensure created_at is properly formatted
+                    if log.get('created_at') and isinstance(log['created_at'], str):
+                        # Normalize the datetime format if needed
+                        pass  # Keep as is for now, template handles it
+                    
+                if logs:
+                    flash(f'Se encontraron {data.get("pagination", {}).get("total", len(logs))} registros', 'success')
+                else:
+                    flash('No se encontraron registros con los criterios especificados', 'info')
             else:
-                flash('No se encontraron registros con los criterios especificados', 'info')
+                flash('Error al buscar los logs', 'error')
+                app.logger.error(f"Error searching logs: {response.status_code if response else 'No response'}")
+        
+        if show_stats:
+            # Get statistics
+            params = {}
+            if fecha_inicio:
+                params['fecha_inicio'] = fecha_inicio
+            if fecha_fin:
+                params['fecha_fin'] = fecha_fin
+            
+            app.logger.info(f"Making request to /api/logs/stats with params: {params}")
+            response = make_request('GET', '/api/logs/stats', params=params)
+            
+            if response and response.status_code == 200:
+                api_stats = response.json()
+                
+                # Map API response to template expected structure
+                stats = {
+                    'total_logs': api_stats.get('total_transactions', 0),
+                    'por_tipo': api_stats.get('by_transaction_type', {}),
+                    'por_estado': {}
+                }
+                
+                # Convert status keys to lowercase for template compatibility
+                api_status = api_stats.get('by_status', {})
+                for status_key, count in api_status.items():
+                    if status_key == 'SUCCESS':
+                        stats['por_estado']['success'] = count
+                    elif status_key == 'ERROR':
+                        stats['por_estado']['error'] = count
+                    elif status_key == 'NOT_FOUND':
+                        stats['por_estado']['not_found'] = count
+                    else:
+                        stats['por_estado'][status_key.lower()] = count
+                        
+            else:
+                flash('Error al obtener las estadísticas', 'error')
+                app.logger.error(f"Error getting stats: {response.status_code if response else 'No response'}")
     
-    elif show_stats:
-        # Get statistics
-        params = {}
-        if fecha_inicio:
-            params['fecha_inicio'] = fecha_inicio
-        if fecha_fin:
-            params['fecha_fin'] = fecha_fin
-        
-        response = make_request('GET', '/api/logs/stats', params=params)
-        
-        if response and response.status_code == 200:
-            stats = response.json()
+    except Exception as e:
+        app.logger.error(f"Error in consultar_logs: {str(e)}")
+        flash('Error interno del sistema', 'error')
     
     return render_template('consultar_logs.html', logs=logs, stats=stats)
 
