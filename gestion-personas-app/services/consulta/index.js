@@ -347,6 +347,118 @@ app.delete('/cache', async (req, res) => {
   }
 });
 
+// Dashboard-specific stats endpoint with shorter cache
+app.get('/dashboard/stats', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const cacheKey = getCacheKey('dashboard_stats', {});
+    const DASHBOARD_CACHE_TTL = 30; // 30 seconds cache for dashboard
+
+    // Check cache
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      const stats = JSON.parse(cachedData);
+      
+      await logTransaction('DASHBOARD_STATS_CACHED', null, null, 'SUCCESS', req, stats);
+      
+      return res.json({
+        ...stats,
+        _cache: true,
+        _responseTime: Date.now() - startTime,
+        _timestamp: new Date().toISOString()
+      });
+    }
+
+    // Gather statistics with optimized queries
+    const queries = [
+      pool.query('SELECT COUNT(*) as total FROM personas'),
+      pool.query('SELECT genero, COUNT(*) as count FROM personas GROUP BY genero'),
+      pool.query('SELECT tipo_documento, COUNT(*) as count FROM personas GROUP BY tipo_documento'),
+      pool.query('SELECT grupo_edad, COUNT(*) as count FROM personas_con_edad GROUP BY grupo_edad'),
+      pool.query('SELECT MIN(edad) as min_edad, MAX(edad) as max_edad, ROUND(AVG(edad), 1) as avg_edad FROM personas_con_edad'),
+      pool.query(`
+        SELECT primer_nombre, segundo_nombre, apellidos, fecha_nacimiento, edad
+        FROM personas_con_edad
+        ORDER BY edad ASC
+        LIMIT 1
+      `)
+    ];
+
+    const [
+      totalResult,
+      generoResult,
+      tipoDocResult,
+      grupoEdadResult,
+      edadStatsResult,
+      youngestResult
+    ] = await Promise.all(queries);
+
+    const stats = {
+      total_personas: parseInt(totalResult.rows[0].total),
+      por_genero: generoResult.rows.reduce((acc, row) => {
+        acc[row.genero] = parseInt(row.count);
+        return acc;
+      }, {}),
+      por_tipo_documento: tipoDocResult.rows.reduce((acc, row) => {
+        acc[row.tipo_documento] = parseInt(row.count);
+        return acc;
+      }, {}),
+      por_grupo_edad: grupoEdadResult.rows.reduce((acc, row) => {
+        acc[row.grupo_edad] = parseInt(row.count);
+        return acc;
+      }, {}),
+      estadisticas_edad: {
+        minima: parseInt(edadStatsResult.rows[0].min_edad || 0),
+        maxima: parseInt(edadStatsResult.rows[0].max_edad || 0),
+        promedio: parseFloat(edadStatsResult.rows[0].avg_edad || 0)
+      },
+      persona_mas_joven: youngestResult.rows[0] || null
+    };
+
+    // Cache the result with shorter TTL
+    await redisClient.setEx(cacheKey, DASHBOARD_CACHE_TTL, JSON.stringify(stats));
+
+    // Log dashboard stats query
+    await logTransaction('DASHBOARD_STATS', null, null, 'SUCCESS', req, stats);
+
+    res.json({
+      ...stats,
+      _cache: false,
+      _responseTime: Date.now() - startTime,
+      _timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error getting dashboard stats:', error);
+    await logTransaction('DASHBOARD_STATS', null, null, 'ERROR', req, null, error.message);
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      _timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Clear stats cache when data changes
+app.post('/cache/invalidate-stats', async (req, res) => {
+  try {
+    const statsKeys = [
+      getCacheKey('stats', {}),
+      getCacheKey('dashboard_stats', {})
+    ];
+    
+    await Promise.all(statsKeys.map(key => redisClient.del(key)));
+    
+    await logTransaction('STATS_CACHE_INVALIDATED', null, null, 'SUCCESS', req);
+    
+    res.json({ 
+      message: 'Stats cache invalidated successfully',
+      _timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error invalidating stats cache:', error);
+    res.status(500).json({ error: 'Error invalidating cache' });
+  }
+});
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');

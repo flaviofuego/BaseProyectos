@@ -128,6 +128,75 @@
   color: var(--text-secondary) !important;
 }
 
+/* Corrige alertas específicas en modo oscuro */
+[data-theme="dark"] .alert-light {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .alert-light h5,
+[data-theme="dark"] .alert-light p,
+[data-theme="dark"] .alert-light i {
+  color: var(--text-primary) !important;
+}
+
+/* Corrige tablas y contenido en modo oscuro */
+[data-theme="dark"] table,
+[data-theme="dark"] .table {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] td,
+[data-theme="dark"] th {
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > td {
+  background-color: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .table-hover > tbody > tr:hover > td {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .bg-light {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .bg-light small,
+[data-theme="dark"] .bg-light pre,
+[data-theme="dark"] .bg-light strong {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] pre {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Corrige elementos de paginación */
+[data-theme="dark"] .pagination .page-link {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .pagination .page-item.active .page-link {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--text-inverse) !important;
+}
+
+[data-theme="dark"] .pagination .page-item.disabled .page-link {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-muted) !important;
+}
+
 /* Configuración automática basada en preferencias del sistema */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -197,6 +266,75 @@
 
   :root:not([data-theme="light"]) small {
     color: var(--text-secondary) !important;
+  }
+  
+  /* Corrige alertas específicas en modo automático oscuro */
+  :root:not([data-theme="light"]) .alert-light {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+
+  :root:not([data-theme="light"]) .alert-light h5,
+  :root:not([data-theme="light"]) .alert-light p,
+  :root:not([data-theme="light"]) .alert-light i {
+    color: var(--text-primary) !important;
+  }
+  
+  /* Corrige tablas y contenido en modo automático oscuro */
+  :root:not([data-theme="light"]) table,
+  :root:not([data-theme="light"]) .table {
+    color: var(--text-primary) !important;
+  }
+
+  :root:not([data-theme="light"]) td,
+  :root:not([data-theme="light"]) th {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  :root:not([data-theme="light"]) .table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: var(--bg-tertiary) !important;
+  }
+
+  :root:not([data-theme="light"]) .table-hover > tbody > tr:hover > td {
+    background-color: var(--bg-secondary) !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-light {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-light small,
+  :root:not([data-theme="light"]) .bg-light pre,
+  :root:not([data-theme="light"]) .bg-light strong {
+    color: var(--text-primary) !important;
+  }
+
+  :root:not([data-theme="light"]) pre {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+  }
+
+  /* Corrige elementos de paginación en modo automático */
+  :root:not([data-theme="light"]) .pagination .page-link {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+
+  :root:not([data-theme="light"]) .pagination .page-item.active .page-link {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--text-inverse) !important;
+  }
+
+  :root:not([data-theme="light"]) .pagination .page-item.disabled .page-link {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-muted) !important;
   }
 }
 

@@ -234,6 +234,35 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Interceptar envío del formulario para disparar refresh del dashboard
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Agregar un retraso para permitir que la modificación se complete
+            setTimeout(() => {
+                // Disparar refresh del dashboard después de modificar persona
+                triggerDashboardRefresh();
+            }, 1000);
+        });
+    }
 });
+
+// Función para disparar refresh del dashboard desde otras páginas
+function triggerDashboardRefresh() {
+    try {
+        // Disparar refresh en ventanas del dashboard
+        localStorage.setItem('dashboard_refresh_trigger', Date.now().toString());
+        
+        // Limpiar después de un momento
+        setTimeout(() => {
+            localStorage.removeItem('dashboard_refresh_trigger');
+        }, 1000);
+        
+        console.log('Dashboard refresh triggered from persona modification');
+    } catch (error) {
+        console.log('Could not trigger dashboard refresh:', error);
+    }
+}
 </script>
 {% endblock %}

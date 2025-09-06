@@ -163,10 +163,32 @@ document.addEventListener('DOMContentLoaded', function() {
         deleteBtn.addEventListener('click', function(e) {
             if (!confirm('¿Estás completamente seguro de que deseas eliminar esta persona? Esta acción NO se puede deshacer.')) {
                 e.preventDefault();
+            } else {
+                // Disparar refresh del dashboard después de confirmar eliminación
+                setTimeout(() => {
+                    triggerDashboardRefresh();
+                }, 1000);
             }
         });
     }
 });
+
+// Función para disparar refresh del dashboard desde otras páginas
+function triggerDashboardRefresh() {
+    try {
+        // Disparar refresh en ventanas del dashboard
+        localStorage.setItem('dashboard_refresh_trigger', Date.now().toString());
+        
+        // Limpiar después de un momento
+        setTimeout(() => {
+            localStorage.removeItem('dashboard_refresh_trigger');
+        }, 1000);
+        
+        console.log('Dashboard refresh triggered from persona deletion');
+    } catch (error) {
+        console.log('Could not trigger dashboard refresh:', error);
+    }
+}
 </script>
 {% endblock %}
 

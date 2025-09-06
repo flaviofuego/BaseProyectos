@@ -27,6 +27,15 @@ def build_image_url(foto_url):
         return f"{API_BASE_URL}{foto_url}"
     return foto_url
 
+def invalidate_stats_cache():
+    """Invalidate stats cache to force refresh of dashboard"""
+    try:
+        make_request('POST', '/api/consulta/cache/invalidate-stats', timeout_seconds=2.0)
+        print("Stats cache invalidated successfully")
+    except Exception as e:
+        print(f"Failed to invalidate stats cache: {e}")
+        # No bloquear la operación principal si falla la invalidación del cache
+
 # Jinja context: expose date/datetime to templates
 @app.context_processor
 def inject_datetime_tools():
@@ -247,12 +256,54 @@ def dashboard():
 @login_required
 def dashboard_stats_api():
     """API endpoint for dashboard statistics (for auto-refresh)"""
-    response = make_request('GET', '/api/consulta/stats')
-    
-    if response and response.status_code == 200:
-        return jsonify(response.json())
-    else:
-        return jsonify({}), 500
+    try:
+        # Llamar directamente al endpoint específico del dashboard
+        response = make_request('GET', '/api/consulta/dashboard/stats', timeout_seconds=3.0)
+        
+        if response and response.status_code == 200:
+            stats_data = response.json()
+            # Agregar timestamp para debugging
+            stats_data['_frontend_timestamp'] = datetime.now().isoformat()
+            return jsonify(stats_data)
+        else:
+            # Responder con error más específico
+            error_msg = f"Backend error: {response.status_code if response else 'No response'}"
+            return jsonify({
+                'error': error_msg,
+                '_frontend_timestamp': datetime.now().isoformat()
+            }), 503
+    except Exception as e:
+        return jsonify({
+            'error': f'Stats request failed: {str(e)}',
+            '_frontend_timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/dashboard/refresh', methods=['POST'])
+@login_required
+def force_dashboard_refresh():
+    """Force refresh dashboard stats by invalidating cache"""
+    try:
+        # Invalidar cache
+        invalidate_stats_cache()
+        
+        # Obtener nuevas estadísticas
+        response = make_request('GET', '/api/consulta/dashboard/stats', timeout_seconds=3.0)
+        
+        if response and response.status_code == 200:
+            stats_data = response.json()
+            stats_data['_forced_refresh'] = True
+            stats_data['_frontend_timestamp'] = datetime.now().isoformat()
+            return jsonify(stats_data)
+        else:
+            return jsonify({
+                'error': 'Failed to get fresh stats after cache invalidation',
+                '_frontend_timestamp': datetime.now().isoformat()
+            }), 503
+    except Exception as e:
+        return jsonify({
+            'error': f'Force refresh failed: {str(e)}',
+            '_frontend_timestamp': datetime.now().isoformat()
+        }), 500
 
 @app.route('/personas/crear', methods=['GET', 'POST'])
 @login_required
@@ -293,15 +344,43 @@ def crear_persona():
         
         if response:
             if response.status_code == 201:
-                flash('âœ… Persona creada exitosamente', 'success')
+                # Invalidar cache de estadísticas después de crear
+                invalidate_stats_cache()
+                flash('✅ Persona creada exitosamente', 'success')
                 return redirect(url_for('dashboard'))
             elif response.status_code == 400:
-                error_data = response.json()
-                flash(f'Error de validaciÃ³n: {error_data.get("error", "Error desconocido")}', 'error')
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Error de validación desconocido')
+                    # Mostrar detalles específicos si están disponibles
+                    if 'details' in error_data:
+                        details = error_data['details']
+                        if isinstance(details, dict):
+                            detail_messages = []
+                            for field, messages in details.items():
+                                if isinstance(messages, list):
+                                    detail_messages.extend([f"{field}: {msg}" for msg in messages])
+                                else:
+                                    detail_messages.append(f"{field}: {messages}")
+                            error_message += f" - {'; '.join(detail_messages)}"
+                    flash(f'❌ Error de validación: {error_message}', 'error')
+                except:
+                    flash('❌ Error de validación: Datos inválidos', 'error')
             elif response.status_code == 409:
-                flash('Ya existe una persona con ese nÃºmero de documento', 'error')
+                flash('❌ Ya existe una persona con ese número de documento. Por favor, verifique el número ingresado.', 'error')
+            elif response.status_code == 422:
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Error de procesamiento')
+                    flash(f'❌ Error de procesamiento: {error_message}', 'error')
+                except:
+                    flash('❌ Error de procesamiento: Los datos no pudieron ser procesados', 'error')
+            elif response.status_code == 500:
+                flash('❌ Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
             else:
-                flash('Error al crear la persona', 'error')
+                flash(f'❌ Error al crear la persona (Código: {response.status_code})', 'error')
+        else:
+            flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
     
     return render_template('crear_persona.html', today_iso=today_iso())
 
@@ -390,6 +469,8 @@ def modificar_persona():
             
             if response:
                 if response.status_code == 200:
+                    # Invalidar cache de estadísticas después de modificar
+                    invalidate_stats_cache()
                     flash('âœ… Persona actualizada exitosamente', 'success')
                     # Clear the session cache
                     session.pop('persona_to_modify', None)
@@ -511,6 +592,8 @@ def borrar_persona():
                 response = make_request('DELETE', f'/api/personas/{persona["numero_documento"]}')
                 
                 if response and response.status_code == 200:
+                    # Invalidar cache de estadísticas después de eliminar
+                    invalidate_stats_cache()
                     flash('âœ… Persona eliminada exitosamente', 'success')
                     session.pop('persona_to_delete', None)
                     return redirect(url_for('dashboard'))

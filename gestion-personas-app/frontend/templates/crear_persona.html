@@ -181,6 +181,33 @@ document.addEventListener('DOMContentLoaded', function() {
             this.setCustomValidity('');
         }
     });
+    
+    // Interceptar envío del formulario para disparar refresh del dashboard
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        // Agregar un retraso para permitir que la creación se complete
+        setTimeout(() => {
+            // Disparar refresh del dashboard después de crear persona
+            triggerDashboardRefresh();
+        }, 1000);
+    });
 });
+
+// Función para disparar refresh del dashboard desde otras páginas
+function triggerDashboardRefresh() {
+    try {
+        // Disparar refresh en ventanas del dashboard
+        localStorage.setItem('dashboard_refresh_trigger', Date.now().toString());
+        
+        // Limpiar después de un momento
+        setTimeout(() => {
+            localStorage.removeItem('dashboard_refresh_trigger');
+        }, 1000);
+        
+        console.log('Dashboard refresh triggered from persona creation');
+    } catch (error) {
+        console.log('Could not trigger dashboard refresh:', error);
+    }
+}
 </script>
 {% endblock %}

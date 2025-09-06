@@ -21,6 +21,9 @@
                     <button type="button" class="btn btn-outline-primary" id="manual-refresh" onclick="manualRefresh()" title="Actualizar manualmente">
                         <i class="fas fa-sync-alt"></i>
                     </button>
+                    <button type="button" class="btn btn-outline-warning" id="force-refresh" onclick="forceRefresh()" title="Forzar actualización (limpia cache)">
+                        <i class="fas fa-sync"></i> Forzar
+                    </button>
                 </div>
             </div>
         </h1>
@@ -277,56 +280,164 @@ Plotly.newPlot('ageChart', [
 let refreshInterval;
 
 function refreshDashboard() {
-    fetch('/api/dashboard/stats')
-    .then(response => response.json())
+    // Mostrar indicador de carga
+    showLoadingIndicator();
+    
+    fetch('/api/dashboard/stats', {
+        method: 'GET',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(stats => {
-        // Update stats cards
-        updateStatsCards(stats);
+        console.log('Stats received:', stats);
         
-        // Update charts
-        updateCharts(stats);
+        // Update all stats cards
+        updateAllStatsCards(stats);
         
-        console.log('Dashboard refreshed at', new Date().toLocaleTimeString());
+        // Update all charts
+        updateAllCharts(stats);
+        
+        // Update youngest person card if exists
+        updateYoungestPerson(stats);
+        
+        hideLoadingIndicator();
+        console.log('Dashboard refreshed successfully at', new Date().toLocaleTimeString());
     })
     .catch(error => {
         console.error('Error refreshing dashboard:', error);
+        hideLoadingIndicator();
+        showRefreshError();
     });
 }
 
-function updateStatsCards(stats) {
+function showLoadingIndicator() {
+    // Agregar indicador visual de carga en las tarjetas
+    const statsCards = document.querySelectorAll('.stats-card .card-body');
+    statsCards.forEach(card => {
+        if (!card.querySelector('.refresh-spinner')) {
+            const spinner = document.createElement('div');
+            spinner.className = 'refresh-spinner position-absolute top-0 end-0 mt-2 me-2';
+            spinner.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i>';
+            card.style.position = 'relative';
+            card.appendChild(spinner);
+        }
+    });
+}
+
+function hideLoadingIndicator() {
+    const spinners = document.querySelectorAll('.refresh-spinner');
+    spinners.forEach(spinner => spinner.remove());
+}
+
+function showRefreshError() {
+    const errorToast = document.createElement('div');
+    errorToast.className = 'toast position-fixed top-0 end-0 mt-3 me-3';
+    errorToast.style.zIndex = '9999';
+    errorToast.innerHTML = `
+        <div class="toast-header bg-danger text-white">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong class="me-auto">Error de actualización</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            No se pudieron actualizar las estadísticas. Intenta de nuevo.
+        </div>
+    `;
+    document.body.appendChild(errorToast);
+    
+    const bsToast = new bootstrap.Toast(errorToast);
+    bsToast.show();
+    
+    // Remover después de que se oculte
+    errorToast.addEventListener('hidden.bs.toast', () => {
+        errorToast.remove();
+    });
+}
+
+function updateAllStatsCards(stats) {
     // Update total personas
-    const totalElement = document.querySelector('.card-body h3');
-    if (totalElement && stats.total_personas !== undefined) {
-        const newValue = stats.total_personas || 0;
-        if (totalElement.textContent !== newValue.toString()) {
-            totalElement.textContent = newValue;
-            highlightChange(totalElement.parentElement);
+    const totalElements = document.querySelectorAll('[data-target]');
+    totalElements.forEach(element => {
+        const target = element.dataset.target;
+        let newValue = 0;
+        
+        // Determinar qué estadística actualizar basado en el contenido de la card
+        const cardBody = element.closest('.card-body');
+        const cardText = cardBody ? cardBody.textContent.toLowerCase() : '';
+        
+        if (cardText.includes('total personas')) {
+            newValue = stats.total_personas || 0;
+        } else if (cardText.includes('edad promedio') && stats.estadisticas_edad) {
+            newValue = Math.round(stats.estadisticas_edad.promedio || 0);
+        } else if (cardText.includes('edad mínima') && stats.estadisticas_edad) {
+            newValue = stats.estadisticas_edad.minima || 0;
+        } else if (cardText.includes('edad máxima') && stats.estadisticas_edad) {
+            newValue = stats.estadisticas_edad.maxima || 0;
+        }
+        
+        // Actualizar si el valor cambió
+        const currentValue = parseInt(element.textContent) || 0;
+        if (currentValue !== newValue) {
+            // Animar el cambio
+            if (window.contentManager) {
+                window.contentManager.animateCounter(element, newValue, 800);
+            } else {
+                element.textContent = newValue;
+            }
+            highlightChange(element.closest('.card'));
+        }
+    });
+}
+
+function updateAllCharts(stats) {
+    // Update gender chart
+    if (stats.por_genero && document.getElementById('genderChart')) {
+        const labels = Object.keys(stats.por_genero);
+        const values = Object.values(stats.por_genero);
+        
+        try {
+            Plotly.redraw('genderChart', [{
+                values: values,
+                labels: labels,
+                type: 'pie',
+                marker: {
+                    colors: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1']
+                }
+            }]);
+        } catch (error) {
+            console.error('Error updating gender chart:', error);
         }
     }
     
-    // Update average age
-    const ageElements = document.querySelectorAll('.card-body h3');
-    if (ageElements[1] && stats.estadisticas_edad && stats.estadisticas_edad.promedio) {
-        const newValue = `${stats.estadisticas_edad.promedio} años`;
-        if (ageElements[1].textContent !== newValue) {
-            ageElements[1].textContent = newValue;
-            highlightChange(ageElements[1].parentElement);
-        }
-    }
-}
-
-function updateCharts(stats) {
     // Update document type chart
     if (stats.por_tipo_documento && document.getElementById('documentChart')) {
         const labels = Object.keys(stats.por_tipo_documento);
         const values = Object.values(stats.por_tipo_documento);
         
-        Plotly.redraw('documentChart', [{
-            x: labels,
-            y: values,
-            type: 'bar',
-            marker: { color: '#007bff' }
-        }]);
+        try {
+            Plotly.redraw('documentChart', [{
+                x: labels,
+                y: values,
+                type: 'bar',
+                marker: { 
+                    color: '#28a745',
+                    line: {
+                        color: '#1e7e34',
+                        width: 1
+                    }
+                }
+            }]);
+        } catch (error) {
+            console.error('Error updating document chart:', error);
+        }
     }
     
     // Update age group chart
@@ -334,13 +445,54 @@ function updateCharts(stats) {
         const labels = Object.keys(stats.por_grupo_edad);
         const values = Object.values(stats.por_grupo_edad);
         
-        Plotly.redraw('ageChart', [{
-            x: labels,
-            y: values,
-            type: 'bar',
-            marker: { color: '#17a2b8' }
-        }]);
+        try {
+            Plotly.redraw('ageChart', [{
+                x: labels,
+                y: values,
+                type: 'bar',
+                marker: { 
+                    color: '#17a2b8',
+                    line: {
+                        color: '#117a8b',
+                        width: 1
+                    }
+                }
+            }]);
+        } catch (error) {
+            console.error('Error updating age chart:', error);
+        }
     }
+}
+
+function updateYoungestPerson(stats) {
+    if (stats.persona_mas_joven) {
+        const youngestCard = document.querySelector('.border-success .card-body');
+        if (youngestCard) {
+            const nameElement = youngestCard.querySelector('h6');
+            const ageElement = youngestCard.querySelector('p');
+            
+            if (nameElement && ageElement) {
+                const newName = `${stats.persona_mas_joven.primer_nombre} ${stats.persona_mas_joven.apellidos}`;
+                const newAge = `Edad: ${stats.persona_mas_joven.edad} años`;
+                
+                if (nameElement.textContent !== newName || ageElement.textContent !== newAge) {
+                    nameElement.textContent = newName;
+                    ageElement.textContent = newAge;
+                    highlightChange(youngestCard.closest('.card'));
+                }
+            }
+        }
+    }
+}
+
+function updateStatsCards(stats) {
+    // Función legacy - ahora usa updateAllStatsCards
+    updateAllStatsCards(stats);
+}
+
+function updateCharts(stats) {
+    // Función legacy - ahora usa updateAllCharts
+    updateAllCharts(stats);
 }
 
 function highlightChange(element) {
@@ -354,17 +506,21 @@ function highlightChange(element) {
 function startAutoRefresh() {
     if (refreshInterval) return;
     
-    refreshInterval = setInterval(refreshDashboard, 30000); // Refresh every 30 seconds
+    // Refresh más frecuente: cada 10 segundos en lugar de 30
+    refreshInterval = setInterval(refreshDashboard, 10000);
     
     // Add indicator
     const indicator = document.createElement('div');
     indicator.id = 'refresh-indicator';
-    indicator.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Actualizando cada 30s';
-    indicator.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #28a745; color: white; padding: 10px; border-radius: 5px; z-index: 1000; font-size: 12px;';
+    indicator.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Actualizando cada 10s';
+    indicator.style.cssText = 'position: fixed; top: 70px; right: 10px; background: #28a745; color: white; padding: 8px 12px; border-radius: 20px; z-index: 1000; font-size: 11px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); backdrop-filter: blur(10px);';
     document.body.appendChild(indicator);
     
     document.getElementById('start-refresh').style.display = 'none';
     document.getElementById('stop-refresh').style.display = 'inline-block';
+    
+    // Hacer un refresh inmediato al activar
+    refreshDashboard();
 }
 
 function stopAutoRefresh() {
@@ -398,8 +554,81 @@ function manualRefresh() {
     }, 1000);
 }
 
+// Force refresh (invalidates cache)
+function forceRefresh() {
+    showLoadingIndicator();
+    
+    fetch('/api/dashboard/refresh', {
+        method: 'POST',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(stats => {
+        console.log('Force refresh completed:', stats);
+        
+        // Update all components
+        updateAllStatsCards(stats);
+        updateAllCharts(stats);
+        updateYoungestPerson(stats);
+        
+        hideLoadingIndicator();
+        
+        // Show success toast
+        showSuccessToast('Dashboard actualizado con datos frescos!');
+        
+        console.log('Dashboard force refreshed successfully at', new Date().toLocaleTimeString());
+    })
+    .catch(error => {
+        console.error('Error force refreshing dashboard:', error);
+        hideLoadingIndicator();
+        showRefreshError();
+    });
+}
+
+function showSuccessToast(message) {
+    const successToast = document.createElement('div');
+    successToast.className = 'toast position-fixed top-0 end-0 mt-3 me-3';
+    successToast.style.zIndex = '9999';
+    successToast.innerHTML = `
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Actualización exitosa</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    document.body.appendChild(successToast);
+    
+    const bsToast = new bootstrap.Toast(successToast);
+    bsToast.show();
+    
+    // Remover después de que se oculte
+    successToast.addEventListener('hidden.bs.toast', () => {
+        successToast.remove();
+    });
+}
+
 // Animar contadores cuando la página cargue
 document.addEventListener('DOMContentLoaded', function() {
+    // Configurar localStorage listener para refresh entre ventanas
+    setupCrossWindowRefresh();
+    
+    // Auto-iniciar el refresh si hay datos
+    if (document.querySelector('.stats-card')) {
+        startAutoRefresh();
+    }
+    
     // Animar contadores numéricos
     const counters = document.querySelectorAll('.counter');
     
@@ -437,6 +666,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 500);
     }
 });
+
+// Sistema de comunicación entre ventanas para actualizaciones inmediatas
+function setupCrossWindowRefresh() {
+    // Escuchar eventos de localStorage para actualizaciones entre ventanas
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'dashboard_refresh_trigger') {
+            console.log('Refresh triggered from another window');
+            refreshDashboard();
+            // Limpiar el trigger
+            localStorage.removeItem('dashboard_refresh_trigger');
+        }
+    });
+    
+    // Escuchar eventos de focus para refresh automático
+    window.addEventListener('focus', function() {
+        // Hacer refresh cuando la ventana vuelve a tener foco
+        console.log('Window gained focus, refreshing dashboard');
+        refreshDashboard();
+    });
+}
+
+// Función para disparar refresh desde otras páginas
+function triggerDashboardRefresh() {
+    // Disparar refresh en esta ventana si es el dashboard
+    if (window.location.pathname === '/dashboard' || window.location.pathname === '/') {
+        refreshDashboard();
+    }
+    
+    // Disparar refresh en otras ventanas del dashboard
+    localStorage.setItem('dashboard_refresh_trigger', Date.now().toString());
+    
+    // Limpiar después de un momento
+    setTimeout(() => {
+        localStorage.removeItem('dashboard_refresh_trigger');
+    }, 1000);
+}
 
 </script>
 {% endif %}
