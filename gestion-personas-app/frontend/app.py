@@ -61,6 +61,10 @@ def make_request(method, endpoint, data=None, files=None, params=None, timeout_s
         headers['Authorization'] = f'Bearer {session["token"]}'
 
     url = f"{API_BASE_URL}{endpoint}"
+    
+    print(f"DEBUG: Making {method} request to {url}")
+    if data and not files:
+        print(f"DEBUG: Request data: {data}")
 
     try:
         if method == 'GET':
@@ -80,11 +84,27 @@ def make_request(method, endpoint, data=None, files=None, params=None, timeout_s
         elif method == 'DELETE':
             response = requests.delete(url, headers=headers, timeout=timeout_seconds)
         else:
+            print(f"DEBUG: Unsupported method: {method}")
             return None
 
+        print(f"DEBUG: Response status: {response.status_code}")
+        if response.status_code >= 400:
+            print(f"DEBUG: Response error content: {response.text}")
+        else:
+            print(f"DEBUG: Response success")
+        
         return response
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ReadTimeout):
-        # No bloquear la UI: devolver None y dejar que la vista maneje el fallback
+    except requests.exceptions.ConnectionError as e:
+        print(f"DEBUG: Connection error: {e}")
+        return None
+    except requests.exceptions.Timeout as e:
+        print(f"DEBUG: Timeout error: {e}")
+        return None
+    except requests.exceptions.ReadTimeout as e:
+        print(f"DEBUG: Read timeout error: {e}")
+        return None
+    except Exception as e:
+        print(f"DEBUG: Unexpected error: {e}")
         return None
 
 def login_required(f):
@@ -310,7 +330,11 @@ def force_dashboard_refresh():
 def crear_persona():
     def today_iso():
         return date.today().isoformat()
+    
     if request.method == 'POST':
+        # Detectar si es una petición AJAX
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
         # Validate required fields
         required_fields = ['numero_documento', 'tipo_documento', 'primer_nombre', 
                           'apellidos', 'fecha_nacimiento', 'genero', 
@@ -320,7 +344,10 @@ def crear_persona():
         for field in required_fields:
             value = request.form.get(field)
             if not value:
-                flash(f'El campo {field.replace("_", " ").title()} es requerido', 'error')
+                error_msg = f'El campo {field.replace("_", " ").title()} es requerido'
+                if is_ajax:
+                    return jsonify({'error': error_msg}), 400
+                flash(error_msg, 'error')
                 return render_template('crear_persona.html', today_iso=today_iso())
             data[field] = value
         
@@ -334,24 +361,40 @@ def crear_persona():
             if foto.filename and foto.filename != '':
                 # Check file size (2MB)
                 if len(foto.read()) > 2 * 1024 * 1024:
-                    flash('La foto no puede superar los 2MB', 'error')
+                    error_msg = 'La foto no puede superar los 2MB'
+                    if is_ajax:
+                        return jsonify({'error': error_msg}), 400
+                    flash(error_msg, 'error')
                     return render_template('crear_persona.html', today_iso=today_iso())
                 foto.seek(0)  # Reset file pointer
                 files = {'foto': (foto.filename, foto, foto.content_type)}
         
         # Make request
+        print(f"DEBUG: About to make request to create persona with doc: {data.get('numero_documento')}")
         response = make_request('POST', '/api/personas', data=data, files=files)
+        print(f"DEBUG: Received response object: {response}")
         
-        if response:
+        if response is not None:
+            print(f"DEBUG: crear_persona response status: {response.status_code}")
+            try:
+                response_text = response.text
+                print(f"DEBUG: Response content: {response_text}")
+            except:
+                print("DEBUG: Could not read response text")
+                
             if response.status_code == 201:
                 # Invalidar cache de estadísticas después de crear
                 invalidate_stats_cache()
-                flash('✅ Persona creada exitosamente', 'success')
+                success_msg = '✅ Persona creada exitosamente'
+                if is_ajax:
+                    return jsonify({'message': success_msg}), 201
+                flash(success_msg, 'success')
                 return redirect(url_for('dashboard'))
             elif response.status_code == 400:
                 try:
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error de validación desconocido')
+                    print(f"DEBUG: 400 error response: {error_data}")
                     # Mostrar detalles específicos si están disponibles
                     if 'details' in error_data:
                         details = error_data['details']
@@ -362,27 +405,111 @@ def crear_persona():
                                     detail_messages.extend([f"{field}: {msg}" for msg in messages])
                                 else:
                                     detail_messages.append(f"{field}: {messages}")
-                            error_message += f" - {'; '.join(detail_messages)}"
+                            error_data['details'] = '; '.join(detail_messages)
+                    
+                    if is_ajax:
+                        return jsonify(error_data), 400
                     flash(f'❌ Error de validación: {error_message}', 'error')
-                except:
-                    flash('❌ Error de validación: Datos inválidos', 'error')
+                except Exception as e:
+                    print(f"DEBUG: Error parsing 400 response: {e}")
+                    error_msg = '❌ Error de validación: Datos inválidos'
+                    if is_ajax:
+                        return jsonify({'error': 'Error de validación: Datos inválidos'}), 400
+                    flash(error_msg, 'error')
             elif response.status_code == 409:
-                flash('❌ Ya existe una persona con ese número de documento. Por favor, verifique el número ingresado.', 'error')
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Ya existe una persona con ese número de documento')
+                    print(f"DEBUG: 409 error response parsed successfully: {error_data}")
+                    
+                    if is_ajax:
+                        print(f"DEBUG: Returning 409 JSON response for AJAX")
+                        return jsonify(error_data), 409
+                    flash(f'❌ {error_message}. Por favor, verifique el número ingresado.', 'error')
+                except Exception as e:
+                    print(f"DEBUG: Error parsing 409 response: {e}")
+                    print(f"DEBUG: Raw response text: {response.text}")
+                    error_data = {'error': 'Ya existe una persona con ese número de documento'}
+                    if is_ajax:
+                        print(f"DEBUG: Returning fallback 409 JSON response for AJAX")
+                        return jsonify(error_data), 409
+                    flash('❌ Ya existe una persona con ese número de documento. Por favor, verifique el número ingresado.', 'error')
             elif response.status_code == 422:
                 try:
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error de procesamiento')
+                    print(f"DEBUG: 422 error response: {error_data}")
+                    
+                    if is_ajax:
+                        return jsonify(error_data), 422
                     flash(f'❌ Error de procesamiento: {error_message}', 'error')
-                except:
+                except Exception as e:
+                    print(f"DEBUG: Error parsing 422 response: {e}")
+                    error_data = {'error': 'Error de procesamiento: Los datos no pudieron ser procesados'}
+                    if is_ajax:
+                        return jsonify(error_data), 422
                     flash('❌ Error de procesamiento: Los datos no pudieron ser procesados', 'error')
             elif response.status_code == 500:
-                flash('❌ Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Error interno del servidor')
+                    print(f"DEBUG: 500 error response: {error_data}")
+                    
+                    if is_ajax:
+                        return jsonify(error_data), 500
+                    flash(f'❌ Error interno del servidor: {error_message}. Por favor, intente nuevamente más tarde.', 'error')
+                except Exception as e:
+                    print(f"DEBUG: Error parsing 500 response: {e}")
+                    error_data = {'error': 'Error interno del servidor'}
+                    if is_ajax:
+                        return jsonify(error_data), 500
+                    flash('❌ Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
             else:
-                flash(f'❌ Error al crear la persona (Código: {response.status_code})', 'error')
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', f'Error desconocido (Código: {response.status_code})')
+                    print(f"DEBUG: {response.status_code} error response: {error_data}")
+                    
+                    if is_ajax:
+                        return jsonify(error_data), response.status_code
+                    flash(f'❌ {error_message}', 'error')
+                except Exception as e:
+                    print(f"DEBUG: Error parsing {response.status_code} response: {e}")
+                    error_data = {'error': f'Error al crear la persona (Código: {response.status_code})'}
+                    if is_ajax:
+                        return jsonify(error_data), response.status_code
+                    flash(f'❌ Error al crear la persona (Código: {response.status_code})', 'error')
         else:
-            flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
+            print("DEBUG: Response is None - connection/timeout error occurred")
+            error_msg = '❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión y que los servicios estén ejecutándose.'
+            if is_ajax:
+                return jsonify({'error': 'Error de conexión: No se pudo contactar con el servidor. Verifique su conexión y que los servicios estén ejecutándose.'}), 503
+            flash(error_msg, 'error')
     
     return render_template('crear_persona.html', today_iso=today_iso())
+
+@app.route('/personas/check/<numero_documento>', methods=['GET'])
+@login_required
+def check_persona_exists(numero_documento):
+    """Check if a persona with the given document number exists"""
+    try:
+        response = make_request('GET', f'/api/personas/{numero_documento}')
+        if response:
+            if response.status_code == 200:
+                # Persona exists
+                return jsonify({'exists': True, 'message': 'Persona encontrada'}), 200
+            elif response.status_code == 404:
+                # Persona does not exist
+                return jsonify({'exists': False, 'message': 'Documento disponible'}), 404
+            else:
+                # Other error
+                return jsonify({'error': 'Error verificando documento'}), 500
+        else:
+            # Connection error
+            return jsonify({'error': 'Error de conexión'}), 503
+    except Exception as e:
+        print(f"DEBUG: Error checking persona: {e}")
+        return jsonify({'error': 'Error interno'}), 500
 
 @app.route('/personas/modificar', methods=['GET', 'POST'])
 @login_required
