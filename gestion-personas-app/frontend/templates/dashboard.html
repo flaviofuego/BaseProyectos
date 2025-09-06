@@ -35,43 +35,43 @@
 
 {% if stats %}
 <!-- Key Metrics -->
-<div class="row mb-4">
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card border-primary">
+<div class="row mb-4" data-animate="fade-in">
+    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="0">
+        <div class="card border-primary stats-card">
             <div class="card-body text-center">
                 <i class="fas fa-users fa-2x text-primary mb-2"></i>
-                <h3 class="card-title">{{ stats.total_personas or 0 }}</h3>
+                <h3 class="card-title counter" data-target="{{ stats.total_personas or 0 }}">0</h3>
                 <p class="card-text text-muted">Total Personas</p>
             </div>
         </div>
     </div>
     
     {% if stats.estadisticas_edad %}
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card border-success">
+    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="100">
+        <div class="card border-success stats-card">
             <div class="card-body text-center">
                 <i class="fas fa-birthday-cake fa-2x text-success mb-2"></i>
-                <h3 class="card-title">{{ stats.estadisticas_edad.promedio }}años</h3>
+                <h3 class="card-title counter" data-target="{{ stats.estadisticas_edad.promedio }}">0</h3>
                 <p class="card-text text-muted">Edad Promedio</p>
             </div>
         </div>
     </div>
     
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card border-info">
+    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="200">
+        <div class="card border-info stats-card">
             <div class="card-body text-center">
                 <i class="fas fa-arrow-down fa-2x text-info mb-2"></i>
-                <h3 class="card-title">{{ stats.estadisticas_edad.minima }} años</h3>
+                <h3 class="card-title counter" data-target="{{ stats.estadisticas_edad.minima }}">0</h3>
                 <p class="card-text text-muted">Edad Mínima</p>
             </div>
         </div>
     </div>
     
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card border-warning">
+    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="300">
+        <div class="card border-warning stats-card">
             <div class="card-body text-center">
                 <i class="fas fa-arrow-up fa-2x text-warning mb-2"></i>
-                <h3 class="card-title">{{ stats.estadisticas_edad.maxima }} años</h3>
+                <h3 class="card-title counter" data-target="{{ stats.estadisticas_edad.maxima }}">0</h3>
                 <p class="card-text text-muted">Edad Máxima</p>
             </div>
         </div>
@@ -80,17 +80,17 @@
 </div>
 
 <!-- Charts -->
-<div class="row">
+<div class="row" data-animate="slide-in-right" data-delay="400">
     {% if stats.por_genero %}
     <div class="col-lg-6 mb-4">
-        <div class="card">
+        <div class="card" data-loading="fade">
             <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-chart-pie"></i> Distribución por Género
                 </h5>
             </div>
             <div class="card-body">
-                <div id="genderChart"></div>
+                <div id="genderChart" class="chart-container"></div>
             </div>
         </div>
     </div>
@@ -307,7 +307,7 @@ function updateStatsCards(stats) {
     // Update average age
     const ageElements = document.querySelectorAll('.card-body h3');
     if (ageElements[1] && stats.estadisticas_edad && stats.estadisticas_edad.promedio) {
-        const newValue = `${stats.estadisticas_edad.promedio}años`;
+        const newValue = `${stats.estadisticas_edad.promedio} años`;
         if (ageElements[1].textContent !== newValue) {
             ageElements[1].textContent = newValue;
             highlightChange(ageElements[1].parentElement);
@@ -398,6 +398,46 @@ function manualRefresh() {
     }, 1000);
 }
 
-{% endif %}
+// Animar contadores cuando la página cargue
+document.addEventListener('DOMContentLoaded', function() {
+    // Animar contadores numéricos
+    const counters = document.querySelectorAll('.counter');
+    
+    // Configurar intersection observer para animar cuando entren en viewport
+    const observerOptions = {
+        threshold: 0.5,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
+                entry.target.classList.add('animated');
+                const target = parseInt(entry.target.dataset.target) || 0;
+                
+                // Usar el ContentManager para animar
+                if (window.contentManager) {
+                    window.contentManager.animateCounter(entry.target, target, 1500);
+                }
+                
+                counterObserver.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+    
+    counters.forEach(counter => {
+        counterObserver.observe(counter);
+    });
+    
+    // Animar tarjetas en secuencia
+    const cards = document.querySelectorAll('.stats-card');
+    if (window.contentManager && cards.length > 0) {
+        setTimeout(() => {
+            window.contentManager.animateCardsSequence(Array.from(cards), 150);
+        }, 500);
+    }
+});
+
 </script>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,346 @@
+/* ====================================
+   MEJORAS DE ACCESIBILIDAD ADICIONALES
+   ====================================*/
+
+/* Navegación por teclado más visible */
+body.keyboard-navigation *:focus {
+    outline: 3px solid var(--color-primary) !important;
+    outline-offset: 2px !important;
+    border-radius: 0.25rem;
+}
+
+body.keyboard-navigation .btn:focus,
+body.keyboard-navigation .form-control:focus,
+body.keyboard-navigation .form-select:focus {
+    box-shadow: 0 0 0 0.2rem var(--color-primary-alpha), 
+                0 0 0 0.4rem var(--color-primary) !important;
+}
+
+/* Mejoras para lectores de pantalla */
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+.sr-only-focusable:active,
+.sr-only-focusable:focus {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    padding: inherit !important;
+    margin: inherit !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: inherit !important;
+}
+
+/* Estados de carga accesibles */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary);
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.loading-overlay .spinner {
+    width: 3rem;
+    height: 3rem;
+    border: 0.3rem solid var(--color-primary-alpha);
+    border-top: 0.3rem solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Tooltips accesibles */
+.tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-content {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--text-primary);
+    color: var(--bg-primary);
+    text-align: center;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    z-index: 1001;
+    transition: opacity 0.3s;
+    font-size: 0.875rem;
+}
+
+.tooltip-wrapper:hover .tooltip-content,
+.tooltip-wrapper:focus .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Estados de error más visibles */
+.error-state {
+    border: 2px solid var(--color-danger) !important;
+    background-color: var(--color-danger-alpha);
+}
+
+.success-state {
+    border: 2px solid var(--color-success) !important;
+    background-color: var(--color-success-alpha);
+}
+
+/* Contraste mejorado para texto pequeño */
+.small-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Enlaces más accesibles */
+a:not(.btn):not(.nav-link):not(.dropdown-item) {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 0.125rem;
+}
+
+a:not(.btn):not(.nav-link):not(.dropdown-item):hover,
+a:not(.btn):not(.nav-link):not(.dropdown-item):focus {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+}
+
+/* Tablas más accesibles */
+.table-responsive {
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.table th[scope="col"]::after {
+    content: " (columna)";
+    position: absolute;
+    left: -10000px;
+}
+
+.table td[data-label]::before {
+    content: attr(data-label) ": ";
+    font-weight: bold;
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .table-mobile-friendly {
+        border: 0;
+    }
+    
+    .table-mobile-friendly thead {
+        border: none;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+    }
+    
+    .table-mobile-friendly tr {
+        border: 1px solid var(--border-color);
+        display: block;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-card);
+    }
+    
+    .table-mobile-friendly td {
+        border: none;
+        display: block;
+        text-align: right;
+        padding: 0.5rem 0;
+    }
+    
+    .table-mobile-friendly td[data-label]::before {
+        content: attr(data-label);
+        float: left;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        display: block;
+    }
+}
+
+/* Formularios más accesibles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.form-label.required::after {
+    content: " *";
+    color: var(--color-danger);
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Estados de validación más claros */
+.was-validated .form-control:valid,
+.form-control.is-valid {
+    border-color: var(--color-success);
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='m2.3 6.73.4.4L4.1 5.8l1.4 1.4.4-.4L4.5 5.4 6 3.9l-.4-.4L4.1 4.9 2.7 3.5l-.4.4 1.4 1.4-1.4 1.43z'/%3e%3c/svg%3e");
+}
+
+.was-validated .form-control:invalid,
+.form-control.is-invalid {
+    border-color: var(--color-danger);
+    padding-right: calc(1.5em + 0.75rem);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 1.4 1.4 1.4-1.4M7.2 7.4 5.8 6 4.4 7.4'/%3e%3c/svg%3e");
+}
+
+/* Modo de alto contraste */
+@media (prefers-contrast: high) {
+    :root,
+    [data-theme="light"] {
+        --text-primary: #000000;
+        --text-secondary: #000000;
+        --bg-primary: #ffffff;
+        --bg-card: #ffffff;
+        --border-color: #000000;
+        --color-primary: #0000ff;
+        --color-success: #008000;
+        --color-danger: #ff0000;
+        --color-warning: #ff8c00;
+    }
+    
+    [data-theme="dark"] {
+        --text-primary: #ffffff;
+        --text-secondary: #ffffff;
+        --bg-primary: #000000;
+        --bg-card: #000000;
+        --border-color: #ffffff;
+        --color-primary: #00ffff;
+        --color-success: #00ff00;
+        --color-danger: #ff0000;
+        --color-warning: #ffff00;
+    }
+}
+
+/* Indicadores de estado para tecnologías asistivas */
+[aria-busy="true"] {
+    cursor: progress;
+}
+
+[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Mejoras para campos de formulario */
+.input-group .form-control:focus {
+    z-index: 5;
+}
+
+.input-group .input-group-text {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+}
+
+/* Botones de acción más prominentes */
+.btn-primary.btn-lg {
+    font-size: 1.125rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+}
+
+/* Espaciado consistente */
+.section-spacing {
+    margin-bottom: 2rem;
+}
+
+.card-spacing {
+    margin-bottom: 1.5rem;
+}
+
+/* Indicadores de progreso accesibles */
+.progress {
+    background-color: var(--bg-secondary);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background-color: var(--color-primary);
+    transition: width 0.6s ease;
+}
+
+/* Estados de hover más suaves */
+.card:hover,
+.btn:hover,
+.list-group-item:hover {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Texto de ayuda más visible */
+.help-text {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+
+/* Marcadores de campos obligatorios */
+.required-field {
+    position: relative;
+}
+
+.required-field .form-label::after {
+    content: "*";
+    color: var(--color-danger);
+    margin-left: 0.25rem;
+    font-weight: bold;
+}
+
+/* Mejoras para elementos interactivos pequeños */
+.btn-sm {
+    min-height: 2.25rem;
+    min-width: 2.25rem;
+}
+
+.form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.form-switch .form-check-input {
+    width: 2.5rem;
+    height: 1.25rem;
+}
