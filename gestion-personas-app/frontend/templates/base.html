@@ -161,6 +161,66 @@
     <!-- Content Manager -->
     <script src="{{ url_for('static', filename='js/content-manager.js') }}"></script>
     
+    <!-- Enhanced Flash Messages Handler -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Convertir mensajes de Flask a notificaciones mejoradas
+        const flashMessages = document.querySelectorAll('.alert');
+        
+        flashMessages.forEach(function(alert) {
+            if (alert.closest('.container')) { // Solo procesar alertas de flash
+                const message = alert.querySelector('span') ? alert.querySelector('span').textContent.trim() : alert.textContent.trim();
+                let type = 'info';
+                
+                // Determinar tipo basado en las clases
+                if (alert.classList.contains('alert-success')) {
+                    type = 'success';
+                } else if (alert.classList.contains('alert-danger')) {
+                    type = 'error';
+                } else if (alert.classList.contains('alert-warning')) {
+                    type = 'warning';
+                } else if (alert.classList.contains('alert-info')) {
+                    type = 'info';
+                }
+                
+                // Ocultar el mensaje original
+                alert.style.display = 'none';
+                
+                // Mostrar la notificación mejorada si existe el manager
+                if (window.notificationManager && message) {
+                    setTimeout(() => {
+                        window.notificationManager.show(message, type);
+                    }, 100);
+                }
+            }
+        });
+        
+        // Función global para mostrar notificaciones desde otros scripts
+        window.showNotification = function(message, type = 'info', duration = 5000) {
+            if (window.notificationManager) {
+                return window.notificationManager.show(message, type, duration);
+            }
+        };
+        
+        // Funciones de conveniencia globales
+        window.showSuccess = function(message, duration = 5000) {
+            return window.showNotification(message, 'success', duration);
+        };
+        
+        window.showError = function(message, duration = 8000) {
+            return window.showNotification(message, 'error', duration);
+        };
+        
+        window.showWarning = function(message, duration = 6000) {
+            return window.showNotification(message, 'warning', duration);
+        };
+        
+        window.showInfo = function(message, duration = 5000) {
+            return window.showNotification(message, 'info', duration);
+        };
+    });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

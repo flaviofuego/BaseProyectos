@@ -430,10 +430,17 @@ def modificar_persona():
                 if response and response.status_code == 200:
                     persona = response.json()
                     session['persona_to_modify'] = persona
+                    flash(f'✅ Persona encontrada: {persona.get("primer_nombre", "")} {persona.get("apellidos", "")}', 'success')
                 elif response and response.status_code == 404:
-                    flash('Persona no encontrada', 'error')
+                    flash(f'❌ No se encontró una persona con el documento: {numero_documento}', 'error')
+                elif response and response.status_code == 400:
+                    flash('❌ Número de documento inválido. Verifique el formato.', 'error')
+                elif response and response.status_code == 500:
+                    flash('❌ Error interno del servidor. Intente nuevamente más tarde.', 'error')
                 else:
-                    flash('Error al buscar la persona', 'error')
+                    flash(f'❌ Error al buscar la persona (Código: {response.status_code if response else "Sin respuesta"})', 'error')
+            else:
+                flash('❌ Debe ingresar un número de documento para buscar', 'error')
         
         elif action == 'modificar':
             persona = session.get('persona_to_modify')
@@ -471,7 +478,7 @@ def modificar_persona():
                 if response.status_code == 200:
                     # Invalidar cache de estadísticas después de modificar
                     invalidate_stats_cache()
-                    flash('âœ… Persona actualizada exitosamente', 'success')
+                    flash('✅ Persona actualizada exitosamente', 'success')
                     # Clear the session cache
                     session.pop('persona_to_modify', None)
                     
@@ -482,10 +489,41 @@ def modificar_persona():
                     else:
                         return redirect(url_for('dashboard'))
                 elif response.status_code == 400:
-                    error_data = response.json()
-                    flash(f'Error de validaciÃ³n: {error_data.get("error", "Error desconocido")}', 'error')
+                    try:
+                        error_data = response.json()
+                        error_message = error_data.get('error', 'Error de validación desconocido')
+                        # Mostrar detalles específicos si están disponibles
+                        if 'details' in error_data:
+                            details = error_data['details']
+                            if isinstance(details, dict):
+                                detail_messages = []
+                                for field, messages in details.items():
+                                    if isinstance(messages, list):
+                                        detail_messages.extend([f"{field}: {msg}" for msg in messages])
+                                    else:
+                                        detail_messages.append(f"{field}: {messages}")
+                                error_message += f" - {'; '.join(detail_messages)}"
+                        flash(f'❌ Error de validación: {error_message}', 'error')
+                    except:
+                        flash('❌ Error de validación: Datos inválidos', 'error')
+                elif response.status_code == 404:
+                    flash('❌ La persona que intenta modificar no existe o fue eliminada.', 'error')
+                    session.pop('persona_to_modify', None)  # Limpiar sesión
+                elif response.status_code == 409:
+                    flash('❌ Conflicto: Los datos ingresados entran en conflicto con otra persona existente.', 'error')
+                elif response.status_code == 422:
+                    try:
+                        error_data = response.json()
+                        error_message = error_data.get('error', 'Error de procesamiento')
+                        flash(f'❌ Error de procesamiento: {error_message}', 'error')
+                    except:
+                        flash('❌ Error de procesamiento: Los datos no pudieron ser procesados', 'error')
+                elif response.status_code == 500:
+                    flash('❌ Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
                 else:
-                    flash('Error al actualizar la persona', 'error')
+                    flash(f'❌ Error al actualizar la persona (Código: {response.status_code})', 'error')
+            else:
+                flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
     
     # Ensure we have the persona data for the template
     if not persona and 'persona_to_modify' in session:

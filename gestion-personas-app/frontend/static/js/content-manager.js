@@ -423,13 +423,190 @@ if (!document.querySelector('#toast-styles')) {
     document.head.appendChild(style);
 }
 
+/**
+ * Sistema de notificaciones mejorado
+ */
+class NotificationManager {
+    constructor() {
+        this.container = null;
+        this.init();
+    }
+
+    init() {
+        this.createContainer();
+    }
+
+    createContainer() {
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.id = 'notification-container';
+            this.container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                max-width: 400px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(this.container);
+        }
+    }
+
+    show(message, type = 'info', duration = 5000, options = {}) {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.style.cssText = `
+            background: ${this.getBackgroundColor(type)};
+            color: ${this.getTextColor(type)};
+            border: 1px solid ${this.getBorderColor(type)};
+            border-radius: 0.5rem;
+            padding: 1rem 1.5rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateX(120%);
+            transition: all 0.3s ease-in-out;
+            pointer-events: auto;
+            position: relative;
+            backdrop-filter: blur(10px);
+            border-left: 4px solid ${this.getAccentColor(type)};
+        `;
+
+        // Icono y mensaje
+        const icon = this.getIcon(type);
+        notification.innerHTML = `
+            <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                <span style="font-size: 1.2em; flex-shrink: 0;">${icon}</span>
+                <div style="flex: 1;">
+                    <div style="font-weight: 500; margin-bottom: 0.25rem;">
+                        ${this.getTitle(type)}
+                    </div>
+                    <div style="font-size: 0.9em; opacity: 0.9;">
+                        ${message}
+                    </div>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        style="background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; padding: 0; margin-left: 0.5rem; font-size: 1.2em; line-height: 1;">
+                    ×
+                </button>
+            </div>
+        `;
+
+        this.container.appendChild(notification);
+
+        // Animar entrada
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateX(0)';
+        });
+
+        // Auto-remove
+        if (duration > 0) {
+            setTimeout(() => {
+                this.remove(notification);
+            }, duration);
+        }
+
+        return notification;
+    }
+
+    remove(notification) {
+        if (notification && notification.parentElement) {
+            notification.style.transform = 'translateX(120%)';
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }
+
+    getBackgroundColor(type) {
+        const colors = {
+            success: 'rgba(34, 197, 94, 0.1)',
+            error: 'rgba(239, 68, 68, 0.1)',
+            warning: 'rgba(245, 158, 11, 0.1)',
+            info: 'rgba(59, 130, 246, 0.1)'
+        };
+        return colors[type] || colors.info;
+    }
+
+    getTextColor(type) {
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            warning: '#d97706',
+            info: '#2563eb'
+        };
+        return colors[type] || colors.info;
+    }
+
+    getBorderColor(type) {
+        const colors = {
+            success: 'rgba(34, 197, 94, 0.2)',
+            error: 'rgba(239, 68, 68, 0.2)',
+            warning: 'rgba(245, 158, 11, 0.2)',
+            info: 'rgba(59, 130, 246, 0.2)'
+        };
+        return colors[type] || colors.info;
+    }
+
+    getAccentColor(type) {
+        const colors = {
+            success: '#10b981',
+            error: '#ef4444',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        return colors[type] || colors.info;
+    }
+
+    getIcon(type) {
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        return icons[type] || icons.info;
+    }
+
+    getTitle(type) {
+        const titles = {
+            success: 'Éxito',
+            error: 'Error',
+            warning: 'Advertencia',
+            info: 'Información'
+        };
+        return titles[type] || titles.info;
+    }
+
+    // Métodos de conveniencia
+    success(message, duration = 5000) {
+        return this.show(message, 'success', duration);
+    }
+
+    error(message, duration = 8000) {
+        return this.show(message, 'error', duration);
+    }
+
+    warning(message, duration = 6000) {
+        return this.show(message, 'warning', duration);
+    }
+
+    info(message, duration = 5000) {
+        return this.show(message, 'info', duration);
+    }
+}
+
 // Inicializar cuando el DOM esté listo
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.contentManager = new ContentManager();
+        window.notificationManager = new NotificationManager();
     });
 } else {
     window.contentManager = new ContentManager();
+    window.notificationManager = new NotificationManager();
 }
 
 // Exponer para uso global
