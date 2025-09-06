@@ -44,12 +44,12 @@ Sistema completo de gestión de datos personales con arquitectura de microservic
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     FRONTEND (Flask)                        │
-│                    Puerto: 5000                            │
+│                    Puerto: 5000                             │
 └─────────────────┬───────────────────────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────────────────────┐
 │                  API GATEWAY                                │
-│                    Puerto: 8000                            │
+│                    Puerto: 8001                             │
 └─┬─────────┬─────────┬─────────────┬────────────┬────────────┘
   │         │         │             │            │
   ▼         ▼         ▼             ▼            ▼
@@ -263,7 +263,7 @@ QDRANT_HOST=qdrant
 QDRANT_PORT=6333
 
 # Puertos de servicios
-GATEWAY_PORT=8000
+GATEWAY_PORT=8001
 FRONTEND_PORT=5000
 AUTH_SERVICE_PORT=3001
 PERSONAS_SERVICE_PORT=3002
