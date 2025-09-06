@@ -473,12 +473,13 @@ class NotificationManager {
 
         // Icono y mensaje
         const icon = this.getIcon(type);
+        const title = options.title || this.getTitle(type);
         notification.innerHTML = `
             <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
                 <span style="font-size: 1.2em; flex-shrink: 0;">${icon}</span>
                 <div style="flex: 1;">
                     <div style="font-weight: 500; margin-bottom: 0.25rem;">
-                        ${this.getTitle(type)}
+                        ${title}
                     </div>
                     <div style="font-size: 0.9em; opacity: 0.9;">
                         ${message}
@@ -492,6 +493,18 @@ class NotificationManager {
         `;
 
         this.container.appendChild(notification);
+
+        // Enviar evento al historial de notificaciones
+        const notificationEvent = new CustomEvent('notificationShown', {
+            detail: {
+                type: type,
+                title: title,
+                message: message,
+                duration: duration,
+                options: options
+            }
+        });
+        document.dispatchEvent(notificationEvent);
 
         // Animar entrada
         requestAnimationFrame(() => {

@@ -1528,6 +1528,211 @@ footer .text-muted {
   }
 }
 
+/* ==============================
+   NOTIFICATION DROPDOWN STYLES
+   ============================== */
+
+/* Dropdown de notificaciones */
+.notification-dropdown {
+    width: 350px;
+    max-height: 400px;
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.notification-dropdown .dropdown-header {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    background-color: var(--bs-light);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.notification-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Item de notificación */
+.notification-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+    position: relative;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item:hover {
+    background-color: var(--bs-light);
+}
+
+.notification-item.unread {
+    background-color: var(--bs-primary-bg-subtle);
+    border-left: 3px solid var(--bs-primary);
+}
+
+.notification-item.unread::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    background-color: var(--bs-primary);
+    border-radius: 50%;
+}
+
+/* Contenido de notificación del dropdown */
+.notification-dropdown .notification-icon {
+    min-width: 20px;
+    text-align: center;
+}
+
+.notification-dropdown .notification-content {
+    min-width: 0; /* Para permitir que el texto se truncue */
+}
+
+.notification-dropdown .notification-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--bs-body-color);
+}
+
+.notification-dropdown .notification-message {
+    font-size: 0.875rem;
+    color: var(--bs-body-color);
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+    word-wrap: break-word;
+    hyphens: auto;
+}
+
+.notification-dropdown .notification-time {
+    margin-top: 0.25rem;
+}
+
+.notification-remove {
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+    padding: 0.25rem;
+    margin: -0.25rem;
+}
+
+.notification-item:hover .notification-remove {
+    opacity: 1;
+}
+
+.notification-remove:hover {
+    color: var(--bs-danger) !important;
+}
+
+/* Badge de notificaciones */
+#notification-badge {
+    font-size: 0.6rem;
+    min-width: 16px;
+    height: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Icono de campana */
+.nav-link .fa-bell {
+    transition: transform 0.15s ease-in-out;
+}
+
+.nav-link:hover .fa-bell {
+    transform: rotate(15deg);
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .notification-dropdown {
+        width: 300px;
+        margin-right: -1rem;
+    }
+    
+    .notification-item {
+        padding: 0.5rem;
+    }
+    
+    .notification-dropdown .notification-message {
+        font-size: 0.8rem;
+    }
+}
+
+/* Tema oscuro */
+[data-bs-theme="dark"] .notification-dropdown {
+    background-color: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .notification-dropdown .dropdown-header {
+    background-color: var(--bs-dark-border-subtle);
+    color: var(--bs-light);
+}
+
+[data-bs-theme="dark"] .notification-item:hover {
+    background-color: var(--bs-dark-border-subtle);
+}
+
+[data-bs-theme="dark"] .notification-item.unread {
+    background-color: rgba(13, 110, 253, 0.15);
+}
+
+/* Scrollbar personalizado para el tema */
+.notification-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+    background: var(--bs-border-color);
+    border-radius: 3px;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary);
+}
+
+/* Estados vacíos */
+.notification-list .dropdown-item-text {
+    pointer-events: none;
+}
+
+.notification-list .fa-bell-slash {
+    opacity: 0.5;
+}
+
+/* Animación de entrada para nuevas notificaciones */
+.notification-item.new-notification {
+    animation: slideInNotification 0.3s ease-out;
+}
+
+@keyframes slideInNotification {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 /* ====================================
    NOTIFICACIONES MEJORADAS
    ====================================*/

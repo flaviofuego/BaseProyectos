@@ -96,7 +96,7 @@
                     </div>
                     
                     <!-- Usuario -->
-                    <div class="nav-item dropdown">
+                    <div class="nav-item dropdown me-3">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-user-circle" aria-hidden="true"></i> 
                             <span>{{ session.user.username }}</span>
@@ -107,6 +107,37 @@
                                 <span>Cerrar Sesión</span>
                             </a></li>
                         </ul>
+                    </div>
+                    
+                    <!-- Notificaciones -->
+                    <div class="nav-item dropdown">
+                        <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Ver notificaciones">
+                            <i class="fas fa-bell" aria-hidden="true"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge" style="display: none;">
+                                <span id="notification-count">0</span>
+                                <span class="visually-hidden">notificaciones sin leer</span>
+                            </span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationsDropdown">
+                            <div class="dropdown-header d-flex justify-content-between align-items-center">
+                                <span>Notificaciones</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-notifications" title="Limpiar todas">
+                                    <i class="fas fa-trash fa-xs"></i>
+                                </button>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <div id="notification-list" class="notification-list">
+                                <div class="dropdown-item-text text-muted text-center py-3">
+                                    <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                                    <br>
+                                    No hay notificaciones
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item-text text-center">
+                                <small class="text-muted">Notificaciones de esta sesión</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -160,6 +191,8 @@
     <script src="{{ url_for('static', filename='js/theme-manager.js') }}"></script>
     <!-- Content Manager -->
     <script src="{{ url_for('static', filename='js/content-manager.js') }}"></script>
+    <!-- Notification History -->
+    <script src="{{ url_for('static', filename='js/notification-history.js') }}"></script>
     
     <!-- Enhanced Flash Messages Handler -->
     <script>

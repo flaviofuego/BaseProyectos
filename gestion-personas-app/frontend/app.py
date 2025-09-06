@@ -979,11 +979,13 @@ def consultar_logs():
                         pass  # Keep as is for now, template handles it
                     
                 if logs:
-                    flash(f'Se encontraron {pagination_info.get("total", len(logs))} registros', 'success')
+                    # Se encontraron registros - no mostrar notificación
+                    pass
                 else:
-                    flash('No se encontraron registros con los criterios especificados', 'info')
+                    # No se encontraron registros - no mostrar notificación
+                    pass
             else:
-                flash('Error al buscar los logs', 'error')
+                # Error al buscar logs - no mostrar notificación al usuario
                 app.logger.error(f"Error searching logs: {response.status_code if response else 'No response'}")
         
         if show_stats:
@@ -1024,12 +1026,12 @@ def consultar_logs():
                         stats['por_estado'][status_key.lower()] = count
                         
             else:
-                flash('Error al obtener las estadÃ­sticas', 'error')
+                # Error al obtener estadísticas - no mostrar notificación al usuario
                 app.logger.error(f"Error getting stats: {response.status_code if response else 'No response'}")
     
     except Exception as e:
         app.logger.error(f"Error in consultar_logs: {str(e)}")
-        flash('Error interno del sistema', 'error')
+        # Error interno - no mostrar notificación al usuario
     
     app.logger.info(f"Final logs count: {len(logs)}, stats: {bool(stats)}")
     return render_template('consultar_logs.html', logs=logs, stats=stats, pagination=pagination_info, current_filters=request.args)

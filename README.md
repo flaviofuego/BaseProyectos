@@ -1,17 +1,43 @@
-# 🚀 Sistema de Gestión de Personas
+# 🚀 Sistema de Gestión de Personas - Versión 2.5
 
-Sistema completo de gestión de datos personales con arquitectura de microservicios, autenticación, consultas avanzadas en tiempo real y logging completo de transacciones.
+Sistema completo de gestión de datos personales con arquitectura de microservicios, interfaz moderna, autenticación avanzada, notificaciones inteligentes y sistema de consultas mejorado con IA.
 
 ## ✨ Características Principales
 
 - 🏗️ **Arquitectura de Microservicios** escalable y modular
-- 🔐 **Autenticación completa** con sesiones seguras
+- 🔐 **Autenticación JWT completa** con sesiones seguras
 - 🔍 **Búsqueda avanzada** con filtros dinámicos y resultados en tiempo real
 - 🤖 **Consultas en lenguaje natural** usando IA (Google Gemini + RAG)
-- 📊 **Dashboard interactivo** con estadísticas en tiempo real
-- 📝 **Logging completo** de todas las transacciones
-- 🚀 **Cache inteligente** para optimización de consultas
-- 📱 **Interfaz responsive** con Bootstrap
+- 📊 **Dashboard interactivo** con estadísticas y refrescos automáticos
+- 📝 **Sistema de auditoría** completo con logs detallados
+- 🚀 **Cache inteligente** optimizado para performance
+- 📱 **Interfaz moderna** responsive con Bootstrap 5.3
+- 🔔 **Sistema de notificaciones** avanzado con historial
+- 🎨 **Temas dinámicos** (claro/oscuro/automático)
+- ⚡ **Validación en tiempo real** y manejo de errores mejorado
+- � **Búsqueda silenciosa** sin notificaciones innecesarias
+
+## 🆕 Últimas Mejoras (Septiembre 2025)
+
+### 🎨 **Interfaz y UX**
+- ✅ **Tema oscuro completo** - Soporte mejorado para modo oscuro
+- ✅ **Sistema de notificaciones dropdown** - Historial de sesión con contador
+- ✅ **Validación en tiempo real** - Verificación de documentos existentes
+- ✅ **Navegación mejorada** - Flujo usuario → notificaciones optimizado
+- ✅ **Dashboard con auto-refresh** - Datos actualizados automáticamente
+
+### 🔧 **Funcionalidad y Performance**
+- ✅ **Manejo de errores avanzado** - Códigos HTTP específicos (409, 422, etc.)
+- ✅ **Búsqueda silenciosa en logs** - Sin notificaciones molestas
+- ✅ **Cache invalidation** inteligente en dashboard
+- ✅ **Contenedores renombrados** - Consistencia en nomenclatura
+- ✅ **Debugging mejorado** - Logs detallados para troubleshooting
+
+### 🚀 **Backend y API**
+- ✅ **Error 409 handling** - Documentos duplicados correctamente manejados
+- ✅ **Gateway error forwarding** - Códigos de estado preservados
+- ✅ **Session storage** - Persistencia de notificaciones por sesión
+- ✅ **API response optimization** - Mejores tiempos de respuesta
 
 ## 🏗️ Arquitectura del Sistema
 
@@ -132,41 +158,82 @@ curl -X POST http://localhost:8000/api/auth/login \
 ## 📱 Funcionalidades Completas
 
 ### 🏠 Dashboard Principal
-- **Estadísticas en tiempo real**: Total de personas, registros por género
+- **Estadísticas en tiempo real**: Total de personas, registros por género, distribución por ciudad
+- **Auto-refresh inteligente**: Datos actualizados cada 30 segundos con cache invalidation
 - **Búsqueda rápida**: Acceso directo a funciones principales
-- **Navegación intuitiva**: Menú Bootstrap responsive
+- **Navegación intuitiva**: Menú Bootstrap responsive con tema dinámico
+- **Notificaciones centralizadas**: Dropdown con historial de sesión y contador
 
 ### 👥 Gestión de Personas
-1. **Crear Personas**: Formulario completo con validaciones en tiempo real
-2. **Modificar Datos**: Actualización con búsqueda previa y navegación mejorada
+1. **Crear Personas**: 
+   - Formulario completo con validaciones en tiempo real
+   - Verificación de documentos duplicados (Error 409)
+   - Mensajes de error específicos y descriptivos
+   - Upload de fotos con preview
+
+2. **Modificar Datos**: 
+   - Actualización con búsqueda previa y navegación mejorada
+   - Validación de campos en tiempo real
+   - Preservación de datos originales durante edición
+
 3. **Consultar Datos**: 
-   - 🔍 **Búsqueda individual** por documento
-   - 🎯 **Búsqueda avanzada** con filtros múltiples
-   - ⚡ **Resultados en tiempo real** (sin cache)
-4. **Eliminar Personas**: Proceso seguro con confirmación
+   - 🔍 **Búsqueda individual** por documento con validación
+   - 🎯 **Búsqueda avanzada** con filtros múltiples y paginación
+   - ⚡ **Resultados en tiempo real** optimizados
+   - 📊 **Cache inteligente** para consultas frecuentes
+
+4. **Eliminar Personas**: 
+   - Proceso seguro con confirmación doble
+   - Verificación de existencia antes de eliminar
+   - Logging completo de eliminaciones
 
 ### 🤖 Consultas Inteligentes
-- **Lenguaje Natural**: "¿Cuántas personas hay de Bogotá?"
-- **IA con RAG**: Análisis semántico de los datos
-- **Respuestas contextuales**: Usando Google Gemini
+- **Lenguaje Natural**: "¿Cuántas personas hay de Bogotá menores de 30 años?"
+- **IA con RAG**: Análisis semántico usando Google Gemini
+- **Respuestas contextuales**: Interpretación inteligente de consultas
+- **Vector database**: Búsquedas semánticas con Qdrant
 
 ### 📊 Auditoría y Logs
-- **Registro completo** de todas las operaciones
-- **Filtros avanzados** por fecha, usuario, acción
-- **Trazabilidad total** del sistema
+- **Registro completo** de todas las operaciones (CREATE, READ, UPDATE, DELETE)
+- **Búsqueda silenciosa** - Sin notificaciones molestas al consultar
+- **Filtros avanzados** por fecha, usuario, acción, tipo de entidad
+- **Trazabilidad total** con timestamps y detalles de solicitudes
+- **Exportación de datos** para análisis
 
-### ✅ Validaciones Implementadas
+### 🔔 Sistema de Notificaciones Avanzado
+- **Toast notifications** modernas con iconos y colores
+- **Dropdown de historial** con persistencia de sesión
+- **Contador dinámico** con animaciones
+- **Estados de leído/no leído** para seguimiento
+- **Limpieza automática** y manual de notificaciones
+- **Integración completa** con todos los módulos del sistema
 
-| Campo | Validación | Ejemplo |
-|-------|------------|---------|
-| Primer/Segundo Nombre | Solo letras, máx 30 chars | "Juan Carlos" |
-| Apellidos | Solo letras, máx 60 chars | "García López" |
-| Documento | Solo números, máx 10 chars | "1234567890" |
-| Fecha Nacimiento | No futura, calendario | "1990-05-15" |
-| Género | Lista: M/F/Otro/Prefiero no decir | "Masculino" |
-| Email | Formato válido | "user@domain.com" |
-| Celular | Exactamente 10 dígitos | "3001234567" |
-| Foto | Máx 2MB, jpg/png/gif | upload.jpg |
+### 🎨 Temas y Accesibilidad
+- **Tema claro/oscuro/automático** con transiciones suaves
+- **Modo oscuro completo** - Todos los componentes optimizados
+- **Accesibilidad WCAG** - Screen readers y navegación por teclado
+- **Responsive design** - Móvil, tablet y desktop
+- **Shortcuts de teclado** - Ctrl+Shift+T para cambiar tema
+
+### ✅ Validaciones y Manejo de Errores
+
+| Campo | Validación | Ejemplo | Error Handling |
+|-------|------------|---------|----------------|
+| Primer/Segundo Nombre | Solo letras, máx 30 chars | "Juan Carlos" | Validación en tiempo real |
+| Apellidos | Solo letras, máx 60 chars | "García López" | Formato automático |
+| Documento | Solo números, máx 10 chars | "1234567890" | **Verificación de duplicados** |
+| Fecha Nacimiento | No futura, calendario | "1990-05-15" | Validación de edad |
+| Género | Lista: M/F/Otro/Prefiero no decir | "Masculino" | Selección obligatoria |
+| Email | Formato válido | "user@domain.com" | Verificación sintáctica |
+| Celular | Exactamente 10 dígitos | "3001234567" | Formato colombiano |
+| Foto | Máx 2MB, jpg/png/gif | upload.jpg | Preview y validación |
+
+#### 🛡️ **Códigos de Error Específicos**
+- **400 Bad Request**: Datos inválidos con detalles específicos
+- **409 Conflict**: "❌ Ya existe una persona con este documento"
+- **422 Unprocessable Entity**: Errores de validación con campo específico
+- **500 Server Error**: Errores internos con logging automático
+- **404 Not Found**: Persona no encontrada en consultas
 
 ## 🔧 Configuración Avanzada
 
@@ -218,7 +285,30 @@ LOG_SERVICE_PORT=3005
 - **Rate limiting**: API Gateway protegido
 - **Escalabilidad**: Consulta service con réplicas
 
-#### 🔧 Correcciones Recientes (Enero 2025)
+#### 🔧 Correcciones y Mejoras Recientes (Septiembre 2025)
+
+##### 🎨 **Interfaz y UX**
+1. ✅ **Tema oscuro mejorado**: Textos legibles en todos los componentes
+2. ✅ **Sistema de notificaciones dropdown**: Historial con contador y persistencia
+3. ✅ **Navegación optimizada**: Usuario → Notificaciones (lado derecho)
+4. ✅ **Dashboard auto-refresh**: Invalidación de cache cada 30 segundos
+5. ✅ **Validación en tiempo real**: Documentos duplicados detectados al escribir
+
+##### 🔧 **Backend y Performance**
+1. ✅ **Error 409 handling**: Documentos duplicados manejados correctamente
+2. ✅ **Gateway error forwarding**: Códigos HTTP preservados en respuestas
+3. ✅ **Búsqueda silenciosa**: Logs sin notificaciones molestas al usuario
+4. ✅ **Container renaming**: consulta_service_dev para consistencia
+5. ✅ **Session storage**: Notificaciones persistentes durante la sesión
+
+##### 🚀 **Nuevas Características**
+- **NotificationHistory**: Clase JavaScript para gestión de historial
+- **AJAX form validation**: Verificación en tiempo real sin recargas
+- **Theme manager mejorado**: Transiciones suaves entre temas
+- **Error display específico**: Mensajes detallados para cada tipo de error
+- **Cache invalidation**: Sistema inteligente para datos actualizados
+
+#### 🔧 Correcciones Anteriores (Enero 2025)
 1. ✅ **Fixed**: Navegación "Buscar Otra Persona" ahora limpia el estado
 2. ✅ **Fixed**: Búsqueda avanzada muestra resultados actualizados en tiempo real
 3. ✅ **Fixed**: Anti-cache headers en servicio de consultas
@@ -302,13 +392,69 @@ curl http://localhost:8000/health
 curl http://localhost:5000/health
 ```
 
-#### � Search Issues
+### Troubleshooting Avanzado
+
+#### 🐳 Docker Issues
+```bash
+# Error: Port already in use
+docker-compose down
+netstat -ano | findstr :5000  # Windows
+lsof -i :5000                 # Linux/Mac
+taskkill /F /PID <PID>        # Windows
+
+# Error: Build failed
+docker-compose down
+docker system prune -a
+docker-compose build --no-cache
+
+# Error: Database connection
+docker-compose logs personas_db
+docker exec -it personas_db psql -U admin -d personas_db
+
+# Error: Container name conflicts
+docker-compose down
+docker container prune
+```
+
+#### 🔔 Notification Issues
+```bash
+# Verificar NotificationManager
+# En Developer Tools Console:
+window.notificationManager.show("Test", "success")
+window.notificationHistory.getNotifications()
+
+# Limpiar sessionStorage
+sessionStorage.clear()
+
+# Verificar eventos
+# En Console: Ver eventos 'notificationShown'
+```
+
+#### 🎨 Theme Issues
+```bash
+# Resetear tema
+localStorage.removeItem('preferred-theme')
+location.reload()
+
+# Verificar CSS loading
+# En Network tab: Verificar style.css carga correctamente
+
+# Debug tema oscuro
+# En Console: document.documentElement.dataset.bsTheme
+```
+
+#### 🔍 Search and Error Issues
 ```bash
 # Verificar consulta service
-docker-compose logs consulta-service
+docker-compose logs consulta_service_dev
 
-# Test directo
-curl "http://localhost:8000/api/consulta/avanzada?nombre=test"
+# Test error handling
+curl -X POST http://localhost:8000/api/personas \
+  -H "Content-Type: application/json" \
+  -d '{"numero_documento":"1234567890"}' # Documento existente
+
+# Debug frontend errors
+# En Developer Tools: Ver Network responses y Console errors
 ```
 
 ### Logs y Debugging
@@ -408,15 +554,28 @@ git push origin feature/nueva-funcionalidad
 - GitHub: [@flaviofuego](https://github.com/flaviofuego)
 - Proyecto: [BaseProyectos](https://github.com/flaviofuego/BaseProyectos)
 
-**Version**: 2.0.0 (Enero 2025)
-- ✅ Microservices architecture
-- ✅ Real-time search fixes
-- ✅ Navigation improvements
-- ✅ Cache optimization
-- ✅ Performance enhancements
+**Version**: 2.5.0 (Septiembre 2025)
+- ✅ Sistema de notificaciones avanzado con dropdown e historial
+- ✅ Tema oscuro completo y optimizado
+- ✅ Validación en tiempo real y manejo de errores específicos
+- ✅ Dashboard con auto-refresh y cache invalidation
+- ✅ Navegación UX mejorada y búsqueda silenciosa
+- ✅ Performance optimization y error handling avanzado
+
+### 🎯 **Roadmap Futuro**
+- 🔄 **PWA Support**: Aplicación web progresiva
+- 📊 **Analytics Dashboard**: Métricas de uso avanzadas
+- 🔍 **Elasticsearch Integration**: Búsqueda full-text mejorada
+- 👥 **Multi-tenant Support**: Múltiples organizaciones
+- 📱 **Mobile App**: React Native companion
+- 🔐 **OAuth Integration**: Login con Google/Microsoft
+- 🌍 **Internacionalización**: Múltiples idiomas
+- 📈 **Machine Learning**: Insights predictivos
 
 ---
 
 > 💡 **Tip**: Para un setup súper rápido, solo ejecuta `docker-compose up -d` y ve a http://localhost:5000
 
-> 🔧 **Support**: Si encuentras algún problema, revisa la sección Troubleshooting o crea un issue en GitHub.
+> 🔧 **Support**: Si encuentras algún problema, revisa la sección Troubleshooting Avanzado o crea un issue en GitHub.
+
+> 🎨 **UI/UX**: El sistema incluye tema oscuro completo, notificaciones inteligentes y validación en tiempo real para la mejor experiencia de usuario.
