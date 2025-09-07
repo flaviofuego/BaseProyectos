@@ -154,11 +154,18 @@
 }
 
 [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > td {
-  background-color: var(--bg-tertiary) !important;
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(even) > td {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .table-hover > tbody > tr:hover > td {
-  background-color: var(--bg-secondary) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .bg-light {
@@ -170,6 +177,74 @@
 [data-theme="dark"] .bg-light pre,
 [data-theme="dark"] .bg-light strong {
   color: var(--text-primary) !important;
+}
+
+/* Mejoras para badges y elementos en tablas de logs */
+[data-theme="dark"] .table .badge {
+  color: white !important;
+}
+
+[data-theme="dark"] .table .badge.bg-success {
+  background-color: var(--color-success) !important;
+}
+
+[data-theme="dark"] .table .badge.bg-danger {
+  background-color: var(--color-danger) !important;
+}
+
+[data-theme="dark"] .table .badge.bg-warning {
+  background-color: var(--color-warning) !important;
+  color: black !important;
+}
+
+[data-theme="dark"] .table .badge.bg-primary {
+  background-color: var(--color-primary) !important;
+}
+
+[data-theme="dark"] .table .badge.bg-secondary {
+  background-color: #6c757d !important;
+}
+
+[data-theme="dark"] .table small {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .table pre {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Botones dentro de tablas en modo oscuro */
+[data-theme="dark"] .table .btn {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .table .btn-outline-primary {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+[data-theme="dark"] .table .btn-outline-primary:hover {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+/* Asegura contraste en elementos de estado */
+[data-theme="dark"] .table .text-success {
+  color: #2ea043 !important;
+}
+
+[data-theme="dark"] .table .text-danger {
+  color: #f85149 !important;
+}
+
+[data-theme="dark"] .table .text-warning {
+  color: #d29922 !important;
+}
+
+[data-theme="dark"] .table .text-muted {
+  color: var(--text-secondary) !important;
 }
 
 [data-theme="dark"] pre {
