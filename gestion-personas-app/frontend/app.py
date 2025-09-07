@@ -12,14 +12,28 @@ import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Load environment variables
-load_dotenv()
+# Load environment variables - look in parent directory for .env
+load_dotenv(dotenv_path='../.env')
+load_dotenv()  # Also load from current directory if exists
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
+# Debug: Ensure environment variables are loaded correctly
+if os.getenv('API_GATEWAY_URL'):
+    print(f"INFO: Using API_GATEWAY_URL: {os.getenv('API_GATEWAY_URL')}")
+else:
+    print("INFO: Using default API_GATEWAY_URL: http://localhost:8001")
+
 # API Configuration
+# For browser redirects (Auth0), always use localhost regardless of Docker internal URLs
+BROWSER_API_BASE_URL = 'http://localhost:8001'
+# For server-side API calls, use environment variable or default to localhost
 API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://localhost:8001')
+
+def get_browser_api_url():
+    """Get API URL for browser redirects (always localhost for external access)"""
+    return BROWSER_API_BASE_URL
 
 def build_image_url(foto_url):
     """Build complete image URL using the gateway"""
@@ -184,8 +198,8 @@ def login():
                 flash('Por favor, completa todos los campos', 'warning')
         
         elif login_method == 'microsoft':
-            # Redirect to Microsoft login
-            return redirect(f'{API_BASE_URL}/api/auth/login/microsoft')
+            # Redirect to Microsoft login (use browser URL)
+            return redirect(f'{get_browser_api_url()}/api/auth/login/microsoft')
         
         elif login_method == 'auth0':
             # Redirect to Auth0 login
@@ -1101,7 +1115,7 @@ def internal_error(error):
 @app.route('/auth0/login')
 def auth0_login():
     """Redirect to Auth0 login"""
-    return redirect(f'{API_BASE_URL}/api/auth/login/auth0')
+    return redirect(f'{get_browser_api_url()}/api/auth/login/auth0')
 
 @app.route('/auth/callback')
 def auth_callback():

@@ -120,8 +120,8 @@
             fetch('{{ url_for("logout_complete") }}', {
                 method: 'GET'
             }).finally(() => {
-                // Luego redirigir a Auth0 logout
-                window.location.href = '{{ url_for("index") }}'.replace('localhost:5000', 'localhost:8001').replace('/', '/api/auth/logout/auth0');
+                // Luego redirigir a Auth0 logout usando localhost explícitamente
+                window.location.href = 'http://localhost:8001/api/auth/logout/auth0';
             });
         }, 1500);
         {% else %}
