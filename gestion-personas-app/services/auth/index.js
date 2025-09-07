@@ -204,10 +204,11 @@ function generateToken(user) {
 
 // Health check
 app.get('/health', (req, res) => {
+  const auth0Configured = !!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID);
   res.json({ 
     status: 'OK', 
     service: 'auth-service',
-    auth0_configured: !!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID)
+    auth0_configured: auth0Configured
   });
 });
 
@@ -290,6 +291,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Auth0 routes
 // Auth0 login
 app.get('/login/auth0', (req, res, next) => {
   if (!process.env.AUTH0_DOMAIN) {

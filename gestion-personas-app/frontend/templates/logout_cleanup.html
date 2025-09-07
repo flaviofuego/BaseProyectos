@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerrando sesión...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .logout-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        h2 {
+            margin: 0 0 1rem 0;
+            font-weight: 300;
+        }
+        
+        p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="logout-container">
+        <div class="spinner"></div>
+        <h2>Cerrando sesión...</h2>
+        <p>Limpiando datos de la sesión</p>
+    </div>
+
+    <script>
+        // Función para limpiar todas las notificaciones almacenadas
+        function clearNotifications() {
+            try {
+                // Limpiar notificaciones del sessionStorage
+                sessionStorage.removeItem('session_notifications');
+                
+                // Limpiar cualquier otro dato de notificaciones que pueda existir
+                sessionStorage.removeItem('notification_history');
+                sessionStorage.removeItem('notifications');
+                
+                // Limpiar localStorage también por si hay notificaciones persistentes
+                localStorage.removeItem('session_notifications');
+                localStorage.removeItem('notification_history');
+                localStorage.removeItem('notifications');
+                
+                console.log('Notificaciones limpiadas exitosamente');
+            } catch (error) {
+                console.error('Error al limpiar notificaciones:', error);
+            }
+        }
+
+        // Ejecutar limpieza inmediatamente
+        clearNotifications();
+
+        // Redireccionar después de un breve delay para mostrar el mensaje
+        setTimeout(function() {
+            window.location.href = "{{ url_for('login') }}";
+        }, 1500);
+    </script>
+</body>
+</html>

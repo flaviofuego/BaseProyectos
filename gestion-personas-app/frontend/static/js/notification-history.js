@@ -235,6 +235,19 @@ class NotificationHistory {
         this.notifications = this.loadNotifications();
         this.updateDisplay();
     }
+
+    // Método público para limpiar notificaciones al cerrar sesión
+    clearOnLogout() {
+        this.clearAllNotifications();
+        // También limpiar localStorage por si hay datos persistentes
+        try {
+            localStorage.removeItem('session_notifications');
+            localStorage.removeItem('notification_history');
+            localStorage.removeItem('notifications');
+        } catch (error) {
+            console.error('Error al limpiar localStorage de notificaciones:', error);
+        }
+    }
 }
 
 // Inicializar cuando el DOM esté listo
