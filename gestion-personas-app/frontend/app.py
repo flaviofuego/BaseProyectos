@@ -130,7 +130,7 @@ def login():
         login_method = request.form.get('login_method')
         
         app.logger.info(f"DEBUG: Login attempt - method: {login_method}")
-        flash(f'DEBUG: MÃ©todo de login: {login_method}', 'info')
+        flash(f'DEBUG: Método de login: {login_method}', 'info')
         
         if login_method == 'local':
             username = request.form.get('username')
@@ -140,7 +140,7 @@ def login():
             flash(f'DEBUG: Intentando login con usuario: {username}', 'info')
             
             if username and password:
-                # Intentar con el backend de autenticaciÃ³n
+                # Intentar con el backend de autenticación
                 response = make_request('POST', '/api/auth/login', {
                     'username': username,
                     'password': password
@@ -152,7 +152,7 @@ def login():
                         session['authenticated'] = True
                         session['token'] = data['token']
                         session['user'] = data['user']
-                        flash('Inicio de sesiÃ³n exitoso', 'success')
+                        flash('Inicio de sesión exitoso', 'success')
                         return redirect(url_for('dashboard'))
                     except Exception as e:
                         app.logger.error(f"Error processing login response: {e}")
@@ -165,8 +165,8 @@ def login():
                         except:
                             flash('Error desconocido del servidor', 'error')
                     else:
-                        flash('Error de conexiÃ³n con el servidor', 'error')
-                    flash(f'DEBUG: Login fallÃ³ - status: {response.status_code if response else "None"}', 'warning')
+                        flash('Error de conexión con el servidor', 'error')
+                    flash(f'DEBUG: Login falló - status: {response.status_code if response else "None"}', 'warning')
                     # Fallback para admin en caso de emergencia
                     if username == 'admin' and password == 'admin123':
                         session['authenticated'] = True
@@ -176,16 +176,20 @@ def login():
                             'username': 'admin',
                             'email': 'admin@example.com'
                         }
-                        flash('âœ… Inicio de sesiÃ³n exitoso (modo de emergencia)', 'warning')
+                        flash('✅ Inicio de sesión exitoso (modo de emergencia)', 'warning')
                         return redirect(url_for('dashboard'))
                     else:
-                        flash('Credenciales invÃ¡lidas o error de conexiÃ³n', 'error')
+                        flash('Credenciales inválidas o error de conexión', 'error')
             else:
                 flash('Por favor, completa todos los campos', 'warning')
         
         elif login_method == 'microsoft':
             # Redirect to Microsoft login
             return redirect(f'{API_BASE_URL}/api/auth/login/microsoft')
+        
+        elif login_method == 'auth0':
+            # Redirect to Auth0 login
+            return redirect(url_for('auth0_login'))
     
     return render_template('login.html')
 
@@ -1085,8 +1089,6 @@ def not_found(error):
 def internal_error(error):
     return render_template('500.html'), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
 
 # Agregar estas rutas a tu archivo frontend/app.py existente
 
@@ -1106,9 +1108,15 @@ def auth_callback():
     
     try:
         # Verify token with auth service
-        response = make_request('GET', '/api/auth/verify', headers={
-            'Authorization': f'Bearer {token}'
-        })
+        # Temporarily set the token in session to make the request
+        original_token = session.get('token')
+        session['token'] = token
+        response = make_request('GET', '/api/auth/verify')
+        # Restore original token if verification fails
+        if original_token:
+            session['token'] = original_token
+        else:
+            session.pop('token', None)
         
         if response and response.status_code == 200:
             user_data = response.json()
@@ -1135,68 +1143,5 @@ def auth0_logout():
     # Redirect to Auth0 logout
     return redirect(f'{API_BASE_URL}/api/auth/logout/auth0')
 
-# Actualizar la ruta de login existente para manejar Auth0
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        login_method = request.form.get('login_method')
-        
-        app.logger.info(f"DEBUG: Login attempt - method: {login_method}")
-        flash(f'DEBUG: Método de login: {login_method}', 'info')
-        
-        if login_method == 'local':
-            username = request.form.get('username')
-            password = request.form.get('password')
-            
-            app.logger.info(f"DEBUG: Local login - username: {username}")
-            flash(f'DEBUG: Intentando login con usuario: {username}', 'info')
-            
-            if username and password:
-                # Intentar con el backend de autenticación
-                response = make_request('POST', '/api/auth/login', {
-                    'username': username,
-                    'password': password
-                })
-                
-                if response and response.status_code == 200:
-                    try:
-                        data = response.json()
-                        session['authenticated'] = True
-                        session['token'] = data['token']
-                        session['user'] = data['user']
-                        flash('Inicio de sesión exitoso', 'success')
-                        return redirect(url_for('dashboard'))
-                    except Exception as e:
-                        app.logger.error(f"Error processing login response: {e}")
-                        flash(f'Error procesando respuesta del servidor: {e}', 'error')
-                else:
-                    if response:
-                        try:
-                            error_text = response.text
-                            flash(f'Error del servidor: {error_text}', 'error')
-                        except:
-                            flash('Error desconocido del servidor', 'error')
-                    else:
-                        flash('Error de conexión con el servidor', 'error')
-                    flash(f'DEBUG: Login falló - status: {response.status_code if response else "None"}', 'warning')
-                    # Fallback para admin en caso de emergencia
-                    if username == 'admin' and password == 'admin123':
-                        session['authenticated'] = True
-                        session['token'] = 'temp-admin-token'
-                        session['user'] = {
-                            'id': 1,
-                            'username': 'admin',
-                            'email': 'admin@example.com'
-                        }
-                        flash('✅ Inicio de sesión exitoso (modo de emergencia)', 'warning')
-                        return redirect(url_for('dashboard'))
-                    else:
-                        flash('Credenciales inválidas o error de conexión', 'error')
-            else:
-                flash('Por favor, completa todos los campos', 'warning')
-        
-        elif login_method == 'auth0':
-            # Redirect to Auth0 login
-            return redirect(url_for('auth0_login'))
-    
-    return render_template('login.html')
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
