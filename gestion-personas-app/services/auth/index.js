@@ -3,11 +3,12 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
-const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
+const Auth0Strategy = require('passport-auth0');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const redis = require('redis');
+const session = require('express-session');
 const Joi = require('joi');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -19,7 +20,16 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(helmet());
 app.use(cors());
-// Evitar errores por cuerpo inválido: usar body-parser con límites y manejador de errores
+
+// Session configuration for Auth0
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-secret-key',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+
+// Body parser
 app.use(express.json({ limit: '1mb' }));
 app.use((err, req, res, next) => {
   if (err && err.type === 'entity.too.large') {
@@ -30,7 +40,9 @@ app.use((err, req, res, next) => {
   }
   return next(err);
 });
+
 app.use(passport.initialize());
+app.use(passport.session());
 
 // Database connection
 const pool = new Pool({
@@ -59,6 +71,20 @@ const registerSchema = Joi.object({
   username: Joi.string().alphanum().min(3).max(30).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required()
+});
+
+// Passport serialization
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    done(null, result.rows[0]);
+  } catch (error) {
+    done(error);
+  }
 });
 
 // Passport Local Strategy
@@ -114,44 +140,50 @@ passport.use(new JwtStrategy({
   }
 }));
 
-// Microsoft Entra ID (Azure AD) Strategy
-if (process.env.AZURE_AD_TENANT_ID) {
-  passport.use(new OIDCStrategy({
-    identityMetadata: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0/.well-known/openid-configuration`,
-    clientID: process.env.AZURE_AD_CLIENT_ID,
-    responseType: 'code',
-    responseMode: 'query',
-    redirectUrl: process.env.AZURE_AD_REDIRECT_URL,
-    allowHttpForRedirectUrl: true,
-    clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
-    validateIssuer: false,
-    passReqToCallback: false,
-    scope: ['profile', 'email', 'openid']
-  },
-  async (iss, sub, profile, accessToken, refreshToken, done) => {
+// Auth0 Strategy
+if (process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID) {
+  passport.use(new Auth0Strategy({
+    domain: process.env.AUTH0_DOMAIN,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    callbackURL: process.env.AUTH0_CALLBACK_URL
+  }, async (accessToken, refreshToken, extraParams, profile, done) => {
     try {
+      console.log('Auth0 profile received:', profile);
+      
       // Check if user exists
       let result = await pool.query(
         'SELECT * FROM users WHERE provider = $1 AND provider_id = $2',
-        ['microsoft', profile.oid]
+        ['auth0', profile.id]
       );
       
       let user = result.rows[0];
       
       if (!user) {
-        // Create new user
+        // Create new user from Auth0 profile
+        const email = profile.emails && profile.emails[0] ? profile.emails[0].value : profile.email;
+        const username = profile.nickname || profile.displayName || email.split('@')[0];
+        
         result = await pool.query(
-          'INSERT INTO users (username, email, provider, provider_id) VALUES ($1, $2, $3, $4) RETURNING *',
-          [profile.displayName, profile.email || profile.upn, 'microsoft', profile.oid]
+          `INSERT INTO users (username, email, provider, provider_id) 
+           VALUES ($1, $2, $3, $4) RETURNING *`,
+          [username, email, 'auth0', profile.id]
         );
         user = result.rows[0];
+        
+        console.log('New user created from Auth0:', user);
+      } else {
+        console.log('Existing Auth0 user found:', user);
       }
       
       return done(null, user);
     } catch (error) {
+      console.error('Error in Auth0 strategy:', error);
       return done(error);
     }
   }));
+} else {
+  console.log('Auth0 not configured - missing AUTH0_DOMAIN or AUTH0_CLIENT_ID');
 }
 
 // Helper function to generate JWT
@@ -172,7 +204,11 @@ function generateToken(user) {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', service: 'auth-service' });
+  res.json({ 
+    status: 'OK', 
+    service: 'auth-service',
+    auth0_configured: !!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID)
+  });
 });
 
 // Local login
@@ -229,7 +265,6 @@ app.post('/register', async (req, res) => {
     }
 
     // Hash password
-    // Usar menos rounds en desarrollo para mejor rendimiento
     const saltRounds = process.env.NODE_ENV === 'production' ? 10 : 4;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
@@ -255,23 +290,40 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Microsoft login
-app.get('/login/microsoft',
-  passport.authenticate('azuread-openidconnect', { session: false })
-);
+// Auth0 login
+app.get('/login/auth0', (req, res, next) => {
+  if (!process.env.AUTH0_DOMAIN) {
+    return res.status(501).json({ error: 'Auth0 not configured' });
+  }
+  
+  passport.authenticate('auth0', {
+    scope: 'openid email profile'
+  })(req, res, next);
+});
 
-app.get('/login/microsoft/callback',
-  passport.authenticate('azuread-openidconnect', { session: false }),
-  (req, res) => {
-    const token = generateToken(req.user);
+// Auth0 callback
+app.get('/login/auth0/callback', (req, res, next) => {
+  passport.authenticate('auth0', (err, user, info) => {
+    if (err) {
+      console.error('Auth0 callback error:', err);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_error`);
+    }
+    
+    if (!user) {
+      console.error('Auth0 callback: no user returned');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+    }
+
+    // Generate JWT token
+    const token = generateToken(user);
     
     // Log successful SSO login
-    logTransaction(req.user.id, 'SSO_LOGIN', 'SUCCESS', req);
+    logTransaction(user.id, 'SSO_LOGIN', 'SUCCESS', req);
     
     // Redirect to frontend with token
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
-  }
-);
+  })(req, res, next);
+});
 
 // Verify token
 app.get('/verify',
@@ -314,6 +366,19 @@ app.post('/logout',
   }
 );
 
+// Auth0 logout
+app.get('/logout/auth0', (req, res) => {
+  if (!process.env.AUTH0_DOMAIN) {
+    return res.status(501).json({ error: 'Auth0 not configured' });
+  }
+  
+  const logoutURL = new URL(`https://${process.env.AUTH0_DOMAIN}/v2/logout`);
+  logoutURL.searchParams.set('client_id', process.env.AUTH0_CLIENT_ID);
+  logoutURL.searchParams.set('returnTo', `${process.env.FRONTEND_URL}/login`);
+  
+  res.redirect(logoutURL.toString());
+});
+
 // Helper function to log transactions
 async function logTransaction(userId, type, status, req) {
   try {
@@ -345,5 +410,5 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Auth service running on port ${PORT}`);
+  console.log(`Auth0 configured: ${!!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID)}`);
 });
-

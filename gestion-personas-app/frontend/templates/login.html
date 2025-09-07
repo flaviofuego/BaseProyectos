@@ -25,9 +25,9 @@
                                         <i class="fas fa-user"></i> Local
                                     </label>
                                     
-                                    <input type="radio" class="btn-check" name="login_method" id="microsoft" value="microsoft">
-                                    <label class="btn btn-outline-primary" for="microsoft">
-                                        <i class="fab fa-microsoft"></i> Microsoft
+                                    <input type="radio" class="btn-check" name="login_method" id="auth0" value="auth0">
+                                    <label class="btn btn-outline-primary" for="auth0">
+                                        <i class="fas fa-shield-alt"></i> Auth0 SSO
                                     </label>
                                 </div>
                             </div>
@@ -73,22 +73,45 @@
                                 </div>
                             </div>
 
-                            <!-- Microsoft Login Button (hidden by default) -->
-                            <div id="microsoftForm" style="display: none;">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fab fa-microsoft"></i> Iniciar sesión con Microsoft
+                            <!-- Auth0 Login Button (hidden by default) -->
+                            <div id="auth0Form" style="display: none;">
+                                <button type="button" class="btn btn-primary w-100" onclick="loginWithAuth0()">
+                                    <i class="fas fa-shield-alt"></i> Iniciar sesión con Auth0
                                 </button>
+                                
+                                <div class="mt-3 p-3 bg-light rounded">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle"></i>
+                                        Auth0 soporta múltiples proveedores: Google, GitHub, Microsoft, Facebook y más.
+                                    </small>
+                                </div>
                             </div>
                         </form>
 
                         <!-- Default Credentials Info -->
-                        <div class="mt-4 p-3 bg-light rounded">
+                        <div class="mt-4 p-3 bg-light rounded" id="defaultCredentials">
                             <small class="text-muted">
                                 <strong>Credenciales por defecto:</strong><br>
                                 Usuario: <code>admin</code><br>
                                 Contraseña: <code>admin123</code>
                             </small>
                         </div>
+
+                        <!-- Error message display -->
+                        {% if request.args.error %}
+                        <div class="mt-3 alert alert-danger">
+                            {% if request.args.error == 'auth_error' %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Error en la autenticación con Auth0. Inténtalo de nuevo.
+                            {% elif request.args.error == 'auth_failed' %}
+                                <i class="fas fa-times-circle"></i>
+                                La autenticación con Auth0 falló. Verifica tus credenciales.
+                            {% else %}
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ request.args.error }}
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -101,29 +124,40 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const localRadio = document.getElementById('local');
-    const microsoftRadio = document.getElementById('microsoft');
+    const auth0Radio = document.getElementById('auth0');
     const localForm = document.getElementById('localForm');
-    const microsoftForm = document.getElementById('microsoftForm');
+    const auth0Form = document.getElementById('auth0Form');
+    const defaultCredentials = document.getElementById('defaultCredentials');
 
     function toggleForms() {
         if (localRadio.checked) {
             localForm.style.display = 'block';
-            microsoftForm.style.display = 'none';
+            auth0Form.style.display = 'none';
+            defaultCredentials.style.display = 'block';
             document.getElementById('username').required = true;
             document.getElementById('password').required = true;
         } else {
             localForm.style.display = 'none';
-            microsoftForm.style.display = 'block';
+            auth0Form.style.display = 'block';
+            defaultCredentials.style.display = 'none';
             document.getElementById('username').required = false;
             document.getElementById('password').required = false;
         }
     }
 
     localRadio.addEventListener('change', toggleForms);
-    microsoftRadio.addEventListener('change', toggleForms);
+    auth0Radio.addEventListener('change', toggleForms);
 });
+
+function loginWithAuth0() {
+    // Mostrar indicador de carga
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirigiendo...';
+    button.disabled = true;
+    
+    // Redirigir a Auth0
+    window.location.href = '{{ url_for("auth0_login") }}';
+}
 </script>
 {% endblock %}
-
-
-

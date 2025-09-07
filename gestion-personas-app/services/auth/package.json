@@ -1,7 +1,7 @@
 {
   "name": "auth-service",
   "version": "1.0.0",
-  "description": "Authentication Service with SSO support",
+  "description": "Authentication Service with Auth0 SSO support",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -13,6 +13,7 @@
     "bcrypt": "^5.1.1",
     "passport": "^0.6.0",
     "passport-azure-ad": "^4.3.5",
+    "passport-auth0": "^1.4.3",
     "passport-local": "^1.0.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.11.3",
@@ -20,7 +21,8 @@
     "dotenv": "^16.3.1",
     "joi": "^17.11.0",
     "helmet": "^7.0.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "express-session": "^1.17.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
