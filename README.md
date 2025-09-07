@@ -60,7 +60,7 @@ Sistema completo de gestión de datos personales con arquitectura de microservic
 ```
 
 ### Servicios:
-- **API Gateway** (Puerto 8000): Punto de entrada único, rate limiting
+- **API Gateway** (Puerto 8001): Punto de entrada único, rate limiting
 - **Auth Service** (Puerto 3001): Autenticación JWT y gestión de sesiones
 - **Personas Service** (Puerto 3002): CRUD completo con validaciones
 - **Consulta Service** (Puerto 3003): Búsquedas escalables con cache Redis
@@ -78,7 +78,7 @@ Sistema completo de gestión de datos personales con arquitectura de microservic
 - **Docker** y **Docker Compose** (recomendado)
 - **Google Gemini API Key** (para consultas NLP)
 - **8GB RAM** mínimo (recomendado 16GB)
-- **Puertos disponibles**: 5000, 8000, 5432, 6379, 6333
+- **Puertos disponibles**: 5000, 8001, 5432, 6379, 6333
 
 ## 🚀 Quick Start (Setup en 3 pasos)
 
@@ -147,10 +147,10 @@ docker exec -it personas_db psql -U admin -d personas_db
 
 ```bash
 # Health check de todos los servicios
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 
 # Test de autenticación
-curl -X POST http://localhost:8000/api/auth/login \
+curl -X POST http://localhost:8001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 ```
@@ -349,7 +349,7 @@ cd services/personas && npm run dev  # Puerto 3002
 cd services/consulta && npm run dev  # Puerto 3003
 cd services/nlp && npm run dev       # Puerto 3004
 cd services/log && npm run dev       # Puerto 3005
-cd gateway && npm run dev            # Puerto 8000
+cd gateway && npm run dev            # Puerto 8001
 ```
 
 ### Frontend Flask
@@ -388,7 +388,7 @@ docker exec -it personas_redis redis-cli
 > FLUSHALL
 
 # Verificar estado de servicios
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 curl http://localhost:5000/health
 ```
 
@@ -449,7 +449,7 @@ location.reload()
 docker-compose logs consulta_service_dev
 
 # Test error handling
-curl -X POST http://localhost:8000/api/personas \
+curl -X POST http://localhost:8001/api/personas \
   -H "Content-Type: application/json" \
   -d '{"numero_documento":"1234567890"}' # Documento existente
 
@@ -478,7 +478,7 @@ docker exec -it personas_redis redis-cli
 
 ### Health Checks
 - **Frontend**: http://localhost:5000/health
-- **API Gateway**: http://localhost:8000/health
+- **API Gateway**: http://localhost:8001/health
 - **Database**: Conexión automática verificada
 
 ### Métricas de Performance
