@@ -256,8 +256,14 @@ def logout():
     # Call logout endpoint
     make_request('POST', '/api/auth/logout')
     
+    # Render cleanup page before clearing session
+    return render_template('logout_cleanup.html')
+
+@app.route('/logout/complete')
+def logout_complete():
+    """Complete logout process after cleanup"""
     session.clear()
-    flash('SesiÃ³n cerrada exitosamente', 'success')
+    flash('Sesión cerrada exitosamente', 'success')
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
@@ -1137,11 +1143,8 @@ def auth_callback():
 @app.route('/logout/auth0')
 def auth0_logout():
     """Logout from Auth0"""
-    # Clear local session
-    session.clear()
-    
-    # Redirect to Auth0 logout
-    return redirect(f'{API_BASE_URL}/api/auth/logout/auth0')
+    # Render cleanup page first, then redirect to Auth0 logout
+    return render_template('logout_cleanup.html', auth0_logout=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

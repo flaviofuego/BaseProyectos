@@ -238,15 +238,36 @@ class NotificationHistory {
 
     // Método público para limpiar notificaciones al cerrar sesión
     clearOnLogout() {
+        console.log('NotificationHistory: Iniciando limpieza al cerrar sesión');
+        
+        // Limpiar notificaciones en memoria
         this.clearAllNotifications();
-        // También limpiar localStorage por si hay datos persistentes
+        
+        // Limpiar sessionStorage
+        try {
+            sessionStorage.removeItem(this.sessionKey);
+            sessionStorage.removeItem('session_notifications');
+            sessionStorage.removeItem('notification_history');
+            sessionStorage.removeItem('notifications');
+            console.log('NotificationHistory: sessionStorage limpiado');
+        } catch (error) {
+            console.error('Error al limpiar sessionStorage de notificaciones:', error);
+        }
+        
+        // Limpiar localStorage por si hay datos persistentes
         try {
             localStorage.removeItem('session_notifications');
             localStorage.removeItem('notification_history');
             localStorage.removeItem('notifications');
+            console.log('NotificationHistory: localStorage limpiado');
         } catch (error) {
             console.error('Error al limpiar localStorage de notificaciones:', error);
         }
+        
+        // Actualizar la UI
+        this.updateDisplay();
+        
+        console.log('NotificationHistory: Limpieza completada');
     }
 }
 

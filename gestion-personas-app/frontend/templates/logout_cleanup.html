@@ -84,13 +84,52 @@
             }
         }
 
-        // Ejecutar limpieza inmediatamente
-        clearNotifications();
+        // Función para limpiar datos de sesión adicionales
+        function clearSessionData() {
+            try {
+                // Limpiar datos de temas
+                sessionStorage.removeItem('theme-preference');
+                
+                // Limpiar datos de formularios en progreso
+                sessionStorage.removeItem('form-draft');
+                sessionStorage.removeItem('search-filters');
+                
+                // Limpiar datos de paginación
+                sessionStorage.removeItem('pagination-state');
+                
+                // Si existe el objeto NotificationHistory, usar su método de limpieza
+                if (window.notificationHistory && typeof window.notificationHistory.clearOnLogout === 'function') {
+                    window.notificationHistory.clearOnLogout();
+                }
+                
+                console.log('Datos de sesión limpiados exitosamente');
+            } catch (error) {
+                console.error('Error al limpiar datos de sesión:', error);
+            }
+        }
 
-        // Redireccionar después de un breve delay para mostrar el mensaje
+        // Ejecutar limpiezas inmediatamente
+        clearNotifications();
+        clearSessionData();
+
+        // Determinar dónde redirigir después de la limpieza
+        {% if auth0_logout %}
+        // Para logout de Auth0, redirigir al endpoint de Auth0 API
         setTimeout(function() {
-            window.location.href = "{{ url_for('login') }}";
+            // Limpiar sesión local primero
+            fetch('{{ url_for("logout_complete") }}', {
+                method: 'GET'
+            }).finally(() => {
+                // Luego redirigir a Auth0 logout
+                window.location.href = '{{ url_for("index") }}'.replace('localhost:5000', 'localhost:8001').replace('/', '/api/auth/logout/auth0');
+            });
         }, 1500);
+        {% else %}
+        // Para logout normal, redirigir al endpoint de completar logout
+        setTimeout(function() {
+            window.location.href = "{{ url_for('logout_complete') }}";
+        }, 1500);
+        {% endif %}
     </script>
 </body>
 </html>
