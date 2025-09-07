@@ -51,17 +51,26 @@ const authMiddleware = async (req, res, next) => {
 
   // Para tokens temporales del frontend, extraer user ID
   if (token.startsWith('temp-')) {
-    // Token temporal: usar ID fijo para admin o hash del username
+    // Token temporal: usar ID específico basado en el tipo de token
     if (token === 'temp-admin-token') {
       req.headers['x-user-id'] = '1'; // ID fijo para admin
       console.log('DEBUG: Set user_id to 1 for temp-admin-token');
-    } else {
+    } else if (token === 'temp-dev-user-token') {
+      req.headers['x-user-id'] = '999'; // ID específico para dev-user
+      console.log('DEBUG: Set user_id to 999 for temp-dev-user-token');
+    } else if (token.includes('-')) {
       // Extraer username del token y generar ID consistente
       const username = token.replace('temp-', '').replace('-token', '');
-      req.headers['x-user-id'] = String(Math.abs(username.split('').reduce((a, b) => {
+      const userId = String(Math.abs(username.split('').reduce((a, b) => {
         a = ((a << 5) - a) + b.charCodeAt(0);
         return a & a;
-      }, 0)) % 1000 + 1); // ID entre 1-1000
+      }, 0)) % 1000 + 10); // ID entre 10-1009
+      req.headers['x-user-id'] = userId;
+      console.log('DEBUG: Set user_id to', userId, 'for username', username);
+    } else {
+      // Fallback para tokens temporales malformados
+      req.headers['x-user-id'] = '999';
+      console.log('DEBUG: Set fallback user_id to 999 for malformed temp token');
     }
     return next();
   }
@@ -124,26 +133,12 @@ app.use('/api/personas', createProxyMiddleware({
     '^/api/personas': ''
   },
   onProxyReq: (proxyReq, req) => {
-    // Verificar token y establecer user_id
-    const token = req.headers.authorization?.split(' ')[1];
-    console.log('DEBUG: Processing token in personas proxy:', token);
-    
-    if (token && token.startsWith('temp-')) {
-      if (token === 'temp-admin-token') {
-        proxyReq.setHeader('x-user-id', '1');
-        console.log('DEBUG: Set x-user-id to 1 for temp-admin-token');
-      } else {
-        const username = token.replace('temp-', '').replace('-token', '');
-        const userId = String(Math.abs(username.split('').reduce((a, b) => {
-          a = ((a << 5) - a) + b.charCodeAt(0);
-          return a & a;
-        }, 0)) % 1000 + 1);
-        proxyReq.setHeader('x-user-id', userId);
-        console.log('DEBUG: Set x-user-id to', userId, 'for token', token);
-      }
+    // Pass user_id from middleware if it exists
+    if (req.headers['x-user-id']) {
+      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+      console.log('DEBUG: Forwarding x-user-id:', req.headers['x-user-id']);
     } else {
-      proxyReq.setHeader('x-user-id', '1'); // Fallback
-      console.log('DEBUG: Set fallback x-user-id to 1');
+      console.log('WARNING: No x-user-id found in headers');
     }
 
     if (req.body && Object.keys(req.body).length) {
@@ -165,6 +160,12 @@ app.use('/api/consulta', createProxyMiddleware({
     '^/api/consulta': ''
   },
   onProxyReq: (proxyReq, req) => {
+    // Forward user_id from middleware
+    if (req.headers['x-user-id']) {
+      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+      console.log('DEBUG: Forwarding x-user-id to consulta:', req.headers['x-user-id']);
+    }
+
     if (req.body && Object.keys(req.body).length) {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader('Content-Type', 'application/json');
@@ -184,6 +185,12 @@ app.use('/api/nlp', createProxyMiddleware({
     '^/api/nlp': ''
   },
   onProxyReq: (proxyReq, req) => {
+    // Forward user_id from middleware
+    if (req.headers['x-user-id']) {
+      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+      console.log('DEBUG: Forwarding x-user-id to nlp:', req.headers['x-user-id']);
+    }
+
     if (req.body && Object.keys(req.body).length) {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader('Content-Type', 'application/json');
@@ -203,6 +210,12 @@ app.use('/api/logs', createProxyMiddleware({
     '^/api/logs': ''
   },
   onProxyReq: (proxyReq, req) => {
+    // Forward user_id from middleware
+    if (req.headers['x-user-id']) {
+      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+      console.log('DEBUG: Forwarding x-user-id to logs:', req.headers['x-user-id']);
+    }
+
     if (req.body && Object.keys(req.body).length) {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader('Content-Type', 'application/json');
