@@ -734,6 +734,24 @@ def consultar_personas():
         if edad_max:
             params['edad_max'] = edad_max
         
+        # Check if this is actually a "show all" query (no real filters, just age range 0-120)
+        is_show_all = (
+            (not tipo_documento or tipo_documento == '' or tipo_documento == 'Todos') and
+            (not genero or genero == '' or genero == 'Todos') and
+            (edad_min == '0' or not edad_min or edad_min == '') and
+            (edad_max == '120' or not edad_max or edad_max == '')
+        )
+        
+        app.logger.info(f"DEBUG: is_show_all check - tipo_documento='{tipo_documento}', genero='{genero}', edad_min='{edad_min}', edad_max='{edad_max}', result={is_show_all}")
+        
+        # If it's a "show all" query, use a higher limit
+        if is_show_all:
+            params['limit'] = 50  # Show more results when no real filters are applied
+            app.logger.info("DEBUG: Using limit=50 for show all query")
+        else:
+            params['limit'] = 20  # Standard limit for filtered searches
+            app.logger.info("DEBUG: Using limit=20 for filtered query")
+        
         app.logger.info(f"DEBUG: Enviando solicitud a /api/consulta/search con params: {params}")
         response = make_request('GET', '/api/consulta/search', params=params)
         app.logger.info(f"DEBUG: Respuesta recibida - status: {response.status_code if response else 'None'}")
@@ -741,9 +759,11 @@ def consultar_personas():
         if response and response.status_code == 200:
             data = response.json()
             personas = data.get('personas', [])
+            pagination = data.get('pagination', {})
             app.logger.info(f"DEBUG: Personas encontradas: {len(personas)}")
             if personas:
-                flash(f'Se encontraron {len(personas)} personas', 'success')
+                total_results = pagination.get('total', len(personas))
+                flash(f'Se encontraron {total_results} personas (mostrando {len(personas)})', 'success')
             else:
                 flash('No se encontraron personas con los criterios especificados', 'info')
     
