@@ -18,9 +18,9 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "http://localhost:8001", "http://localhost:5000"],
-      connectSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https:"],
+      imgSrc: ["'self'", "data:", "http://localhost:8001", "http://localhost:5000", "http://localhost:3002"],
+      connectSrc: ["'self'", "http://localhost:8001", "http://localhost:5000"],
       fontSrc: ["'self'", "https:", "data:"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -28,6 +28,7 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false,
 }));
 app.use(cors({
   origin: [
@@ -255,6 +256,17 @@ app.use('/uploads', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: {
     '^/uploads': '/uploads'
+  },
+  onProxyRes: function (proxyRes, req, res) {
+    // Agregar headers CORS para las imágenes
+    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+    proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
+    proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept';
+    proxyRes.headers['Cross-Origin-Resource-Policy'] = 'cross-origin';
+  },
+  onError: function (err, req, res) {
+    console.error('Proxy error for uploads:', err);
+    res.status(500).json({ error: 'Error serving image' });
   }
 }));
 

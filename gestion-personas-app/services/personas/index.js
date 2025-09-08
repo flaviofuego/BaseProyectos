@@ -16,7 +16,8 @@ const PORT = process.env.PORT || 3002;
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP to allow image serving
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false
 }));
 app.use(cors({
   origin: [
@@ -32,8 +33,12 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Serve uploaded images
-app.use('/uploads', express.static('/uploads'));
+// Serve uploaded images with proper headers
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static('/uploads'));
 
 // Ensure uploads directory exists
 const ensureUploadsDirectory = async () => {
