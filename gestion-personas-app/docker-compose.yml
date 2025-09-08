@@ -86,6 +86,8 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
       - LOG_SERVICE_URL=http://log-service:3005
+    volumes:
+      - personas_uploads:/uploads
     depends_on:
       - postgres
       - log-service
@@ -160,6 +162,7 @@ services:
 volumes:
   postgres_data:
   qdrant_data:
+  personas_uploads:
 
 networks:
   app-network:

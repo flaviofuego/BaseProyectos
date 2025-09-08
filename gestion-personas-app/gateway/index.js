@@ -12,9 +12,33 @@ console.log('🚀 Iniciando API Gateway en modo desarrollo con hot reload...');
 const app = express();
 const PORT = process.env.PORT || 8001;
 
-// Middleware de seguridad
-app.use(helmet());
-app.use(cors());
+// Middleware de seguridad con CSP personalizada para permitir imágenes
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "http://localhost:8001", "http://localhost:5000"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+app.use(cors({
+  origin: [
+    'http://localhost:5000',  // Frontend
+    'http://localhost:3000',  // Por si se usa otro puerto
+    'http://127.0.0.1:5000'   // Alternativo para localhost
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id']
+}));
 app.use(morgan('combined'));
 
 // Rate limiting

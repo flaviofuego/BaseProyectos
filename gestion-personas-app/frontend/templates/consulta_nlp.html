@@ -148,7 +148,8 @@
                                     </div>
                                     {% if resultado.datos.foto_url %}
                                     <div class="col-md-4 text-center">
-                                        <img src="{{ resultado.datos.foto_url }}" class="img-thumbnail" alt="Foto" style="max-width: 120px;">
+                                        <img src="{{ build_image_url(resultado.datos.foto_url) }}" class="img-thumbnail" alt="Foto" style="max-width: 120px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        <div style="display:none;"><i class="fas fa-user-circle fa-3x text-muted"></i><br><small>Sin imagen</small></div>
                                     </div>
                                     {% endif %}
                                 </div>

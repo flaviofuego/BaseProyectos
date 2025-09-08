@@ -2,8 +2,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Create uploads directory
-RUN mkdir -p /uploads
+# Create uploads directory with proper permissions
+RUN mkdir -p /uploads && chmod 755 /uploads
 
 COPY package*.json ./
 RUN npm install --omit=dev

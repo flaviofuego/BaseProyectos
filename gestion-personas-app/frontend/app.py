@@ -38,7 +38,8 @@ def get_browser_api_url():
 def build_image_url(foto_url):
     """Build complete image URL using the gateway"""
     if foto_url and foto_url.startswith('/uploads/'):
-        return f"{API_BASE_URL}{foto_url}"
+        # Use BROWSER_API_BASE_URL for images that will be loaded by the browser
+        return f"{BROWSER_API_BASE_URL}{foto_url}"
     return foto_url
 
 def invalidate_stats_cache():

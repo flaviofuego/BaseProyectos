@@ -43,6 +43,7 @@ services:
     volumes:
       - ./services/personas:/app
       - /app/node_modules
+      - personas_uploads:/uploads
     environment:
       - NODE_ENV=development
 

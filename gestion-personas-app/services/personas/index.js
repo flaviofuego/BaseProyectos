@@ -14,12 +14,36 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP to allow image serving
+  crossOriginEmbedderPolicy: false
+}));
+app.use(cors({
+  origin: [
+    'http://localhost:5000',  // Frontend
+    'http://localhost:8001',  // Gateway
+    'http://localhost:3000',  // Por si se usa otro puerto
+    'http://127.0.0.1:5000',  // Alternativo para localhost
+    'http://127.0.0.1:8001'   // Alternativo para gateway
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id']
+}));
 app.use(express.json());
 
 // Serve uploaded images
 app.use('/uploads', express.static('/uploads'));
+
+// Ensure uploads directory exists
+const ensureUploadsDirectory = async () => {
+  try {
+    await fs.mkdir('/uploads', { recursive: true });
+    console.log('Uploads directory ensured');
+  } catch (error) {
+    console.error('Error creating uploads directory:', error);
+  }
+};
 
 // Database connection
 const pool = new Pool({
@@ -458,8 +482,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Personas service running on port ${PORT}`);
+  await ensureUploadsDirectory();
 });
 
 

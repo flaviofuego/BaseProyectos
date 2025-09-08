@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Create uploads directory with proper permissions
+RUN mkdir -p /uploads && chmod 755 /uploads
+
 # Install nodemon for hot reload
 RUN npm install -g nodemon
 
