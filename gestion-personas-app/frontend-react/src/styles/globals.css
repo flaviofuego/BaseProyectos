@@ -94,22 +94,6 @@
   background-size: 200px 100%;
 }
 
-/* Custom components */
-.table-hover tbody tr:hover {
-  @apply bg-gray-50 dark:bg-dark-bg-secondary;
-}
-
-.form-group {
-  @apply space-y-1;
-}
-
-.btn-group {
-  @apply flex gap-2;
-}
-
-.card-elevated {
-  @apply shadow-lg;
-}
 
 .text-gradient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

@@ -246,7 +246,7 @@ const SearchPersons = () => {
                 </thead>
                 <tbody className="bg-white dark:bg-dark-bg-card divide-y divide-gray-200 dark:divide-dark-border-primary">
                   {persons.map((person) => (
-                    <tr key={person.id} className="table-hover">
+                    <tr key={person.id} className="bg-gray-50 dark:bg-dark-bg-secondary">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
