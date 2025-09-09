@@ -19,9 +19,9 @@ const Select = forwardRef(({
       {label && (
         <label 
           htmlFor={selectId}
-          className="block text-sm font-medium text-gray-700 dark:text-dark-text-primary"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
         >
-          {label} {required && <span className="text-danger-500">*</span>}
+          {label} {required && <span className="text-red-500" aria-label="campo requerido">*</span>}
         </label>
       )}
       
@@ -29,12 +29,13 @@ const Select = forwardRef(({
         ref={ref}
         id={selectId}
         className={clsx(
-          'block w-full px-3 py-2 border rounded-md shadow-sm transition-colors duration-200',
-          'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+          'block w-full px-3 py-2 border rounded-md shadow-sm transition-all duration-200',
+          'focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-transparent',
           error 
-            ? 'border-danger-500 text-danger-900 focus:ring-danger-500' 
-            : 'border-gray-300 dark:border-dark-border-primary focus:ring-primary-500',
-          'bg-white dark:bg-dark-bg-secondary text-gray-900 dark:text-dark-text-primary',
+            ? 'border-red-500 text-red-900 dark:text-red-100 focus:ring-red-500 bg-red-50 dark:bg-red-900/20' 
+            : 'border-gray-300 dark:border-gray-700 focus:ring-primary-500',
+          'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100',
+          'hover:border-gray-400 dark:hover:border-gray-600',
           className
         )}
         aria-invalid={error ? 'true' : 'false'}
@@ -56,13 +57,16 @@ const Select = forwardRef(({
       </select>
       
       {error && (
-        <p id={`${selectId}-error`} className="text-sm text-danger-600 dark:text-danger-400">
+        <p id={`${selectId}-error`} className="text-sm text-red-600 dark:text-red-400 flex items-center" role="alert">
+          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
           {error}
         </p>
       )}
       
       {helpText && !error && (
-        <p id={`${selectId}-help`} className="text-sm text-gray-500 dark:text-dark-text-muted">
+        <p id={`${selectId}-help`} className="text-sm text-gray-600 dark:text-gray-400">
           {helpText}
         </p>
       )}

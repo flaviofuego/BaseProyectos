@@ -167,32 +167,34 @@ const CreatePerson = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <main className="space-y-6 animate-fade-in" role="main">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-dark-text-primary">
+      <header className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           Crear Nueva Persona
         </h1>
         <Button
           variant="secondary"
           onClick={() => navigate('/consultar-personas')}
+          aria-label="Volver a la lista de personas"
         >
-          <i className="fas fa-arrow-left mr-2"></i>
+          <i className="fas fa-arrow-left mr-2" aria-hidden="true"></i>
           Volver
         </Button>
-      </div>
+      </header>
 
-      <Card>
+      <Card className="shadow-xl">
         <Card.Header>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-dark-text-primary">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Información Personal
           </h2>
         </Card.Header>
         
         <Card.Body>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {/* Nombres */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <legend className="sr-only">Nombres de la persona</legend>
               <Input
                 label="Primer Nombre"
                 name="primer_nombre"
@@ -201,6 +203,8 @@ const CreatePerson = () => {
                 error={errors.primer_nombre}
                 required
                 placeholder="Ej: Juan"
+                aria-describedby="primer-nombre-help"
+                helpText="Nombre principal de la persona"
               />
               
               <Input
@@ -209,8 +213,9 @@ const CreatePerson = () => {
                 value={formData.segundo_nombre}
                 onChange={handleInputChange}
                 placeholder="Ej: Carlos (Opcional)"
+                helpText="Segundo nombre (opcional)"
               />
-            </div>
+            </fieldset>
 
             <Input
               label="Apellidos"
@@ -220,10 +225,12 @@ const CreatePerson = () => {
               error={errors.apellidos}
               required
               placeholder="Ej: Pérez García"
+              helpText="Apellidos completos de la persona"
             />
 
             {/* Documento */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <fieldset className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <legend className="sr-only">Información de documento de identidad</legend>
               <Select
                 label="Tipo de Documento"
                 name="tipo_documento"
@@ -231,6 +238,7 @@ const CreatePerson = () => {
                 onChange={handleInputChange}
                 options={documentTypes}
                 required
+                aria-describedby="tipo-documento-help"
               />
               
               <div className="md:col-span-2">
@@ -243,18 +251,20 @@ const CreatePerson = () => {
                   error={errors.numero_documento}
                   required
                   placeholder="Ej: 12345678"
+                  helpText="Número único del documento de identidad"
                 />
                 {validatingDocument && (
-                  <p className="text-sm text-blue-600 mt-1">
-                    <i className="fas fa-spinner fa-spin mr-1"></i>
+                  <p className="text-sm text-blue-600 dark:text-blue-400 mt-1" role="status" aria-live="polite">
+                    <i className="fas fa-spinner fa-spin mr-1" aria-hidden="true"></i>
                     Validando documento...
                   </p>
                 )}
               </div>
-            </div>
+            </fieldset>
 
             {/* Fecha y Género */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <legend className="sr-only">Información de nacimiento y género</legend>
               <Input
                 label="Fecha de Nacimiento"
                 name="fecha_nacimiento"
@@ -263,6 +273,8 @@ const CreatePerson = () => {
                 onChange={handleInputChange}
                 error={errors.fecha_nacimiento}
                 required
+                aria-describedby="fecha-nacimiento-help"
+                helpText="Fecha de nacimiento de la persona"
               />
               
               <Select
@@ -274,11 +286,13 @@ const CreatePerson = () => {
                 options={genderOptions}
                 placeholder="Selecciona el género"
                 required
+                aria-describedby="genero-help"
               />
-            </div>
+            </fieldset>
 
             {/* Contacto */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <legend className="sr-only">Información de contacto</legend>
               <Input
                 label="Email"
                 name="email"
@@ -287,6 +301,7 @@ const CreatePerson = () => {
                 onChange={handleInputChange}
                 error={errors.email}
                 placeholder="correo@ejemplo.com"
+                helpText="Dirección de correo electrónico (opcional)"
               />
               
               <Input
@@ -296,8 +311,9 @@ const CreatePerson = () => {
                 value={formData.telefono}
                 onChange={handleInputChange}
                 placeholder="Ej: 3001234567"
+                helpText="Número de teléfono (opcional)"
               />
-            </div>
+            </fieldset>
 
             {/* Dirección */}
             <Input
@@ -306,6 +322,7 @@ const CreatePerson = () => {
               value={formData.direccion}
               onChange={handleInputChange}
               placeholder="Ej: Calle 123 #45-67"
+              helpText="Dirección de residencia (opcional)"
             />
 
             {/* Ubicación */}
@@ -426,7 +443,7 @@ const CreatePerson = () => {
           </div>
         </div>
       </Modal>
-    </div>
+    </main>
   );
 };
 

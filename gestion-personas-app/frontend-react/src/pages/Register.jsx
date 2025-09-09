@@ -37,37 +37,71 @@ const Register = () => {
         [name]: ''
       }));
     }
+    
+    // Real-time validation for password confirmation
+    if (name === 'confirmPassword' && formData.password && value !== formData.password) {
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: 'Las contraseñas no coinciden'
+      }));
+    } else if (name === 'password' && formData.confirmPassword && value !== formData.confirmPassword) {
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: 'Las contraseñas no coinciden'
+      }));
+    } else if (name === 'confirmPassword' && value === formData.password) {
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: ''
+      }));
+    } else if (name === 'password' && value === formData.confirmPassword) {
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: ''
+      }));
+    }
   };
 
   const validateForm = () => {
     const newErrors = {};
     
+    // Validate username (required by backend)
     if (!formData.username.trim()) {
       newErrors.username = 'El usuario es requerido';
+    } else if (formData.username.length < 3) {
+      newErrors.username = 'El usuario debe tener al menos 3 caracteres';
+    } else if (!/^[a-zA-Z0-9]+$/.test(formData.username)) {
+      newErrors.username = 'El usuario solo puede contener letras y números';
     }
     
+    // Validate email (required by backend)
     if (!formData.email.trim()) {
       newErrors.email = 'El email es requerido';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'El formato del email no es válido';
     }
     
+    // Validate password (required by backend)
     if (!formData.password) {
       newErrors.password = 'La contraseña es requerida';
     } else if (formData.password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
     }
     
-    if (formData.password !== formData.confirmPassword) {
+    // Validate password confirmation (frontend only)
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'La confirmación de contraseña es requerida';
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
     
-    if (!formData.first_name.trim()) {
-      newErrors.first_name = 'El nombre es requerido';
+    // Validate names (optional but if provided, should not be empty)
+    if (formData.first_name && !formData.first_name.trim()) {
+      newErrors.first_name = 'Si proporcionas un nombre, no puede estar vacío';
     }
     
-    if (!formData.last_name.trim()) {
-      newErrors.last_name = 'El apellido es requerido';
+    if (formData.last_name && !formData.last_name.trim()) {
+      newErrors.last_name = 'Si proporcionas un apellido, no puede estar vacío';
     }
 
     setErrors(newErrors);
@@ -84,7 +118,14 @@ const Register = () => {
     
     setLoading(true);
     try {
-      await authService.register(formData);
+      // Send only the fields that the backend accepts
+      const registrationData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password
+      };
+      
+      await authService.register(registrationData);
       success('Usuario registrado exitosamente. Ya puedes iniciar sesión.');
       navigate('/login');
     } catch (err) {
@@ -95,45 +136,62 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-bg-primary py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-200 dark:from-gray-900 dark:via-gray-950 dark:to-gray-800 transition-colors duration-300">
+      <section className="max-w-md w-full space-y-8">
         {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary-100 dark:bg-primary-900/20">
-            <svg className="h-12 w-12 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+        <header className="text-center">
+          <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-primary-100 dark:bg-primary-900/30 shadow-lg">
+            <svg className="h-12 w-12 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6z" />
             </svg>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-dark-text-primary">
-            Crear Cuenta
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-dark-text-secondary">
-            Sistema de Gestión de Personas v2.5
-          </p>
-        </div>
+          <h1 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Crear Cuenta</h1>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">Sistema de Gestión de Personas v2.5</p>
+        </header>
 
-        <Card>
+        <Card className="bg-white dark:bg-gray-900/80 shadow-xl border border-gray-200 dark:border-gray-800">
           <Card.Body>
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Info message */}
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-blue-400 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    Campos requeridos
+                  </h3>
+                  <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                    Solo se requieren: <strong>Usuario</strong>, <strong>Email</strong> y <strong>Contraseña</strong>. Los campos de nombre son opcionales.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <form className="space-y-6" onSubmit={handleSubmit} aria-label="Formulario de registro">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Nombre"
+                  label="Nombre (Opcional)"
                   name="first_name"
                   value={formData.first_name}
                   onChange={handleInputChange}
                   error={errors.first_name}
-                  required
                   placeholder="Tu nombre"
+                  className="focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400"
+                  aria-describedby={errors.first_name ? "first_name-error" : undefined}
+                  helpText="Este campo es opcional y no se guarda en el sistema"
                 />
                 
                 <Input
-                  label="Apellido"
+                  label="Apellido (Opcional)"
                   name="last_name"
                   value={formData.last_name}
                   onChange={handleInputChange}
                   error={errors.last_name}
-                  required
                   placeholder="Tu apellido"
+                  className="focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400"
+                  aria-describedby={errors.last_name ? "last_name-error" : undefined}
+                  helpText="Este campo es opcional y no se guarda en el sistema"
                 />
               </div>
 
@@ -146,6 +204,8 @@ const Register = () => {
                 required
                 placeholder="Nombre de usuario"
                 autoComplete="username"
+                className="focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400"
+                aria-describedby={errors.username ? "username-error" : undefined}
               />
 
               <Input
@@ -158,6 +218,8 @@ const Register = () => {
                 required
                 placeholder="tu@email.com"
                 autoComplete="email"
+                className="focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400"
+                aria-describedby={errors.email ? "email-error" : undefined}
               />
 
               <Input
@@ -170,25 +232,37 @@ const Register = () => {
                 required
                 placeholder="Mínimo 6 caracteres"
                 autoComplete="new-password"
+                className="focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400"
+                aria-describedby={errors.password ? "password-error" : "password-help"}
               />
 
-              <Input
-                label="Confirmar Contraseña"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                error={errors.confirmPassword}
-                required
-                placeholder="Repite tu contraseña"
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <Input
+                  label="Confirmar Contraseña"
+                  name="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  error={errors.confirmPassword}
+                  required
+                  placeholder="Repite tu contraseña"
+                  autoComplete="new-password"
+                  className="focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400"
+                  aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
+                />
+                {formData.password && formData.confirmPassword && !errors.confirmPassword && formData.password === formData.confirmPassword && (
+                  <div className="absolute right-3 top-8 text-green-500" aria-label="Las contraseñas coinciden">
+                    <i className="fas fa-check-circle"></i>
+                  </div>
+                )}
+              </div>
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white dark:bg-primary-500 dark:hover:bg-primary-400 focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400"
                 loading={loading}
                 disabled={loading}
+                aria-label="Crear cuenta"
               >
                 Crear Cuenta
               </Button>
@@ -196,19 +270,20 @@ const Register = () => {
           </Card.Body>
         </Card>
 
-        <div className="text-center">
-          <p className="text-sm text-gray-600 dark:text-dark-text-secondary">
-            ¿Ya tienes una cuenta?{' '}
+        <nav className="text-center mt-4" aria-label="Navegación entre pestañas de autenticación">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            ¿Ya tienes una cuenta?
             <button 
               onClick={() => navigate('/login')}
-              className="font-medium text-primary-600 hover:text-primary-500"
+              className="ml-2 font-medium text-primary-600 dark:text-primary-400 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 rounded"
+              aria-label="Ir a iniciar sesión"
             >
               Inicia sesión aquí
             </button>
           </p>
-        </div>
-      </div>
-    </div>
+        </nav>
+      </section>
+    </main>
   );
 };
 
