@@ -32,9 +32,13 @@ app.use(helmet({
 }));
 app.use(cors({
   origin: [
-    'http://localhost:5000',  // Frontend
-    'http://localhost:3000',  // Por si se usa otro puerto
-    'http://127.0.0.1:5000'   // Alternativo para localhost
+    'http://localhost:5000',     // Frontend Flask (legacy)
+    'http://localhost:5173',     // React development server (Vite)
+    'http://localhost',          // React production (Nginx)
+    'http://localhost:80',       // React production (explicit port)
+    'http://127.0.0.1:5173',     // React dev alternative
+    'http://127.0.0.1',          // React prod alternative
+    'http://127.0.0.1:80'        // React prod alternative explicit
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
