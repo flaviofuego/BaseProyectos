@@ -9,8 +9,9 @@ help:
 	@echo "  make build-dev   - Build all Docker images for development"
 	@echo ""
 	@echo "🚀 START/STOP COMMANDS:"
-	@echo "  make up          - Start all services (production mode)"
+	@echo "  make up          - Start all services (production mode with React frontend)"
 	@echo "  make dev         - Start all services in development mode with hot reload"
+	@echo "  make legacy      - Start with Flask frontend (legacy mode)"
 	@echo "  make down        - Stop all services (production)"
 	@echo "  make down-dev    - Stop all services (development)"
 	@echo ""
@@ -27,8 +28,9 @@ help:
 	@echo "  make sync-embeddings - Synchronize embeddings with Gemini"
 	@echo "  make test-nlp    - Test NLP functionality"
 	@echo ""
-	@echo "💡 For development, use: make dev"
-	@echo "💡 For production, use: make up"
+	@echo "💡 For development (React): make dev"
+	@echo "💡 For production (React): make up"
+	@echo "💡 For legacy Flask: make legacy"
 
 # Build all Docker images
 build:
@@ -38,20 +40,29 @@ build:
 build-dev:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml build
 
-# Start all services (production)
+# Start all services (production with React frontend)
 up:
 	docker-compose up -d
 	@echo "Waiting for services to be ready..."
 	@sleep 10
-	@echo "Services are starting up. Access the application at http://localhost:8501"
+	@echo "Services are starting up. Access the React application at http://localhost"
 
-# Start all services in development mode with hot reload
+# Start all services in development mode with hot reload (React)
 dev:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 	@echo "Waiting for services to be ready..."
 	@echo "Development services are starting up with hot reload enabled."
-	@echo "Access the application at http://localhost:5000"
-	@echo "API Gateway at http://localhost:8000"
+	@echo "Access the React application at http://localhost:5173"
+	@echo "API Gateway at http://localhost:8001"
+
+# Start with Flask frontend (legacy mode)
+legacy:
+	@echo "Starting services with Flask frontend (legacy mode)..."
+	@sed -i 's/# frontend:/frontend:/' docker-compose.yml
+	@sed -i 's/frontend-react:/#frontend-react:/' docker-compose.yml
+	docker-compose up -d
+	@echo "Access the Flask application at http://localhost:5000"
+	@echo "To switch back to React, run 'make up'"
 
 # Stop all services
 down:
@@ -105,8 +116,11 @@ dev-nlp:
 dev-log:
 	cd services/log && npm install && npm run dev
 
-dev-frontend:
-	cd frontend && pip install -r requirements.txt && streamlit run app.py
+dev-frontend-react:
+	cd frontend-react && npm install && npm run dev
+
+dev-frontend-flask:
+	cd frontend && pip install -r requirements.txt && python app.py
 
 # Production build
 prod:
