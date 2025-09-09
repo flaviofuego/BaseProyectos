@@ -1,9 +1,9 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthHook } from '@/hooks/useAuth';
 import Spinner from '@/components/ui/Spinner';
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuthHook();
 
   if (loading) {
     return (

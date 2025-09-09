@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthHook } from '@/hooks/useAuth';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuthHook();
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: 'fas fa-tachometer-alt' },

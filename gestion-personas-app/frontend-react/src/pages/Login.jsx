@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import { authService } from '@/services/auth';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthHook } from '@/hooks/useAuth';
 import { useNotifications } from '@/context/NotificationContext';
 
 const Login = () => {
@@ -16,7 +16,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login } = useAuthHook();
   const { success, error } = useNotifications();
 
   const handleInputChange = (e) => {
