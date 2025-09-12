@@ -1,25 +1,27 @@
-# Development Dockerfile
-FROM node:22-alpine
+# Dockerfile para desarrollo del frontend React/Next.js
+FROM node:20-alpine
 
+# Establecer directorio de trabajo
 WORKDIR /app
 
-# Install dependencies for development
-RUN apk add --no-cache git
+# Instalar pnpm globalmente
+RUN npm install -g pnpm
 
-# Copy package files
-COPY package*.json ./
+# Copiar archivos de package manager
+COPY package.json pnpm-lock.yaml ./
 
-# Install all dependencies (including dev dependencies)
-RUN npm install
+# Instalar dependencias
+RUN pnpm install
 
-# Copy source code
+# Copiar el resto del código
 COPY . .
 
-# Expose development server port
-EXPOSE 5173
+# Exponer puerto de desarrollo
+EXPOSE 3000
 
-# Set environment to development
+# Variables de entorno para desarrollo
 ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Start development server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Comando para modo desarrollo con hot reload
+CMD ["pnpm", "dev"]

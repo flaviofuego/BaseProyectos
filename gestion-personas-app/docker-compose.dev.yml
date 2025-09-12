@@ -90,21 +90,25 @@ services:
     build:
       context: ./frontend-react
       dockerfile: Dockerfile.dev
-    container_name: react_app_dev
+    container_name: nextjs_app_dev
     ports:
-      - "5173:5173"
+      - "3000:3000"
     volumes:
       - ./frontend-react:/app
       - /app/node_modules
+      - /app/.next
     environment:
       - NODE_ENV=development
-      - VITE_API_BASE_URL=http://localhost:8001/api
-      - VITE_APP_NAME=Sistema de Gestión de Personas - Dev
-      - VITE_APP_VERSION=1.0.0-dev
-      - VITE_AUTH0_DOMAIN=dev-zg58kn127grr7sf6.us.auth0.com
-      - VITE_AUTH0_CLIENT_ID=eKRUA6UlzZX8DKuCi247gryxqPc8r293
-      - VITE_AUTH0_REDIRECT_URI=http://localhost:5173/auth/callback
-      - VITE_FRONTEND_URL=http://localhost:5173
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8001/api
+      - NEXT_PUBLIC_APP_NAME=Sistema de Gestión de Personas - Dev
+      - NEXT_PUBLIC_APP_VERSION=1.0.0-dev
+      - NEXT_PUBLIC_AUTH0_DOMAIN=dev-zg58kn127grr7sf6.us.auth0.com
+      - NEXT_PUBLIC_AUTH0_CLIENT_ID=eKRUA6UlzZX8DKuCi247gryxqPc8r293
+      - NEXT_PUBLIC_AUTH0_REDIRECT_URI=http://localhost:3000/auth/callback
+      - NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
+      - NEXT_TELEMETRY_DISABLED=1
+    depends_on:
+      - gateway
 
   # Frontend Flask - Development Override (LEGACY - commented out)
   # frontend:

@@ -19,8 +19,8 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https:"],
-      imgSrc: ["'self'", "data:", "http://localhost:8001", "http://localhost:5000", "http://localhost:3002"],
-      connectSrc: ["'self'", "http://localhost:8001", "http://localhost:5000"],
+      imgSrc: ["'self'", "data:", "http://localhost:8001", "http://localhost:5000", "http://localhost:3000", "http://localhost:3002"],
+      connectSrc: ["'self'", "http://localhost:8001", "http://localhost:5000", "http://localhost:3000", "ws://localhost:3000", "wss://localhost:3000"],
       fontSrc: ["'self'", "https:", "data:"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -33,18 +33,34 @@ app.use(helmet({
 app.use(cors({
   origin: [
     'http://localhost:5000',     // Frontend Flask (legacy)
-    'http://localhost:5173',     // React development server (Vite)
-    'http://localhost',          // React production (Nginx)
+    'http://localhost:3000',     // Frontend Next.js (development/production)
+    'http://localhost',          // React production (port 80)
     'http://localhost:80',       // React production (explicit port)
-    'http://127.0.0.1:5173',     // React dev alternative
-    'http://127.0.0.1',          // React prod alternative
-    'http://127.0.0.1:80'        // React prod alternative explicit
+    'http://127.0.0.1:5000',     // Flask alternative
+    'http://127.0.0.1:3000',     // Next.js alternative
+    'http://127.0.0.1',          // Production alternative
+    'http://127.0.0.1:80',       // Production alternative explicit
+    'https://localhost:3000',    // HTTPS for Next.js (if using HTTPS)
+    'https://127.0.0.1:3000'     // HTTPS alternative
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id', 'Accept', 'Origin', 'User-Agent'],
+  exposedHeaders: ['X-Total-Count', 'X-User-ID']
 }));
 app.use(morgan('combined'));
+
+// Middleware para manejar preflight requests (OPTIONS)
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-user-id, Accept, Origin, User-Agent');
+    res.header('Access-Control-Allow-Credentials', true);
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({

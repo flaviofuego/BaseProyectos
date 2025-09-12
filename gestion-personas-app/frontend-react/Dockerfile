@@ -1,35 +1,70 @@
-# Build stage
-FROM node:18-alpine as build
+# Dockerfile para producción del frontend React/Next.js
+FROM node:20-alpine AS base
 
+# Instalar pnpm
+RUN npm install -g pnpm
+
+# Crear directorio de trabajo
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# Copiar archivos de configuración
+COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies
-RUN npm ci --only=production
+# === STAGE 1: Dependencies ===
+FROM base AS deps
+# Instalar solo dependencias de producción
+RUN pnpm install --prod --frozen-lockfile
 
-# Copy source code
+# === STAGE 2: Build ===
+FROM base AS builder
+# Instalar todas las dependencias (incluidas dev)
+RUN pnpm install --frozen-lockfile
+
+# Copiar código fuente
 COPY . .
 
-# Build the application
-RUN npm run build
+# Variables de entorno para build
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Production stage
-FROM nginx:alpine
+# Construir la aplicación
+RUN pnpm build
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# === STAGE 3: Runtime ===
+FROM node:20-alpine AS runner
 
-# Copy built application
-COPY --from=build /app/dist /usr/share/nginx/html
+# Crear usuario no-root
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+# Establecer directorio de trabajo
+WORKDIR /app
 
-# Expose port
-EXPOSE 80
+# Variables de entorno de producción
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Copiar archivos públicos
+COPY --from=builder /app/public ./public
+
+# Crear directorio .next con permisos apropiados
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Copiar archivos construidos y dependencias
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Cambiar a usuario no-root
+USER nextjs
+
+# Exponer puerto
+EXPOSE 3000
+
+# Variables de entorno
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Comando de inicio
+CMD ["node", "server.js"]
