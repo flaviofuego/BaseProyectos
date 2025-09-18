@@ -12,6 +12,7 @@ const session = require('express-session');
 const Joi = require('joi');
 const helmet = require('helmet');
 const cors = require('cors');
+const { createServiceRegistryClient } = require('./service-registry-client');
 require('dotenv').config();
 
 const app = express();
@@ -413,4 +414,23 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Auth service running on port ${PORT}`);
   console.log(`Auth0 configured: ${!!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID)}`);
+  
+  // Auto-registrar en el Service Registry
+  const serviceConfig = {
+    serviceId: 'auth-service',
+    name: 'auth-service',
+    host: 'auth-service',
+    port: parseInt(PORT),
+    protocol: 'http',
+    metadata: {
+      version: '1.0.0',
+      description: 'Authentication and authorization service',
+      maintainer: 'auth-team',
+      healthEndpoint: '/health',
+      tags: ['auth', 'authentication', 'security'],
+      capabilities: ['local-auth', 'auth0', 'jwt', 'session-management']
+    }
+  };
+  
+  createServiceRegistryClient(serviceConfig);
 });
