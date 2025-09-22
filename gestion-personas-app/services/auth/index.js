@@ -12,7 +12,7 @@ const session = require('express-session');
 const Joi = require('joi');
 const helmet = require('helmet');
 const cors = require('cors');
-const { createServiceRegistryClient } = require('./service-registry-client');
+const { createServiceRegistryClient } = require('./shared/service-registry-client');
 require('dotenv').config();
 
 const app = express();
