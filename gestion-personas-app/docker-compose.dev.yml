@@ -12,7 +12,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - SERVICE_REGISTRY_PORT=3010
+      - SERVICE_REGISTRY_PORT=${SERVICE_REGISTRY_PORT:-3010}
 
   # API Gateway - Development Override
   gateway:
@@ -25,6 +25,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
 
   # Servicio de Autenticación - Development Override
   auth-service:
@@ -38,18 +39,17 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - JWT_SECRET=your-jwt-secret-key-change-this-in-production
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
-      - AUTH0_DOMAIN=dev-zg58kn127grr7sf6.us.auth0.com
-      - AUTH0_CLIENT_ID=eKRUA6UlzZX8DKuCi247gryxqPc8r293
-      - AUTH0_CLIENT_SECRET=v3zI0gKGoCgE2u1xqC6PWPLB93aCtOlSbVhmlWeD9Y2lRqhjdxOxE4dzCTXkjn-a
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=${DATABASE_URL_TEST}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
       - AUTH0_CALLBACK_URL=http://localhost:8001/api/auth/login/auth0/callback
-      - SESSION_SECRET=your-session-secret-key-change-this-in-production
-      - FRONTEND_URL=http://localhost:5000
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
-      - SERVICE_NAME=auth-service
-      - SERVICE_PORT=3001
+      - SESSION_SECRET=${SESSION_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
 
   # Servicio de Gestión de Personas - Development Override
   personas-service:
@@ -61,11 +61,11 @@ services:
       - ./services/personas:/app
       - /app/node_modules
       - personas_uploads:/uploads
+      - ./services/shared:/app/shared
     environment:
       - NODE_ENV=development
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
-      - SERVICE_NAME=personas-service
-      - SERVICE_PORT=3002
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
 
   # Servicio de Consultas - Development Override
   consulta-service:
@@ -76,11 +76,11 @@ services:
     volumes:
       - ./services/consulta:/app
       - /app/node_modules
+      - ./services/shared:/app/shared
     environment:
       - NODE_ENV=development
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
-      - SERVICE_NAME=consulta-service
-      - SERVICE_PORT=3003
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
     deploy:
       replicas: 1  # Override to 1 replica for development
 
@@ -93,11 +93,12 @@ services:
     volumes:
       - ./services/nlp:/app
       - /app/node_modules
+      - ./services/shared:/app/shared
     environment:
       - NODE_ENV=development
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
-      - SERVICE_NAME=nlp-service
-      - SERVICE_PORT=3004
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
+      - QDRANT_URL=${QDRANT_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
 
   # Servicio de Logs - Development Override
   log-service:
@@ -108,11 +109,10 @@ services:
     volumes:
       - ./services/log:/app
       - /app/node_modules
+      - ./services/shared:/app/shared
     environment:
       - NODE_ENV=development
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
-      - SERVICE_NAME=log-service
-      - SERVICE_PORT=3005
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
 
   # Frontend Flask - Development Override
   frontend:
@@ -126,3 +126,4 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
+      - API_GATEWAY_URL=${API_GATEWAY_URL}
