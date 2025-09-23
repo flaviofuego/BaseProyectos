@@ -4,6 +4,7 @@ const Joi = require('joi');
 const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
+const { createServiceRegistryClient } = require('./shared/service-registry-client');
 require('dotenv').config();
 
 const app = express();
@@ -379,6 +380,25 @@ app.delete('/cleanup', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Log service running on port ${PORT}`);
+  
+  // Auto-registrar en el Service Registry
+  const serviceConfig = {
+    serviceId: 'log-service',
+    name: 'log-service',
+    host: 'log-service',
+    port: parseInt(PORT),
+    protocol: 'http',
+    metadata: {
+      version: '1.0.0',
+      description: 'Transaction logging and audit service for all system operations',
+      maintainer: 'log-team',
+      healthEndpoint: '/health',
+      tags: ['logging', 'audit', 'transactions', 'monitoring', 'analytics'],
+      capabilities: ['transaction-logging', 'log-search', 'statistics', 'audit-trail', 'cleanup', 'analytics']
+    }
+  };
+  
+  createServiceRegistryClient(serviceConfig);
 });
 
 

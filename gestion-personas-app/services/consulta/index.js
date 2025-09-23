@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
 const axios = require('axios');
+const { createServiceRegistryClient } = require('./shared/service-registry-client');
 require('dotenv').config();
 
 const app = express();
@@ -470,6 +471,25 @@ process.on('SIGTERM', async () => {
 app.listen(PORT, () => {
   console.log(`Consulta service running on port ${PORT}`);
   console.log(`Instance: ${process.env.HOSTNAME || 'unknown'}`);
+  
+  // Auto-registrar en el Service Registry
+  const serviceConfig = {
+    serviceId: 'consulta-service',
+    name: 'consulta-service',
+    host: 'consulta-service',
+    port: parseInt(PORT),
+    protocol: 'http',
+    metadata: {
+      version: '1.0.0',
+      description: 'Consulta service for advanced search and filtering of personas',
+      maintainer: 'consulta-team',
+      healthEndpoint: '/health',
+      tags: ['consulta', 'search', 'filter', 'cache', 'redis'],
+      capabilities: ['advanced-search', 'document-filter', 'age-filter', 'name-filter', 'redis-cache', 'transaction-logging']
+    }
+  };
+  
+  createServiceRegistryClient(serviceConfig);
 });
 
 
