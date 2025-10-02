@@ -159,17 +159,64 @@ app.get('/services', (req, res) => {
   }
 });
 
-// 💓 Heartbeat Endpoint
-app.post('/heartbeat/:serviceId', (req, res) => {
+// 💓 Heartbeat Endpoint (supports both URL param and body)
+app.post('/heartbeat/:serviceId?', (req, res) => {
   try {
-    const { serviceId } = req.params;
+    // Aceptar serviceId desde URL params o body para compatibilidad
+    const serviceId = req.params.serviceId || req.body.serviceId;
+    
+    if (!serviceId) {
+      return res.status(400).json({ 
+        error: 'Service ID is required (either in URL path or request body)' 
+      });
+    }
+    
     const service = services.get(serviceId);
 
     if (!service) {
-      return res.status(404).json({ error: 'Service not found' });
+      return res.status(404).json({ 
+        error: `Service not found: ${serviceId}`,
+        availableServices: Array.from(services.keys())
+      });
     }
 
     service.updateHeartbeat();
+    console.log(`💓 Heartbeat received from ${service.name} (${serviceId})`);
+    
+    res.json({
+      message: 'Heartbeat received',
+      serviceId: service.serviceId,
+      status: service.status,
+      lastHeartbeat: service.lastHeartbeat
+    });
+  } catch (error) {
+    console.error('Error processing heartbeat:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 💓 Heartbeat Endpoint (legacy support - body only)
+app.post('/heartbeat', (req, res) => {
+  try {
+    const { serviceId } = req.body;
+    
+    if (!serviceId) {
+      return res.status(400).json({ 
+        error: 'Service ID is required in request body' 
+      });
+    }
+    
+    const service = services.get(serviceId);
+
+    if (!service) {
+      return res.status(404).json({ 
+        error: `Service not found: ${serviceId}`,
+        availableServices: Array.from(services.keys())
+      });
+    }
+
+    service.updateHeartbeat();
+    console.log(`💓 Heartbeat received from ${service.name} (${serviceId})`);
     
     res.json({
       message: 'Heartbeat received',

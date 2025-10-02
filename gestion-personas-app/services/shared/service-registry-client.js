@@ -57,22 +57,28 @@ class ServiceRegistryClient {
 
     this.heartbeatInterval = setInterval(async () => {
       try {
-        await axios.post(`${this.registryUrl}/heartbeat`, {
-          serviceId: this.serviceConfig.id
-        }, {
-          timeout: 3000
+        // Usar el formato correcto con serviceId en la URL
+        const serviceId = this.serviceConfig.serviceId || this.serviceConfig.id;
+        await axios.post(`${this.registryUrl}/heartbeat/${serviceId}`, {}, {
+          timeout: 3000,
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
         
         // Solo logear cada 5 minutos para no saturar logs
         if (Date.now() % 300000 < 15000) { // Aproximadamente cada 5 minutos
-          console.log(`💓 Heartbeat sent for ${this.serviceConfig.name}`);
+          console.log(`💓 Heartbeat sent for ${this.serviceConfig.name} (${serviceId})`);
         }
       } catch (error) {
         console.error(`❌ Heartbeat failed for ${this.serviceConfig.name}:`, error.message);
         
-        // Si falla el heartbeat, intentar re-registrar
-        this.isRegistered = false;
-        this.register();
+        // Si el error es 404, podría ser que el servicio no esté registrado
+        if (error.response && error.response.status === 404) {
+          console.log(`🔄 Service not found in registry, re-registering ${this.serviceConfig.name}...`);
+          this.isRegistered = false;
+          this.register();
+        }
       }
     }, 15000); // Cada 15 segundos
   }
@@ -86,7 +92,8 @@ class ServiceRegistryClient {
     }
 
     try {
-      await axios.delete(`${this.registryUrl}/services/${this.serviceConfig.id}`, {
+      const serviceId = this.serviceConfig.serviceId || this.serviceConfig.id;
+      await axios.delete(`${this.registryUrl}/deregister/${serviceId}`, {
         timeout: 3000
       });
       console.log(`🚪 Service unregistered: ${this.serviceConfig.name}`);
