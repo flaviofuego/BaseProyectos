@@ -130,6 +130,54 @@
     </div>
     
     <div class="row">
+        <!-- Control de Servicio de Consulta -->
+        <div class="col-12">
+            <div class="card config-card">
+                <div class="card-header">
+                    <i class="fas fa-server"></i>
+                    Servicio de Consulta
+                </div>
+                <div class="card-body form-section">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1">Estado del Servicio de Consulta</h5>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>⚠️ Atención:</strong> Este toggle afecta a <strong>TODOS los usuarios</strong>:
+                            </p>
+                            <ul class="text-muted small mb-0 mt-2">
+                                <li><strong>Activar:</strong> Inicia el contenedor y habilita el servicio para todos</li>
+                                <li><strong>Desactivar:</strong> Detiene el contenedor y deshabilita el servicio para todos</li>
+                            </ul>
+                            <p class="text-muted small mb-0 mt-2">
+                                La función "Consulta IA" permanece independiente. 
+                                Cualquier usuario puede cambiar el estado del servicio.
+                            </p>
+                        </div>
+                        <div class="form-check form-switch" style="font-size: 2rem;">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                id="consulta-service-toggle" 
+                                role="switch"
+                                checked
+                                aria-label="Activar o desactivar servicio de consulta">
+                            <label class="form-check-label visually-hidden" for="consulta-service-toggle">
+                                Servicio de Consulta
+                            </label>
+                        </div>
+                    </div>
+                    <div id="consulta-service-status" class="mt-3">
+                        <span class="badge bg-success">
+                            <i class="fas fa-check-circle"></i> Servicio Activo
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
         <!-- Cambiar correo electrónico -->
         <div class="col-lg-6">
             <div class="card config-card">
@@ -353,6 +401,33 @@
         </div>
     </div>
 </main>
+
+<!-- Modal de confirmación para desactivar servicio -->
+<div class="modal fade" id="confirmToggleModal" tabindex="-1" aria-labelledby="confirmToggleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmToggleModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    Confirmar acción
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="modal-body-content">
+                <!-- El contenido cambiará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="confirm-toggle-action">
+                    <i class="fas fa-check"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -360,6 +435,226 @@
 document.addEventListener('DOMContentLoaded', function() {
     const userId = {{ session.user.id }};
     
+    // ===== TOGGLE SERVICIO DE CONSULTA =====
+    const consultaToggle = document.getElementById('consulta-service-toggle');
+    const consultaStatus = document.getElementById('consulta-service-status');
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmToggleModal'));
+    const modalBodyContent = document.getElementById('modal-body-content');
+    const confirmActionBtn = document.getElementById('confirm-toggle-action');
+    
+    let pendingToggleState = null;
+    
+    // Cargar estado inicial del servicio
+    async function loadConsultaServiceStatus() {
+        try {
+            const response = await fetch('/api/auth/preferences/consulta-service', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const isEnabled = data.preferences?.consulta_service_enabled ?? true;
+                
+                consultaToggle.checked = isEnabled;
+                updateStatusBadge(isEnabled);
+            }
+        } catch (error) {
+            console.error('Error loading consulta service status:', error);
+            // Por defecto, mantener activo si hay error
+            consultaToggle.checked = true;
+            updateStatusBadge(true);
+        }
+    }
+    
+    // Actualizar badge de estado
+    function updateStatusBadge(isEnabled, containerInfo = null) {
+        let statusHtml = '';
+        
+        if (isEnabled) {
+            statusHtml = `
+                <span class="badge bg-success">
+                    <i class="fas fa-check-circle"></i> Servicio Activo
+                </span>
+            `;
+            
+            // Si tenemos info del contenedor, agregarla
+            if (containerInfo && containerInfo.container_status) {
+                const containerStatus = containerInfo.container_status;
+                if (containerStatus.success) {
+                    statusHtml += `
+                        <span class="badge bg-info ms-2">
+                            <i class="fas fa-docker"></i> Contenedor: ${containerStatus.action === 'started' ? 'Iniciado' : 'En ejecución'}
+                        </span>
+                    `;
+                }
+            }
+        } else {
+            statusHtml = `
+                <span class="badge bg-danger">
+                    <i class="fas fa-times-circle"></i> Servicio Desactivado
+                </span>
+            `;
+            
+            // Si tenemos info del contenedor, agregarla
+            if (containerInfo && containerInfo.container_status) {
+                const containerStatus = containerInfo.container_status;
+                if (containerStatus.success) {
+                    statusHtml += `
+                        <span class="badge bg-secondary ms-2">
+                            <i class="fas fa-docker"></i> Contenedor: ${containerStatus.action === 'stopped' ? 'Detenido' : 'Apagado'}
+                        </span>
+                    `;
+                } else if (containerStatus.message) {
+                    statusHtml += `
+                        <span class="badge bg-warning ms-2" title="${containerStatus.message}">
+                            <i class="fas fa-exclamation-triangle"></i> Contenedor: ${containerStatus.message}
+                        </span>
+                    `;
+                }
+            }
+        }
+        
+        consultaStatus.innerHTML = statusHtml;
+    }
+    
+    // Manejar cambio de toggle
+    consultaToggle.addEventListener('change', function(e) {
+        const newState = this.checked;
+        pendingToggleState = newState;
+        
+        // Revertir temporalmente el toggle hasta confirmar
+        this.checked = !newState;
+        
+        // Mostrar modal de confirmación con mensaje apropiado
+        if (newState) {
+            modalBodyContent.innerHTML = `
+                <p class="mb-3">
+                    <i class="fas fa-check-circle text-success fa-2x mb-2 d-block"></i>
+                    ¿Estás seguro de que deseas <strong>activar</strong> el servicio de consulta?
+                </p>
+                <div class="alert alert-success mb-0">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>✅ ATENCIÓN - Esta acción afecta a TODOS los usuarios:</strong>
+                    <ul class="mb-2 mt-2">
+                        <li><strong>Se activará el servicio para TODOS los usuarios conectados</strong></li>
+                        <li>Se iniciará el contenedor Docker del servicio de consulta</li>
+                        <li>Todos podrán consultar datos de personas desde "Personas" → "Consultar Datos"</li>
+                        <li>El servicio se registrará automáticamente en el service registry</li>
+                    </ul>
+                    <strong>Nota:</strong> Cualquier usuario puede desactivar el servicio desde su configuración.
+                </div>
+            `;
+            confirmActionBtn.className = 'btn btn-success';
+            confirmActionBtn.innerHTML = '<i class="fas fa-check"></i> Activar para Todos';
+        } else {
+            modalBodyContent.innerHTML = `
+                <p class="mb-3">
+                    <i class="fas fa-exclamation-triangle text-warning fa-2x mb-2 d-block"></i>
+                    ¿Estás seguro de que deseas <strong>desactivar</strong> el servicio de consulta?
+                </p>
+                <div class="alert alert-danger mb-0">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>⚠️ ATENCIÓN - Esta acción afecta a TODOS los usuarios:</strong>
+                    <ul class="mb-2 mt-2">
+                        <li><strong>Se desactivará el servicio para TODOS los usuarios conectados</strong></li>
+                        <li>Se detendrá el contenedor Docker del servicio de consulta</li>
+                        <li>La opción "Consultar Datos" se deshabilitará para todos</li>
+                        <li>El servicio se desregistrará del service registry</li>
+                    </ul>
+                    <strong>Nota:</strong> La función "Consulta IA" permanecerá activa ya que usa un servicio independiente.
+                    <br><br>
+                    Cualquier usuario puede reactivar el servicio desde su configuración.
+                </div>
+            `;
+            confirmActionBtn.className = 'btn btn-danger';
+            confirmActionBtn.innerHTML = '<i class="fas fa-power-off"></i> Desactivar para Todos';
+        }
+        
+        confirmModal.show();
+    });
+    
+    // Confirmar acción
+    confirmActionBtn.addEventListener('click', async function() {
+        if (pendingToggleState === null) return;
+        
+        try {
+            confirmActionBtn.disabled = true;
+            confirmActionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            
+            const response = await fetch('/api/auth/preferences/consulta-service', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    enabled: pendingToggleState
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                consultaToggle.checked = pendingToggleState;
+                updateStatusBadge(pendingToggleState, data);
+                
+                // Mensaje con información del contenedor
+                let message = data.message || `Servicio ${pendingToggleState ? 'activado' : 'desactivado'} correctamente`;
+                
+                // Si afectó a múltiples usuarios (tanto activar como desactivar)
+                if (data.affected_users) {
+                    if (pendingToggleState) {
+                        message = `Servicio activado para ${data.affected_users} usuario(s)`;
+                    } else {
+                        message = `Servicio desactivado para ${data.affected_users} usuario(s)`;
+                    }
+                }
+                
+                if (data.container_status) {
+                    if (data.container_status.success) {
+                        message += ` - Contenedor ${pendingToggleState ? 'iniciado' : 'detenido'}`;
+                    } else if (data.container_status.message) {
+                        message += ` - ${data.container_status.message}`;
+                    }
+                }
+                
+                window.showSuccess(message);
+                
+                // Recargar la página para actualizar el menú
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                window.showError(data.message || 'Error al cambiar el estado del servicio');
+                consultaToggle.checked = !pendingToggleState;
+            }
+            
+            confirmModal.hide();
+        } catch (error) {
+            console.error('Error:', error);
+            window.showError('Error de conexión al servidor');
+            consultaToggle.checked = !pendingToggleState;
+            confirmModal.hide();
+        } finally {
+            confirmActionBtn.disabled = false;
+            pendingToggleState = null;
+        }
+    });
+    
+    // Cancelar modal (restaurar estado del toggle)
+    document.getElementById('confirmToggleModal').addEventListener('hidden.bs.modal', function() {
+        if (pendingToggleState !== null) {
+            // Modal cerrado sin confirmar, no hacer nada (toggle ya está en estado correcto)
+            pendingToggleState = null;
+        }
+    });
+    
+    // Cargar estado inicial
+    loadConsultaServiceStatus();
+    
+    // ===== MOSTRAR/OCULTAR CONTRASEÑAS =====
     // Toggle visibility de contraseñas
     function setupPasswordToggle(buttonId, inputId) {
         const button = document.getElementById(buttonId);

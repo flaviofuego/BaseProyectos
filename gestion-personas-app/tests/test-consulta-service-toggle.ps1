@@ -195,3 +195,4 @@ Write-Host "  ✅ Restauración del acceso normal" -ForegroundColor Green
 
 Write-Host "`n🎉 El backend del control del servicio de consulta funciona correctamente!`n" -ForegroundColor Cyan
 
+

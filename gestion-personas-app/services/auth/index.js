@@ -156,12 +156,13 @@ app.get('/preferences',
   }
 );
 
-// Update consulta service status
+// Update consulta service status (con control de contenedor Docker)
 app.put('/preferences/consulta-service',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
     try {
       const userId = req.user.id;
+      const username = req.user.username || `User ${userId}`;
       const { enabled } = req.body;
 
       // Validate input
@@ -172,31 +173,148 @@ app.put('/preferences/consulta-service',
         });
       }
 
-      // Update or insert preferences
-      await pool.query(
-        `INSERT INTO user_preferences (user_id, consulta_service_enabled)
-         VALUES ($1, $2)
-         ON CONFLICT (user_id) 
-         DO UPDATE SET consulta_service_enabled = $2, updated_at = CURRENT_TIMESTAMP`,
-        [userId, enabled]
+      // Obtener estado anterior para saber qué cambió
+      const previousStateResult = await pool.query(
+        `SELECT consulta_service_enabled FROM user_preferences WHERE user_id = $1`,
+        [userId]
       );
+      const previousState = previousStateResult.rows[0]?.consulta_service_enabled ?? true;
 
-      // Invalidate cache
-      await invalidateUserPreferencesCache(userId);
+      console.log(`🔄 User ${userId} (${username}) changing service from ${previousState} to ${enabled}`);
 
-      // Log the change
-      logTransaction(userId, 'UPDATE_PREFERENCES', 'SUCCESS', req, {
-        preference: 'consulta_service_enabled',
-        new_value: enabled
-      });
+      // Control del contenedor Docker
+      let dockerResult = null;
+      const dockerController = require('./docker-controller');
 
-      res.json({
-        success: true,
-        message: `Servicio de consulta ${enabled ? 'habilitado' : 'deshabilitado'} correctamente`,
-        preferences: {
-          consulta_service_enabled: enabled
+      if (enabled) {
+        // ✅ ACTIVAR SERVICIO: Activar para TODOS y iniciar contenedor
+        console.log(`✅ User ${userId} (${username}) is ENABLING service - starting container and enabling for ALL users`);
+        dockerResult = await dockerController.startConsultaService();
+        
+        if (!dockerResult.success && !dockerResult.already_running) {
+          // Si falla al iniciar, NO guardar la preferencia
+          console.error(`❌ Failed to start container for user ${userId}:`, dockerResult.error);
+          
+          // Registrar en logs el intento fallido
+          logTransaction(userId, 'ENABLE_CONSULTA_SERVICE', 'ERROR', req, {
+            username: username,
+            enabled: true,
+            docker_action: 'start',
+            docker_result: 'failed',
+            error: dockerResult.error
+          }, dockerResult.error);
+          
+          return res.status(500).json({
+            success: false,
+            message: 'No se pudo iniciar el servicio de consulta. Revisa que Docker esté funcionando.',
+            error: dockerResult.error
+          });
         }
-      });
+
+        // Contenedor iniciado exitosamente o ya estaba corriendo
+        console.log(`✅ Container started/running for user ${userId} (${username})`);
+
+        // 1. Activar para TODOS los usuarios
+        const enableAllResult = await pool.query(
+          `UPDATE user_preferences 
+           SET consulta_service_enabled = TRUE, updated_at = CURRENT_TIMESTAMP
+           WHERE consulta_service_enabled = FALSE
+           RETURNING user_id`
+        );
+        
+        const affectedUsers = enableAllResult.rows.map(row => row.user_id);
+        console.log(`✅ Enabled service for ${affectedUsers.length} user(s): [${affectedUsers.join(', ')}]`);
+
+        // 2. Invalidar cache de todos los usuarios afectados
+        for (const affectedUserId of affectedUsers) {
+          await invalidateUserPreferencesCache(affectedUserId);
+        }
+
+        // 3. Registrar en logs la activación masiva
+        logTransaction(userId, 'ENABLE_CONSULTA_SERVICE', 'SUCCESS', req, {
+          username: username,
+          enabled: true,
+          docker_action: 'start',
+          docker_result: dockerResult?.success ? 'success' : 'already_running',
+          affected_users: affectedUsers,
+          total_affected: affectedUsers.length,
+          container_started: dockerResult?.success || dockerResult?.already_running,
+          message: `User ${username} enabled service for all users`
+        });
+
+        // Retornar respuesta para activación
+        return res.json({
+          success: true,
+          message: `Servicio de consulta habilitado para todos los usuarios`,
+          affected_users: affectedUsers.length,
+          preferences: {
+            consulta_service_enabled: true
+          },
+          container_status: dockerResult ? {
+            action: 'started',
+            success: dockerResult.success || dockerResult.already_running,
+            message: dockerResult.message
+          } : null
+        });
+
+      } else {
+        // ❌ DESACTIVAR SERVICIO: Desactivar para TODOS y detener contenedor
+        console.log(`🛑 User ${userId} (${username}) is DISABLING service - stopping container and disabling for ALL users`);
+        
+        // 1. Desactivar para TODOS los usuarios
+        const disableAllResult = await pool.query(
+          `UPDATE user_preferences 
+           SET consulta_service_enabled = FALSE, updated_at = CURRENT_TIMESTAMP
+           WHERE consulta_service_enabled = TRUE
+           RETURNING user_id`
+        );
+        
+        const affectedUsers = disableAllResult.rows.map(row => row.user_id);
+        console.log(`🛑 Disabled service for ${affectedUsers.length} user(s): [${affectedUsers.join(', ')}]`);
+
+        // 2. Invalidar cache de todos los usuarios afectados
+        for (const affectedUserId of affectedUsers) {
+          await invalidateUserPreferencesCache(affectedUserId);
+        }
+
+        // 3. Detener el contenedor Docker
+        console.log(`🛑 Stopping Docker container`);
+        dockerResult = await dockerController.stopConsultaService();
+        
+        if (!dockerResult.success && !dockerResult.already_stopped) {
+          console.warn(`⚠️ Failed to stop container, but preferences were updated:`, dockerResult.error);
+          // No revertir las preferencias, solo advertir
+        } else {
+          console.log(`✅ Container stopped successfully`);
+        }
+
+        // 4. Registrar en logs la desactivación masiva
+        logTransaction(userId, 'DISABLE_CONSULTA_SERVICE', 'SUCCESS', req, {
+          username: username,
+          enabled: false,
+          docker_action: 'stop',
+          docker_result: dockerResult?.success ? 'success' : 'failed',
+          affected_users: affectedUsers,
+          total_affected: affectedUsers.length,
+          container_stopped: dockerResult?.success || dockerResult?.already_stopped,
+          message: `User ${username} disabled service for all users`
+        });
+
+        // Retornar respuesta temprano para desactivación
+        return res.json({
+          success: true,
+          message: `Servicio de consulta deshabilitado para todos los usuarios`,
+          affected_users: affectedUsers.length,
+          preferences: {
+            consulta_service_enabled: false
+          },
+          container_status: dockerResult ? {
+            action: 'stopped',
+            success: dockerResult.success || dockerResult.already_stopped,
+            message: dockerResult.message
+          } : null
+        });
+      }
     } catch (error) {
       console.error('Error updating consulta service preference:', error);
       logTransaction(req.user.id, 'UPDATE_PREFERENCES', 'ERROR', req, null, error.message);
@@ -234,6 +352,36 @@ app.get('/preferences/consulta-service/check/:userId',
         enabled: true,
         user_id: req.params.userId,
         error: 'Error checking preferences, defaulting to enabled'
+      });
+    }
+  }
+);
+
+// Get Docker container status for consulta-service (admin/monitoring)
+app.get('/preferences/consulta-service/container-status',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    try {
+      const dockerController = require('./docker-controller');
+      const info = await dockerController.getContainerInfo();
+      
+      // También obtener cuántos usuarios tienen el servicio habilitado
+      const usersResult = await pool.query(
+        `SELECT COUNT(*) as count FROM user_preferences WHERE consulta_service_enabled = TRUE`
+      );
+      const usersWithService = parseInt(usersResult.rows[0].count);
+
+      res.json({
+        success: true,
+        container: info,
+        users_with_service_enabled: usersWithService
+      });
+    } catch (error) {
+      console.error('Error getting container status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error obteniendo estado del contenedor',
+        error: error.message
       });
     }
   }
@@ -610,12 +758,22 @@ app.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    passport.authenticate('local', { session: false }, (err, user, info) => {
+    passport.authenticate('local', { session: false }, async (err, user, info) => {
       if (err || !user) {
         return res.status(401).json({ error: info?.message || 'Authentication failed' });
       }
 
       const token = generateToken(user);
+      
+      // Get user preferences
+      let preferences = { consulta_service_enabled: true };
+      try {
+        const userPrefs = await getUserPreferences(user.id);
+        preferences.consulta_service_enabled = userPrefs.consulta_service_enabled;
+      } catch (error) {
+        console.error('Error loading user preferences on login:', error);
+        // Default to enabled on error
+      }
       
       // Log successful login
       logTransaction(user.id, 'LOGIN', 'SUCCESS', req);
@@ -625,7 +783,8 @@ app.post('/login', async (req, res, next) => {
         user: {
           id: user.id,
           username: user.username,
-          email: user.email
+          email: user.email,
+          consulta_service_enabled: preferences.consulta_service_enabled
         }
       });
     })(req, res, next);
