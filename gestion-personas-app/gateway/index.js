@@ -189,8 +189,53 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// Middleware para verificar si el servicio de consulta está habilitado para el usuario
+const checkConsultaServiceEnabled = async (req, res, next) => {
+  try {
+    // Solo aplicar a rutas del servicio de consulta (excepto health checks)
+    if (!req.path.startsWith('/api/consulta') || req.path === '/api/consulta/health') {
+      return next();
+    }
+
+    const userId = req.headers['x-user-id'];
+    
+    if (!userId) {
+      console.warn('No user ID found in request, allowing consulta service access');
+      return next();
+    }
+
+    console.log(`DEBUG: Checking consulta service status for user ${userId}`);
+
+    // Check with auth service
+    const authServiceUrl = await getServiceUrl('auth-service');
+    const checkResponse = await axios.get(
+      `${authServiceUrl}/preferences/consulta-service/check/${userId}`,
+      { timeout: 2000 }
+    );
+
+    if (checkResponse.data.enabled === false) {
+      console.log(`DEBUG: Consulta service is DISABLED for user ${userId}`);
+      return res.status(403).json({ 
+        error: 'Servicio de consulta deshabilitado',
+        message: 'El servicio de consulta está deshabilitado para tu usuario. Puedes habilitarlo desde la configuración de tu cuenta.',
+        service_disabled: true
+      });
+    }
+
+    console.log(`DEBUG: Consulta service is ENABLED for user ${userId}`);
+    next();
+  } catch (error) {
+    console.error('Error checking consulta service status:', error.message);
+    // En caso de error, permitir acceso por defecto (fail-open para no romper funcionalidad)
+    next();
+  }
+};
+
 console.log('Configuring auth middleware...');
 app.use(authMiddleware);
+
+console.log('Configuring consulta service check middleware...');
+app.use(checkConsultaServiceEnabled);
 
 // Dynamic Proxy Creator
 function createDynamicProxy(serviceName, pathRewrite = {}) {
