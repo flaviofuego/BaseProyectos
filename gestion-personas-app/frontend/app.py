@@ -161,9 +161,12 @@ def login():
                     'password': password
                 })
                 
+                app.logger.info(f"DEBUG: Auth service response - status: {response.status_code if response else 'None'}")
+                
                 if response and response.status_code == 200:
                     try:
                         data = response.json()
+                        app.logger.info(f"DEBUG: Login successful - user: {data.get('user', {}).get('username')}")
                         session['authenticated'] = True
                         session['token'] = data['token']
                         session['user'] = data['user']
@@ -173,41 +176,16 @@ def login():
                         app.logger.error(f"Error processing login response: {e}")
                         flash(f'Error procesando respuesta del servidor: {e}', 'error')
                 else:
+                    app.logger.info(f"DEBUG: Login failed - status: {response.status_code if response else 'None'}")
                     if response:
                         try:
-                            error_text = response.text
-                            flash(f'Error del servidor: {error_text}', 'error')
+                            error_data = response.json()
+                            app.logger.info(f"DEBUG: Error data: {error_data}")
+                            flash(f'Error: {error_data.get("message", error_data.get("error", "Error desconocido"))}', 'error')
                         except:
-                            flash('Error desconocido del servidor', 'error')
+                            flash('Credenciales inválidas', 'error')
                     else:
                         flash('Error de conexión con el servidor', 'error')
-                    flash(f'DEBUG: Login falló - status: {response.status_code if response else "None"}', 'warning')
-                    # Fallback para admin en caso de emergencia
-                    if username == 'admin' and password == 'admin123':
-                        session['authenticated'] = True
-                        session['token'] = 'temp-admin-token'
-                        session['user'] = {
-                            'id': 1,
-                            'username': 'admin',
-                            'email': 'admin@example.com'
-                        }
-                        flash('✅ Inicio de sesión exitoso (modo de emergencia)', 'warning')
-                        return redirect(url_for('dashboard'))
-                    # Fallback for other test users
-                    elif username and password and len(username) >= 3:
-                        # Generate consistent user ID from username
-                        user_id = abs(hash(username)) % 1000 + 10  # ID between 10-1009
-                        session['authenticated'] = True
-                        session['token'] = f'temp-{username}-token'
-                        session['user'] = {
-                            'id': user_id,
-                            'username': username,
-                            'email': f'{username}@example.com'
-                        }
-                        flash(f'✅ Inicio de sesión exitoso (modo de desarrollo - usuario: {username})', 'info')
-                        return redirect(url_for('dashboard'))
-                    else:
-                        flash('Credenciales inválidas o error de conexión', 'error')
             else:
                 flash('Por favor, completa todos los campos', 'warning')
         
@@ -224,12 +202,12 @@ def login():
 @app.route('/quick-login')
 def quick_login():
     """Login rápido para desarrollo"""
-    # Create a different user ID for development to test logging
-    dev_user_id = 999  # Special ID for development
+    # Use admin user (id=1) for development testing
+    dev_user_id = 1  # Admin user
     session['authenticated'] = True
     session['token'] = 'temp-dev-user-token'
-    session['user'] = {'id': dev_user_id, 'username': 'dev-user', 'role': 'user'}
-    flash('Login rápido activado (usuario de desarrollo)', 'success')
+    session['user'] = {'id': dev_user_id, 'username': 'admin', 'role': 'admin'}
+    flash('Login rápido activado (usuario: admin)', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -313,7 +291,7 @@ def cambiar_email():
         data['user_id'] = session.get('user', {}).get('id')
         
         # Llamar al servicio de autenticación
-        response = make_request('POST', '/api/auth/cambiar-email', json_data=data)
+        response = make_request('POST', '/api/auth/cambiar-email', data=data)
         
         if response and response.status_code == 200:
             # Actualizar el email en la sesión
@@ -340,7 +318,7 @@ def cambiar_password():
         data['user_id'] = session.get('user', {}).get('id')
         
         # Llamar al servicio de autenticación
-        response = make_request('POST', '/api/auth/cambiar-password', json_data=data)
+        response = make_request('POST', '/api/auth/cambiar-password', data=data)
         
         if response and response.status_code == 200:
             return jsonify(response.json()), 200

@@ -151,8 +151,8 @@ const authMiddleware = async (req, res, next) => {
       req.headers['x-user-id'] = '1'; // ID fijo para admin
       console.log('DEBUG: Set user_id to 1 for temp-admin-token');
     } else if (token === 'temp-dev-user-token') {
-      req.headers['x-user-id'] = '999'; // ID específico para dev-user
-      console.log('DEBUG: Set user_id to 999 for temp-dev-user-token');
+      req.headers['x-user-id'] = '1'; // ID del usuario admin para desarrollo
+      console.log('DEBUG: Set user_id to 1 for temp-dev-user-token');
     } else if (token.includes('-')) {
       // Extraer username del token y generar ID consistente
       const username = token.replace('temp-', '').replace('-token', '');
