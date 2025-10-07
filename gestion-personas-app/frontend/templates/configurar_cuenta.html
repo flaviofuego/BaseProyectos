@@ -538,17 +538,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    window.showSuccess(data.message || 'Contraseña actualizada correctamente');
+                    window.showSuccess(data.message || 'Contraseña actualizada correctamente. Redirigiendo al login...');
                     
-                    // Limpiar formulario
-                    formCambiarPassword.reset();
-                    passwordStrength.className = 'password-strength';
-                    passwordStrengthText.textContent = '';
-                    
-                    // Quitar clases 'valid' de los requisitos
-                    document.querySelectorAll('.password-requirements li').forEach(li => {
-                        li.classList.remove('valid');
-                    });
+                    // Esperar 2 segundos para que el usuario vea el mensaje
+                    setTimeout(() => {
+                        // Cerrar sesión y redirigir al login
+                        window.location.href = '/logout';
+                    }, 2000);
                 } else {
                     window.showError(data.message || 'Error al cambiar la contraseña');
                 }

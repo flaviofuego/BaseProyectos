@@ -243,6 +243,39 @@ app.get('/preferences/consulta-service/check/:userId',
 // ACCOUNT MANAGEMENT ENDPOINTS
 // ============================================================================
 
+// Middleware de autenticación flexible: acepta JWT o x-user-id del gateway
+const flexibleAuth = async (req, res, next) => {
+  // Si viene el header x-user-id del gateway, usar ese usuario
+  if (req.headers['x-user-id']) {
+    try {
+      const userId = parseInt(req.headers['x-user-id']);
+      const userQuery = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      
+      if (userQuery.rows.length === 0) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+      
+      req.user = userQuery.rows[0];
+      return next();
+    } catch (error) {
+      console.error('Error loading user from x-user-id:', error);
+      return res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  }
+  
+  // Si no, intentar autenticación JWT tradicional
+  passport.authenticate('jwt', { session: false }, (err, user, info) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error de autenticación' });
+    }
+    if (!user) {
+      return res.status(401).json({ message: 'No autorizado' });
+    }
+    req.user = user;
+    next();
+  })(req, res, next);
+};
+
 // Auth0 logout
 app.get('/logout/auth0', (req, res) => {
   if (!process.env.AUTH0_DOMAIN) {
@@ -258,7 +291,7 @@ app.get('/logout/auth0', (req, res) => {
 
 // Cambiar correo electrónico
 app.post('/cambiar-email',
-  passport.authenticate('jwt', { session: false }),
+  flexibleAuth,
   async (req, res) => {
     try {
       const { nuevo_email, password_confirm, user_id } = req.body;
@@ -346,7 +379,7 @@ app.post('/cambiar-email',
 
 // Cambiar contraseña
 app.post('/cambiar-password',
-  passport.authenticate('jwt', { session: false }),
+  flexibleAuth,
   async (req, res) => {
     try {
       const { password_actual, password_nueva, user_id } = req.body;
