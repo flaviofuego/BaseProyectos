@@ -77,9 +77,9 @@ def make_request(method, endpoint, data=None, files=None, params=None, timeout_s
 
     url = f"{API_BASE_URL}{endpoint}"
     
-    print(f"DEBUG: Making {method} request to {url}")
+    app.logger.info(f"DEBUG: Making {method} request to {url}")
     if data and not files:
-        print(f"DEBUG: Request data: {data}")
+        app.logger.info(f"DEBUG: Request data: {data}")
 
     try:
         if method == 'GET':
@@ -99,27 +99,27 @@ def make_request(method, endpoint, data=None, files=None, params=None, timeout_s
         elif method == 'DELETE':
             response = requests.delete(url, headers=headers, timeout=timeout_seconds)
         else:
-            print(f"DEBUG: Unsupported method: {method}")
+            app.logger.info(f"DEBUG: Unsupported method: {method}")
             return None
 
-        print(f"DEBUG: Response status: {response.status_code}")
+        app.logger.info(f"DEBUG: Response status: {response.status_code}")
         if response.status_code >= 400:
-            print(f"DEBUG: Response error content: {response.text}")
+            app.logger.info(f"DEBUG: Response error content: {response.text}")
         else:
-            print(f"DEBUG: Response success")
+            app.logger.info(f"DEBUG: Response success")
         
         return response
     except requests.exceptions.ConnectionError as e:
-        print(f"DEBUG: Connection error: {e}")
+        app.logger.error(f"DEBUG: Connection error: {e}")
         return None
     except requests.exceptions.Timeout as e:
-        print(f"DEBUG: Timeout error: {e}")
+        app.logger.error(f"DEBUG: Timeout error: {e}")
         return None
     except requests.exceptions.ReadTimeout as e:
-        print(f"DEBUG: Read timeout error: {e}")
+        app.logger.error(f"DEBUG: Read timeout error: {e}")
         return None
     except Exception as e:
-        print(f"DEBUG: Unexpected error: {e}")
+        app.logger.error(f"DEBUG: Unexpected error: {e}")
         return None
 
 def login_required(f):
@@ -161,9 +161,10 @@ def login():
                     'password': password
                 })
                 
-                app.logger.info(f"DEBUG: Auth service response - status: {response.status_code if response else 'None'}")
+                app.logger.info(f"DEBUG: Returned from make_request - response type: {type(response)}, value: {response}")
+                app.logger.info(f"DEBUG: Auth service response - status: {response.status_code if response is not None else 'None'}")
                 
-                if response and response.status_code == 200:
+                if response is not None and response.status_code == 200:
                     try:
                         data = response.json()
                         app.logger.info(f"DEBUG: Login successful - user: {data.get('user', {}).get('username')}")
@@ -174,18 +175,33 @@ def login():
                         return redirect(url_for('dashboard'))
                     except Exception as e:
                         app.logger.error(f"Error processing login response: {e}")
-                        flash(f'Error procesando respuesta del servidor: {e}', 'error')
+                        flash('Error al procesar la respuesta del servidor. Por favor, intenta nuevamente.', 'error')
                 else:
-                    app.logger.info(f"DEBUG: Login failed - status: {response.status_code if response else 'None'}")
-                    if response:
-                        try:
-                            error_data = response.json()
-                            app.logger.info(f"DEBUG: Error data: {error_data}")
-                            flash(f'Error: {error_data.get("message", error_data.get("error", "Error desconocido"))}', 'error')
-                        except:
-                            flash('Credenciales inválidas', 'error')
+                    app.logger.info(f"DEBUG: Login failed - status: {response.status_code if response is not None else 'None'}")
+                    if response is not None:
+                        if response.status_code == 401:
+                            # Error de autenticación (credenciales incorrectas)
+                            try:
+                                error_data = response.json()
+                                error_msg = error_data.get('error', error_data.get('message', ''))
+                                if 'password' in error_msg.lower() or 'contraseña' in error_msg.lower():
+                                    flash('Contraseña incorrecta. Por favor, verifica tus credenciales.', 'error')
+                                elif 'user' in error_msg.lower() or 'usuario' in error_msg.lower():
+                                    flash('Usuario no encontrado. Por favor, verifica el nombre de usuario.', 'error')
+                                else:
+                                    flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+                            except:
+                                flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+                        elif response.status_code == 500:
+                            flash('Error en el servidor. Por favor, intenta nuevamente en unos momentos.', 'error')
+                        else:
+                            try:
+                                error_data = response.json()
+                                flash(f'Error: {error_data.get("message", error_data.get("error", "Error desconocido"))}', 'error')
+                            except:
+                                flash('Ocurrió un error inesperado. Por favor, intenta nuevamente.', 'error')
                     else:
-                        flash('Error de conexión con el servidor', 'error')
+                        flash('No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente.', 'error')
             else:
                 flash('Por favor, completa todos los campos', 'warning')
         

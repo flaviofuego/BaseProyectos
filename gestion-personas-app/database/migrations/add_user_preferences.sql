@@ -26,3 +26,4 @@ ON CONFLICT (user_id) DO NOTHING;
 COMMENT ON TABLE user_preferences IS 'Almacena las preferencias de configuración de cada usuario';
 COMMENT ON COLUMN user_preferences.consulta_service_enabled IS 'Indica si el servicio de consulta está habilitado para el usuario (TRUE por defecto)';
 
+

@@ -153,11 +153,48 @@ if response and response.status_code == 200:
 
 ---
 
+### 8. **Mensajes de Error Mejorados en Login**
+
+**Problema:** Los mensajes de error eran genéricos y poco informativos para el usuario.
+
+**Solución:** Implementados mensajes específicos y amigables según el tipo de error.
+
+**Archivo:** `frontend/app.py`
+
+**Mensajes mejorados:**
+- **Contraseña incorrecta:** "Contraseña incorrecta. Por favor, verifica tus credenciales."
+- **Usuario inexistente:** "Usuario no encontrado. Por favor, verifica el nombre de usuario."
+- **Error 401 genérico:** "Credenciales inválidas. Verifica tu usuario y contraseña."
+- **Error 500:** "Error en el servidor. Por favor, intenta nuevamente en unos momentos."
+- **Sin conexión:** "No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente."
+- **Error de procesamiento:** "Error al procesar la respuesta del servidor. Por favor, intenta nuevamente."
+
+**Código implementado:**
+```python
+if response.status_code == 401:
+    # Error de autenticación (credenciales incorrectas)
+    try:
+        error_data = response.json()
+        error_msg = error_data.get('error', error_data.get('message', ''))
+        if 'password' in error_msg.lower() or 'contraseña' in error_msg.lower():
+            flash('Contraseña incorrecta. Por favor, verifica tus credenciales.', 'error')
+        elif 'user' in error_msg.lower() or 'usuario' in error_msg.lower():
+            flash('Usuario no encontrado. Por favor, verifica el nombre de usuario.', 'error')
+        else:
+            flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+    except:
+        flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+elif response.status_code == 500:
+    flash('Error en el servidor. Por favor, intenta nuevamente en unos momentos.', 'error')
+```
+
+---
+
 ## 🔐 Credenciales Actuales
 
 ### Usuario Admin:
 - **Username:** `admin`
-- **Password:** `NuevaPassword123!!`
+- **Password:** `NuevaPassword456!!`
 - **ID:** `1`
 - **Email:** `admin@example.com`
 

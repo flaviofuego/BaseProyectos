@@ -326,3 +326,4 @@ Los siguientes eventos se registran en el log de transacciones:
 
 Puedes consultar estos logs en `/logs` del panel de administración.
 
+
