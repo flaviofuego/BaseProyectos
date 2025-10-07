@@ -822,6 +822,13 @@ def consultar_personas():
         
         if response is not None and response.status_code == 200:
             personas = [response.json()]
+        elif response is not None and response.status_code == 403:
+            # Service is disabled
+            try:
+                error_data = response.json()
+                flash(error_data.get('message', 'El servicio de consulta está deshabilitado. Puedes habilitarlo desde la configuración de tu cuenta.'), 'warning')
+            except:
+                flash('El servicio de consulta está deshabilitado. Puedes habilitarlo desde la configuración de tu cuenta.', 'warning')
         elif response is not None and response.status_code == 404:
             flash('Persona no encontrada', 'error')
         elif response is not None:
@@ -874,6 +881,13 @@ def consultar_personas():
                 flash(f'Se encontraron {total_results} personas (mostrando {len(personas)})', 'success')
             else:
                 flash('No se encontraron personas con los criterios especificados', 'info')
+        elif response is not None and response.status_code == 403:
+            # Service is disabled
+            try:
+                error_data = response.json()
+                flash(error_data.get('message', 'El servicio de consulta está deshabilitado. Puedes habilitarlo desde la configuración de tu cuenta.'), 'warning')
+            except:
+                flash('El servicio de consulta está deshabilitado. Puedes habilitarlo desde la configuración de tu cuenta.', 'warning')
     
     return render_template('consultar_personas.html', personas=personas)
 
