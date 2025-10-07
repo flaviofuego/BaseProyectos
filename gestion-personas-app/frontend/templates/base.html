@@ -57,10 +57,17 @@
                                 <i class="fas fa-edit" aria-hidden="true"></i> 
                                 <span>Modificar Datos</span>
                             </a></li>
+                            {% if session.user.consulta_service_enabled|default(true) %}
                             <li><a class="dropdown-item" href="{{ url_for('consultar_personas') }}">
                                 <i class="fas fa-search" aria-hidden="true"></i> 
                                 <span>Consultar Datos</span>
                             </a></li>
+                            {% else %}
+                            <li><a class="dropdown-item disabled" href="#" tabindex="-1" aria-disabled="true" title="Servicio desactivado">
+                                <i class="fas fa-search text-muted" aria-hidden="true"></i> 
+                                <span class="text-muted">Consultar Datos (Desactivado)</span>
+                            </a></li>
+                            {% endif %}
                             <li><a class="dropdown-item" href="{{ url_for('borrar_persona') }}">
                                 <i class="fas fa-trash" aria-hidden="true"></i> 
                                 <span>Borrar Persona</span>

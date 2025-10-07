@@ -246,17 +246,17 @@ def register():
                 'password': password
             })
             
-            if response and response.status_code == 201:
+            if response is not None and response.status_code == 201:
                 data = response.json()
                 session['authenticated'] = True
                 session['token'] = data['token']
                 session['user'] = data['user']
                 flash('Registro exitoso', 'success')
                 return redirect(url_for('dashboard'))
-            elif response and response.status_code == 409:
+            elif response is not None and response.status_code == 409:
                 flash('Usuario o email ya existe', 'error')
             else:
-                # Solo como Ãºltimo recurso, crear usuario temporal
+                # Solo como ultimo recurso, crear usuario temporal
                 if len(username) >= 3 and '@' in email and len(password) >= 6:
                     flash('Error de conexiÃ³n con el servidor. Usando modo temporal.', 'warning')
                     session['authenticated'] = True
@@ -277,6 +277,15 @@ def register():
 @app.route('/logout')
 @login_required
 def logout():
+    # Antes de cerrar sesión, reactivar el servicio de consulta
+    try:
+        make_request('PUT', '/api/auth/preferences/consulta-service', {
+            'enabled': True
+        })
+    except Exception as e:
+        # No bloquear el logout si falla la reactivación
+        print(f"Error al reactivar servicio de consulta en logout: {e}")
+    
     # Call logout endpoint
     make_request('POST', '/api/auth/logout')
     
@@ -309,15 +318,15 @@ def cambiar_email():
         # Llamar al servicio de autenticación
         response = make_request('POST', '/api/auth/cambiar-email', data=data)
         
-        if response and response.status_code == 200:
+        if response is not None and response.status_code == 200:
             # Actualizar el email en la sesión
             if 'user' in session:
                 session['user']['email'] = data['nuevo_email']
                 session.modified = True
             return jsonify(response.json()), 200
         else:
-            error_data = response.json() if response else {'message': 'Error de conexión'}
-            return jsonify(error_data), response.status_code if response else 500
+            error_data = response.json() if response is not None else {'message': 'Error de conexión'}
+            return jsonify(error_data), response.status_code if response is not None else 500
             
     except Exception as e:
         print(f"Error al cambiar correo electrónico: {str(e)}")
@@ -336,14 +345,57 @@ def cambiar_password():
         # Llamar al servicio de autenticación
         response = make_request('POST', '/api/auth/cambiar-password', data=data)
         
-        if response and response.status_code == 200:
+        if response is not None and response.status_code == 200:
             return jsonify(response.json()), 200
         else:
-            error_data = response.json() if response else {'message': 'Error de conexión'}
-            return jsonify(error_data), response.status_code if response else 500
+            error_data = response.json() if response is not None else {'message': 'Error de conexión'}
+            return jsonify(error_data), response.status_code if response is not None else 500
             
     except Exception as e:
         print(f"Error al cambiar contraseña: {str(e)}")
+        return jsonify({'message': 'Error interno del servidor'}), 500
+
+@app.route('/api/auth/preferences/consulta-service', methods=['GET', 'PUT'])
+@login_required
+def consulta_service_preferences():
+    """Endpoint para obtener o actualizar preferencias del servicio de consulta"""
+    try:
+        if request.method == 'GET':
+            # Obtener preferencias actuales
+            response = make_request('GET', '/api/auth/preferences')
+            
+            if response is not None and response.status_code == 200:
+                return jsonify(response.json()), 200
+            else:
+                # Si hay error, retornar estado por defecto (habilitado)
+                return jsonify({
+                    'success': True,
+                    'preferences': {
+                        'consulta_service_enabled': True
+                    }
+                }), 200
+        
+        elif request.method == 'PUT':
+            # Actualizar preferencia
+            data = request.get_json()
+            
+            response = make_request('PUT', '/api/auth/preferences/consulta-service', data=data)
+            
+            if response is not None and response.status_code == 200:
+                # Actualizar la sesión con el nuevo estado
+                response_data = response.json()
+                if 'user' not in session:
+                    session['user'] = {}
+                session['user']['consulta_service_enabled'] = data.get('enabled', True)
+                session.modified = True
+                
+                return jsonify(response_data), 200
+            else:
+                error_data = response.json() if response is not None else {'message': 'Error de conexión'}
+                return jsonify(error_data), response.status_code if response is not None else 500
+    
+    except Exception as e:
+        print(f"Error en preferencias de servicio de consulta: {str(e)}")
         return jsonify({'message': 'Error interno del servidor'}), 500
 
 @app.route('/dashboard')
@@ -353,7 +405,7 @@ def dashboard():
     response = make_request('GET', '/api/consulta/stats')
 
     stats = {}
-    if response and response.status_code == 200:
+    if response is not None and response.status_code == 200:
         stats = response.json()
     else:
         # No bloquear: renderizar sin datos y mostrar aviso suave en la UI
@@ -370,14 +422,14 @@ def dashboard_stats_api():
         # Llamar directamente al endpoint específico del dashboard
         response = make_request('GET', '/api/consulta/dashboard/stats', timeout_seconds=3.0)
         
-        if response and response.status_code == 200:
+        if response is not None and response.status_code == 200:
             stats_data = response.json()
             # Agregar timestamp para debugging
             stats_data['_frontend_timestamp'] = datetime.now().isoformat()
             return jsonify(stats_data)
         else:
             # Responder con error más específico
-            error_msg = f"Backend error: {response.status_code if response else 'No response'}"
+            error_msg = f"Backend error: {response.status_code if response is not None else 'No response'}"
             return jsonify({
                 'error': error_msg,
                 '_frontend_timestamp': datetime.now().isoformat()
@@ -399,7 +451,7 @@ def force_dashboard_refresh():
         # Obtener nuevas estadísticas
         response = make_request('GET', '/api/consulta/dashboard/stats', timeout_seconds=3.0)
         
-        if response and response.status_code == 200:
+        if response is not None and response.status_code == 200:
             stats_data = response.json()
             stats_data['_forced_refresh'] = True
             stats_data['_frontend_timestamp'] = datetime.now().isoformat()
@@ -584,7 +636,7 @@ def check_persona_exists(numero_documento):
     """Check if a persona with the given document number exists"""
     try:
         response = make_request('GET', f'/api/personas/{numero_documento}')
-        if response:
+        if response is not None:
             if response.status_code == 200:
                 # Persona exists
                 return jsonify({'exists': True, 'message': 'Persona encontrada'}), 200
@@ -618,13 +670,15 @@ def modificar_persona():
         if numero_documento and not force_clean:
             response = make_request('GET', f'/api/personas/{numero_documento}')
             
-            if response and response.status_code == 200:
+            if response is not None and response.status_code == 200:
                 persona = response.json()
                 session['persona_to_modify'] = persona
-            elif response and response.status_code == 404:
-                flash('Persona no encontrada', 'error')
+            elif response is not None and response.status_code == 404:
+                flash(f'❌ No se encontró una persona con el documento: {numero_documento}', 'error')
+            elif response is not None:
+                flash(f'❌ Error al buscar la persona (Código: {response.status_code})', 'error')
             else:
-                flash('Error al buscar la persona', 'error')
+                flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
         elif 'persona_to_modify' in session and not force_clean:
             persona = session['persona_to_modify']
     
@@ -644,18 +698,20 @@ def modificar_persona():
             if numero_documento:
                 response = make_request('GET', f'/api/personas/{numero_documento}')
                 
-                if response and response.status_code == 200:
+                if response is not None and response.status_code == 200:
                     persona = response.json()
                     session['persona_to_modify'] = persona
                     flash(f'✅ Persona encontrada: {persona.get("primer_nombre", "")} {persona.get("apellidos", "")}', 'success')
-                elif response and response.status_code == 404:
+                elif response is not None and response.status_code == 404:
                     flash(f'❌ No se encontró una persona con el documento: {numero_documento}', 'error')
-                elif response and response.status_code == 400:
+                elif response is not None and response.status_code == 400:
                     flash('❌ Número de documento inválido. Verifique el formato.', 'error')
-                elif response and response.status_code == 500:
+                elif response is not None and response.status_code == 500:
                     flash('❌ Error interno del servidor. Intente nuevamente más tarde.', 'error')
+                elif response is not None:
+                    flash(f'❌ Error al buscar la persona (Código: {response.status_code})', 'error')
                 else:
-                    flash(f'❌ Error al buscar la persona (Código: {response.status_code if response else "Sin respuesta"})', 'error')
+                    flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
             else:
                 flash('❌ Debe ingresar un número de documento para buscar', 'error')
         
@@ -691,7 +747,7 @@ def modificar_persona():
             response = make_request('PUT', f'/api/personas/{persona["numero_documento"]}', 
                                   data=data, files=files)
             
-            if response:
+            if response is not None:
                 if response.status_code == 200:
                     # Invalidar cache de estadísticas después de modificar
                     invalidate_stats_cache()
@@ -764,12 +820,14 @@ def consultar_personas():
         # Individual search
         response = make_request('GET', f'/api/consulta/persona/{numero_documento}')
         
-        if response and response.status_code == 200:
+        if response is not None and response.status_code == 200:
             personas = [response.json()]
-        elif response and response.status_code == 404:
+        elif response is not None and response.status_code == 404:
             flash('Persona no encontrada', 'error')
+        elif response is not None:
+            flash(f'Error al buscar la persona (Código: {response.status_code})', 'error')
         else:
-            flash('Error al buscar la persona', 'error')
+            flash('Error de conexión: No se pudo contactar con el servidor', 'error')
     
     elif any([tipo_documento, genero, edad_min, edad_max]):
         # Advanced search
@@ -804,9 +862,9 @@ def consultar_personas():
         
         app.logger.info(f"DEBUG: Enviando solicitud a /api/consulta/search con params: {params}")
         response = make_request('GET', '/api/consulta/search', params=params)
-        app.logger.info(f"DEBUG: Respuesta recibida - status: {response.status_code if response else 'None'}")
+        app.logger.info(f"DEBUG: Respuesta recibida - status: {response.status_code if response is not None else 'None'}")
         
-        if response and response.status_code == 200:
+        if response is not None and response.status_code == 200:
             data = response.json()
             personas = data.get('personas', [])
             pagination = data.get('pagination', {})
@@ -830,11 +888,13 @@ def consulta_nlp():
         if pregunta:
             response = make_request('POST', '/api/nlp/query', {'pregunta': pregunta})
             
-            if response and response.status_code == 200:
+            if response is not None and response.status_code == 200:
                 resultado = response.json()
                 flash('Consulta procesada exitosamente', 'success')
+            elif response is not None:
+                flash(f'Error al procesar la pregunta (Código: {response.status_code}). Verifica que el servicio de NLP esté configurado correctamente.', 'error')
             else:
-                flash('Error al procesar la pregunta. Verifica que el servicio de NLP estÃ© configurado correctamente con tu API key de Gemini.', 'error')
+                flash('Error de conexión: No se pudo contactar con el servicio de NLP. Verifica tu conexión.', 'error')
         else:
             flash('Por favor, escribe una pregunta', 'warning')
     
@@ -853,27 +913,31 @@ def borrar_persona():
             if numero_documento:
                 response = make_request('GET', f'/api/personas/{numero_documento}')
                 
-                if response and response.status_code == 200:
+                if response is not None and response.status_code == 200:
                     persona = response.json()
                     session['persona_to_delete'] = persona
-                elif response and response.status_code == 404:
-                    flash('Persona no encontrada', 'error')
+                elif response is not None and response.status_code == 404:
+                    flash('❌ No se encontró una persona con el documento: {numero_documento}', 'error')
+                elif response is not None:
+                    flash(f'❌ Error al buscar la persona (Código: {response.status_code})', 'error')
                 else:
-                    flash('Error al buscar la persona', 'error')
+                    flash('❌ Error de conexión: No se pudo contactar con el servidor', 'error')
         
         elif action == 'eliminar':
             persona = session.get('persona_to_delete')
             if persona and request.form.get('confirm') == 'true':
                 response = make_request('DELETE', f'/api/personas/{persona["numero_documento"]}')
                 
-                if response and response.status_code == 200:
+                if response is not None and response.status_code == 200:
                     # Invalidar cache de estadísticas después de eliminar
                     invalidate_stats_cache()
-                    flash('âœ… Persona eliminada exitosamente', 'success')
+                    flash('✅ Persona eliminada exitosamente', 'success')
                     session.pop('persona_to_delete', None)
                     return redirect(url_for('dashboard'))
+                elif response is not None:
+                    flash(f'❌ Error al eliminar la persona (Código: {response.status_code})', 'error')
                 else:
-                    flash('Error al eliminar la persona', 'error')
+                    flash('❌ Error de conexión: No se pudo contactar con el servidor', 'error')
             else:
                 flash('Debe confirmar la eliminaciÃ³n', 'warning')
     
@@ -944,9 +1008,9 @@ def consultar_logs_test():
             app.logger.info(f"Making request to /api/logs/search with params: {params}")
             response = make_request('GET', '/api/logs/search', params=params)
             
-            app.logger.info(f"Response status code: {response.status_code if response else 'No response'}")
+            app.logger.info(f"Response status code: {response.status_code if response is not None else 'No response'}")
             
-            if response and response.status_code == 200:
+            if response is not None and response.status_code == 200:
                 data = response.json()
                 app.logger.info(f"Response data keys: {list(data.keys())}")
                 logs = data.get('logs', [])
@@ -1054,9 +1118,9 @@ def consultar_logs():
             app.logger.info(f"Making request to /api/logs/search with params: {params}")
             response = make_request('GET', '/api/logs/search', params=params)
             
-            app.logger.info(f"Response status code: {response.status_code if response else 'No response'}")
+            app.logger.info(f"Response status code: {response.status_code if response is not None else 'No response'}")
             
-            if response and response.status_code == 200:
+            if response is not None and response.status_code == 200:
                 data = response.json()
                 app.logger.info(f"Response data keys: {list(data.keys())}")
                 logs = data.get('logs', [])
@@ -1096,7 +1160,7 @@ def consultar_logs():
                     pass
             else:
                 # Error al buscar logs - no mostrar notificación al usuario
-                app.logger.error(f"Error searching logs: {response.status_code if response else 'No response'}")
+                app.logger.error(f"Error searching logs: {response.status_code if response is not None else 'No response'}")
         
         if show_stats:
             # Get statistics
@@ -1113,7 +1177,7 @@ def consultar_logs():
             app.logger.info(f"Making request to /api/logs/stats with params: {params}")
             response = make_request('GET', '/api/logs/stats', params=params)
             
-            if response and response.status_code == 200:
+            if response is not None and response.status_code == 200:
                 api_stats = response.json()
                 
                 # Map API response to template expected structure
@@ -1137,7 +1201,7 @@ def consultar_logs():
                         
             else:
                 # Error al obtener estadísticas - no mostrar notificación al usuario
-                app.logger.error(f"Error getting stats: {response.status_code if response else 'No response'}")
+                app.logger.error(f"Error getting stats: {response.status_code if response is not None else 'No response'}")
     
     except Exception as e:
         app.logger.error(f"Error in consultar_logs: {str(e)}")
@@ -1152,7 +1216,7 @@ def get_chart_data(chart_type):
     """API endpoint to generate chart data for dashboard"""
     response = make_request('GET', '/api/consulta/stats')
     
-    if not response or response.status_code != 200:
+    if response is None or response.status_code != 200:
         return jsonify({'error': 'No data available'}), 404
     
     stats = response.json()
@@ -1224,7 +1288,7 @@ def auth_callback():
         else:
             session.pop('token', None)
         
-        if response and response.status_code == 200:
+        if response is not None and response.status_code == 200:
             user_data = response.json()
             session['authenticated'] = True
             session['token'] = token

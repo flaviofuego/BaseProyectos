@@ -610,12 +610,22 @@ app.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    passport.authenticate('local', { session: false }, (err, user, info) => {
+    passport.authenticate('local', { session: false }, async (err, user, info) => {
       if (err || !user) {
         return res.status(401).json({ error: info?.message || 'Authentication failed' });
       }
 
       const token = generateToken(user);
+      
+      // Get user preferences
+      let preferences = { consulta_service_enabled: true };
+      try {
+        const userPrefs = await getUserPreferences(user.id);
+        preferences.consulta_service_enabled = userPrefs.consulta_service_enabled;
+      } catch (error) {
+        console.error('Error loading user preferences on login:', error);
+        // Default to enabled on error
+      }
       
       // Log successful login
       logTransaction(user.id, 'LOGIN', 'SUCCESS', req);
@@ -625,7 +635,8 @@ app.post('/login', async (req, res, next) => {
         user: {
           id: user.id,
           username: user.username,
-          email: user.email
+          email: user.email,
+          consulta_service_enabled: preferences.consulta_service_enabled
         }
       });
     })(req, res, next);
