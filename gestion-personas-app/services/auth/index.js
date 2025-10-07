@@ -187,8 +187,8 @@ app.put('/preferences/consulta-service',
       const dockerController = require('./docker-controller');
 
       if (enabled) {
-        // ✅ ACTIVAR SERVICIO: Iniciar contenedor si no está corriendo
-        console.log(`✅ User ${userId} (${username}) is ENABLING service - starting container`);
+        // ✅ ACTIVAR SERVICIO: Activar para TODOS y iniciar contenedor
+        console.log(`✅ User ${userId} (${username}) is ENABLING service - starting container and enabling for ALL users`);
         dockerResult = await dockerController.startConsultaService();
         
         if (!dockerResult.success && !dockerResult.already_running) {
@@ -213,6 +213,49 @@ app.put('/preferences/consulta-service',
 
         // Contenedor iniciado exitosamente o ya estaba corriendo
         console.log(`✅ Container started/running for user ${userId} (${username})`);
+
+        // 1. Activar para TODOS los usuarios
+        const enableAllResult = await pool.query(
+          `UPDATE user_preferences 
+           SET consulta_service_enabled = TRUE, updated_at = CURRENT_TIMESTAMP
+           WHERE consulta_service_enabled = FALSE
+           RETURNING user_id`
+        );
+        
+        const affectedUsers = enableAllResult.rows.map(row => row.user_id);
+        console.log(`✅ Enabled service for ${affectedUsers.length} user(s): [${affectedUsers.join(', ')}]`);
+
+        // 2. Invalidar cache de todos los usuarios afectados
+        for (const affectedUserId of affectedUsers) {
+          await invalidateUserPreferencesCache(affectedUserId);
+        }
+
+        // 3. Registrar en logs la activación masiva
+        logTransaction(userId, 'ENABLE_CONSULTA_SERVICE', 'SUCCESS', req, {
+          username: username,
+          enabled: true,
+          docker_action: 'start',
+          docker_result: dockerResult?.success ? 'success' : 'already_running',
+          affected_users: affectedUsers,
+          total_affected: affectedUsers.length,
+          container_started: dockerResult?.success || dockerResult?.already_running,
+          message: `User ${username} enabled service for all users`
+        });
+
+        // Retornar respuesta para activación
+        return res.json({
+          success: true,
+          message: `Servicio de consulta habilitado para todos los usuarios`,
+          affected_users: affectedUsers.length,
+          preferences: {
+            consulta_service_enabled: true
+          },
+          container_status: dockerResult ? {
+            action: 'started',
+            success: dockerResult.success || dockerResult.already_running,
+            message: dockerResult.message
+          } : null
+        });
 
       } else {
         // ❌ DESACTIVAR SERVICIO: Desactivar para TODOS y detener contenedor
@@ -272,41 +315,6 @@ app.put('/preferences/consulta-service',
           } : null
         });
       }
-
-      // Para activación, actualizar solo este usuario
-      await pool.query(
-        `INSERT INTO user_preferences (user_id, consulta_service_enabled)
-         VALUES ($1, $2)
-         ON CONFLICT (user_id) 
-         DO UPDATE SET consulta_service_enabled = $2, updated_at = CURRENT_TIMESTAMP`,
-        [userId, enabled]
-      );
-
-      // Invalidate cache solo de este usuario
-      await invalidateUserPreferencesCache(userId);
-
-      // Registrar en logs la activación
-      logTransaction(userId, 'ENABLE_CONSULTA_SERVICE', 'SUCCESS', req, {
-        username: username,
-        enabled: true,
-        docker_action: 'start',
-        docker_result: dockerResult?.success ? 'success' : 'already_running',
-        container_started: dockerResult?.success || dockerResult?.already_running,
-        message: `User ${username} enabled service`
-      });
-
-      res.json({
-        success: true,
-        message: `Servicio de consulta habilitado correctamente`,
-        preferences: {
-          consulta_service_enabled: enabled
-        },
-        container_status: dockerResult ? {
-          action: 'started',
-          success: dockerResult.success || dockerResult.already_running,
-          message: dockerResult.message
-        } : null
-      });
     } catch (error) {
       console.error('Error updating consulta service preference:', error);
       logTransaction(req.user.id, 'UPDATE_PREFERENCES', 'ERROR', req, null, error.message);
