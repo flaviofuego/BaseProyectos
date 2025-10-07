@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block title %}Configurar Cuenta - Sistema de Gestión de Personas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-card {
+        margin-bottom: 2rem;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .config-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .config-card .card-header {
+        background: linear-gradient(135deg, var(--bs-primary) 0%, var(--bs-primary-dark, #0a58ca) 100%);
+        color: white;
+        font-weight: 600;
+        padding: 1rem 1.5rem;
+    }
+    
+    .config-card .card-header i {
+        margin-right: 0.5rem;
+    }
+    
+    .form-section {
+        padding: 1.5rem;
+    }
+    
+    .password-strength {
+        height: 5px;
+        border-radius: 3px;
+        margin-top: 0.5rem;
+        background: var(--bs-gray-300);
+        transition: all 0.3s;
+    }
+    
+    .password-strength.weak {
+        width: 33%;
+        background: var(--bs-danger);
+    }
+    
+    .password-strength.medium {
+        width: 66%;
+        background: var(--bs-warning);
+    }
+    
+    .password-strength.strong {
+        width: 100%;
+        background: var(--bs-success);
+    }
+    
+    .password-requirements {
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    .password-requirements li {
+        color: var(--bs-secondary);
+    }
+    
+    .password-requirements li.valid {
+        color: var(--bs-success);
+    }
+    
+    .password-requirements li.valid i {
+        color: var(--bs-success);
+    }
+    
+    .current-info {
+        background: var(--bs-light);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .current-info .info-label {
+        font-weight: 600;
+        color: var(--bs-secondary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .current-info .info-value {
+        font-size: 1.1rem;
+        color: var(--bs-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="main-content" class="container my-5">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Inicio</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Configurar Cuenta</li>
+        </ol>
+    </nav>
+    
+    <!-- Título -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">
+            <i class="fas fa-cog text-primary" aria-hidden="true"></i>
+            Configurar Cuenta
+        </h1>
+    </div>
+    
+    <!-- Información actual -->
+    <div class="current-info">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="info-label">Usuario actual</div>
+                <div class="info-value">
+                    <i class="fas fa-user text-primary"></i> 
+                    {{ session.user.username }}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="info-label">Correo electrónico</div>
+                <div class="info-value">
+                    <i class="fas fa-envelope text-primary"></i> 
+                    {{ session.user.email }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Cambiar correo electrónico -->
+        <div class="col-lg-6">
+            <div class="card config-card">
+                <div class="card-header">
+                    <i class="fas fa-envelope"></i>
+                    Cambiar Correo Electrónico
+                </div>
+                <div class="card-body form-section">
+                    <form id="form-cambiar-email" method="POST">
+                        <div class="mb-3">
+                            <label for="nuevo_email" class="form-label">
+                                Nuevo correo electrónico
+                                <span class="text-danger" aria-label="requerido">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-envelope" aria-hidden="true"></i>
+                                </span>
+                                <input 
+                                    type="email" 
+                                    class="form-control" 
+                                    id="nuevo_email" 
+                                    name="nuevo_email"
+                                    placeholder="correo@ejemplo.com"
+                                    value="{{ session.user.email }}"
+                                    required
+                                    maxlength="255"
+                                    aria-describedby="email-help">
+                            </div>
+                            <div id="email-help" class="form-text">
+                                Ingresa un correo electrónico válido.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password_confirm_email" class="form-label">
+                                Confirma tu contraseña actual
+                                <span class="text-danger" aria-label="requerido">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock" aria-hidden="true"></i>
+                                </span>
+                                <input 
+                                    type="password" 
+                                    class="form-control" 
+                                    id="password_confirm_email" 
+                                    name="password_confirm"
+                                    placeholder="Contraseña actual"
+                                    required
+                                    aria-describedby="password-email-help">
+                                <button 
+                                    class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="toggle-password-email"
+                                    aria-label="Mostrar contraseña">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="password-email-help" class="form-text">
+                                Por seguridad, confirma tu contraseña actual.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check-circle"></i>
+                                Cambiar Correo Electrónico
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="fas fa-times-circle"></i>
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cambiar contraseña -->
+        <div class="col-lg-6">
+            <div class="card config-card">
+                <div class="card-header">
+                    <i class="fas fa-key"></i>
+                    Cambiar Contraseña
+                </div>
+                <div class="card-body form-section">
+                    <form id="form-cambiar-password" method="POST">
+                        <div class="mb-3">
+                            <label for="password_actual" class="form-label">
+                                Contraseña actual
+                                <span class="text-danger" aria-label="requerido">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock" aria-hidden="true"></i>
+                                </span>
+                                <input 
+                                    type="password" 
+                                    class="form-control" 
+                                    id="password_actual" 
+                                    name="password_actual"
+                                    placeholder="Contraseña actual"
+                                    required
+                                    aria-describedby="password-actual-help">
+                                <button 
+                                    class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="toggle-password-actual"
+                                    aria-label="Mostrar contraseña actual">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="password-actual-help" class="form-text">
+                                Ingresa tu contraseña actual.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password_nueva" class="form-label">
+                                Nueva contraseña
+                                <span class="text-danger" aria-label="requerido">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-key" aria-hidden="true"></i>
+                                </span>
+                                <input 
+                                    type="password" 
+                                    class="form-control" 
+                                    id="password_nueva" 
+                                    name="password_nueva"
+                                    placeholder="Nueva contraseña"
+                                    required
+                                    minlength="8"
+                                    aria-describedby="password-nueva-help">
+                                <button 
+                                    class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="toggle-password-nueva"
+                                    aria-label="Mostrar nueva contraseña">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="password-nueva-help" class="form-text">
+                                Mínimo 8 caracteres.
+                            </div>
+                            
+                            <!-- Indicador de fortaleza -->
+                            <div class="password-strength" id="password-strength" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+                            <small id="password-strength-text" class="form-text"></small>
+                            
+                            <!-- Requisitos de contraseña -->
+                            <ul class="password-requirements list-unstyled mt-2" id="password-requirements">
+                                <li id="req-length">
+                                    <i class="fas fa-circle" aria-hidden="true"></i> 
+                                    Al menos 8 caracteres
+                                </li>
+                                <li id="req-uppercase">
+                                    <i class="fas fa-circle" aria-hidden="true"></i> 
+                                    Al menos una mayúscula
+                                </li>
+                                <li id="req-lowercase">
+                                    <i class="fas fa-circle" aria-hidden="true"></i> 
+                                    Al menos una minúscula
+                                </li>
+                                <li id="req-number">
+                                    <i class="fas fa-circle" aria-hidden="true"></i> 
+                                    Al menos un número
+                                </li>
+                                <li id="req-special">
+                                    <i class="fas fa-circle" aria-hidden="true"></i> 
+                                    Al menos un carácter especial
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password_confirmar" class="form-label">
+                                Confirmar nueva contraseña
+                                <span class="text-danger" aria-label="requerido">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                </span>
+                                <input 
+                                    type="password" 
+                                    class="form-control" 
+                                    id="password_confirmar" 
+                                    name="password_confirmar"
+                                    placeholder="Confirmar nueva contraseña"
+                                    required
+                                    aria-describedby="password-confirmar-help">
+                                <button 
+                                    class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="toggle-password-confirmar"
+                                    aria-label="Mostrar confirmación de contraseña">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="password-confirmar-help" class="form-text">
+                                Repite la nueva contraseña.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check-circle"></i>
+                                Cambiar Contraseña
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary">
+                                <i class="fas fa-times-circle"></i>
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const userId = {{ session.user.id }};
+    
+    // Toggle visibility de contraseñas
+    function setupPasswordToggle(buttonId, inputId) {
+        const button = document.getElementById(buttonId);
+        const input = document.getElementById(inputId);
+        
+        if (button && input) {
+            button.addEventListener('click', function() {
+                const type = input.type === 'password' ? 'text' : 'password';
+                input.type = type;
+                
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+                }
+            });
+        }
+    }
+    
+    setupPasswordToggle('toggle-password-email', 'password_confirm_email');
+    setupPasswordToggle('toggle-password-actual', 'password_actual');
+    setupPasswordToggle('toggle-password-nueva', 'password_nueva');
+    setupPasswordToggle('toggle-password-confirmar', 'password_confirmar');
+    
+    // ===== FORMULARIO: CAMBIAR EMAIL =====
+    const formCambiarEmail = document.getElementById('form-cambiar-email');
+    if (formCambiarEmail) {
+        formCambiarEmail.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const nuevoEmail = document.getElementById('nuevo_email').value.trim();
+            const passwordConfirm = document.getElementById('password_confirm_email').value;
+            
+            // Validación básica
+            if (!nuevoEmail || !passwordConfirm) {
+                window.showError('Por favor, completa todos los campos');
+                return;
+            }
+            
+            // Validar formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(nuevoEmail)) {
+                window.showError('Por favor, ingresa un correo electrónico válido');
+                return;
+            }
+            
+            // Verificar que el email sea diferente al actual
+            const emailActual = '{{ session.user.email }}';
+            if (nuevoEmail === emailActual) {
+                window.showError('El nuevo correo debe ser diferente al actual');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/cambiar-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        nuevo_email: nuevoEmail,
+                        password_confirm: passwordConfirm,
+                        user_id: userId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    window.showSuccess(data.message || 'Correo electrónico actualizado correctamente');
+                    
+                    // Redirigir al login después de 2 segundos
+                    setTimeout(() => {
+                        window.location.href = '/logout';
+                    }, 2000);
+                } else {
+                    window.showError(data.message || 'Error al cambiar el correo electrónico');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                window.showError('Error de conexión al servidor');
+            }
+        });
+    }
+    
+    // ===== FORMULARIO: CAMBIAR CONTRASEÑA =====
+    const formCambiarPassword = document.getElementById('form-cambiar-password');
+    const passwordNueva = document.getElementById('password_nueva');
+    const passwordStrength = document.getElementById('password-strength');
+    const passwordStrengthText = document.getElementById('password-strength-text');
+    
+    // Validación en tiempo real de la contraseña
+    if (passwordNueva) {
+        passwordNueva.addEventListener('input', function() {
+            const password = this.value;
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+            
+            // Actualizar indicadores visuales
+            document.getElementById('req-length').classList.toggle('valid', requirements.length);
+            document.getElementById('req-uppercase').classList.toggle('valid', requirements.uppercase);
+            document.getElementById('req-lowercase').classList.toggle('valid', requirements.lowercase);
+            document.getElementById('req-number').classList.toggle('valid', requirements.number);
+            document.getElementById('req-special').classList.toggle('valid', requirements.special);
+            
+            // Calcular fortaleza
+            const validCount = Object.values(requirements).filter(v => v).length;
+            passwordStrength.className = 'password-strength';
+            
+            if (validCount <= 2) {
+                passwordStrength.classList.add('weak');
+                passwordStrengthText.textContent = 'Contraseña débil';
+                passwordStrengthText.className = 'form-text text-danger';
+            } else if (validCount <= 4) {
+                passwordStrength.classList.add('medium');
+                passwordStrengthText.textContent = 'Contraseña media';
+                passwordStrengthText.className = 'form-text text-warning';
+            } else {
+                passwordStrength.classList.add('strong');
+                passwordStrengthText.textContent = 'Contraseña fuerte';
+                passwordStrengthText.className = 'form-text text-success';
+            }
+        });
+    }
+    
+    if (formCambiarPassword) {
+        formCambiarPassword.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const passwordActual = document.getElementById('password_actual').value;
+            const passwordNueva = document.getElementById('password_nueva').value;
+            const passwordConfirmar = document.getElementById('password_confirmar').value;
+            
+            // Validación básica
+            if (!passwordActual || !passwordNueva || !passwordConfirmar) {
+                window.showError('Por favor, completa todos los campos');
+                return;
+            }
+            
+            // Verificar que las contraseñas coincidan
+            if (passwordNueva !== passwordConfirmar) {
+                window.showError('Las contraseñas nuevas no coinciden');
+                return;
+            }
+            
+            // Verificar que la nueva contraseña sea diferente a la actual
+            if (passwordActual === passwordNueva) {
+                window.showError('La nueva contraseña debe ser diferente a la actual');
+                return;
+            }
+            
+            // Validar fortaleza de la contraseña
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
+            if (!passwordRegex.test(passwordNueva)) {
+                window.showError('La contraseña no cumple con los requisitos de seguridad');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/cambiar-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        password_actual: passwordActual,
+                        password_nueva: passwordNueva,
+                        user_id: userId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    window.showSuccess(data.message || 'Contraseña actualizada correctamente');
+                    
+                    // Limpiar formulario
+                    formCambiarPassword.reset();
+                    passwordStrength.className = 'password-strength';
+                    passwordStrengthText.textContent = '';
+                    
+                    // Quitar clases 'valid' de los requisitos
+                    document.querySelectorAll('.password-requirements li').forEach(li => {
+                        li.classList.remove('valid');
+                    });
+                } else {
+                    window.showError(data.message || 'Error al cambiar la contraseña');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                window.showError('Error de conexión al servidor');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

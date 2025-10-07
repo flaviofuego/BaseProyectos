@@ -51,7 +51,7 @@ dev:
 	@echo "Waiting for services to be ready..."
 	@echo "Development services are starting up with hot reload enabled."
 	@echo "Access the application at http://localhost:5000"
-	@echo "API Gateway at http://localhost:8000"
+	@echo "API Gateway at http://localhost:8001"
 
 # Stop all services
 down:
@@ -115,7 +115,7 @@ prod:
 # Check service health
 health:
 	@echo "Checking service health..."
-	@curl -s http://localhost:8000/health | jq .
+	@curl -s http://localhost:8001/health | jq .
 	@curl -s http://localhost:3001/health | jq .
 	@curl -s http://localhost:3002/health | jq .
 	@curl -s http://localhost:3003/health | jq .
@@ -125,11 +125,11 @@ health:
 # Sync embeddings for Gemini
 sync-embeddings:
 	@echo "Synchronizing embeddings with Gemini..."
-	@curl -X POST http://localhost:8000/api/nlp/sync-embeddings
+	@curl -X POST http://localhost:8001/api/nlp/sync-embeddings
 
 # Test NLP query
 test-nlp:
 	@echo "Testing NLP query..."
-	@curl -X POST http://localhost:8000/api/nlp/query \
+	@curl -X POST http://localhost:8001/api/nlp/query \
 		-H "Content-Type: application/json" \
 		-d '{"pregunta": "¿Cuál es el empleado más joven registrado?"}' | jq .

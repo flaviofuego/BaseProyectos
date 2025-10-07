@@ -87,9 +87,31 @@ SELECT
     END AS grupo_edad
 FROM personas p;
 
+-- Tabla de preferencias de usuario
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    consulta_service_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- Índice para búsquedas rápidas por user_id
+CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
+
+-- Trigger para actualizar updated_at automáticamente
+CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Datos de prueba inicial
 -- Usuario: admin | Contraseña: admin123 (bcrypt rounds: 4 para desarrollo)
 INSERT INTO users (username, email, password_hash, provider) 
 VALUES ('admin', 'admin@example.com', '$2b$04$K8lgAt.ZHurAIqx4YmMuv.ry2BQ3vT4f6A/OgwGRBBqgf9nJgOGhu', 'local')
 ON CONFLICT DO NOTHING;
+
+-- Insertar preferencias por defecto para el usuario admin
+INSERT INTO user_preferences (user_id, consulta_service_enabled)
+SELECT id, TRUE FROM users WHERE username = 'admin'
+ON CONFLICT (user_id) DO NOTHING;
 

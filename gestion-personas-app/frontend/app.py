@@ -296,6 +296,62 @@ def logout_complete():
     flash('Sesión cerrada exitosamente', 'success')
     return redirect(url_for('login'))
 
+@app.route('/configurar-cuenta')
+@login_required
+def configurar_cuenta():
+    """Página para configurar cuenta de usuario"""
+    return render_template('configurar_cuenta.html', user=session.get('user'))
+
+@app.route('/api/auth/cambiar-email', methods=['POST'])
+@login_required
+def cambiar_email():
+    """Endpoint para cambiar correo electrónico"""
+    try:
+        data = request.get_json()
+        
+        # Agregar el user_id del usuario actual
+        data['user_id'] = session.get('user', {}).get('id')
+        
+        # Llamar al servicio de autenticación
+        response = make_request('POST', '/api/auth/cambiar-email', json_data=data)
+        
+        if response and response.status_code == 200:
+            # Actualizar el email en la sesión
+            if 'user' in session:
+                session['user']['email'] = data['nuevo_email']
+                session.modified = True
+            return jsonify(response.json()), 200
+        else:
+            error_data = response.json() if response else {'message': 'Error de conexión'}
+            return jsonify(error_data), response.status_code if response else 500
+            
+    except Exception as e:
+        print(f"Error al cambiar correo electrónico: {str(e)}")
+        return jsonify({'message': 'Error interno del servidor'}), 500
+
+@app.route('/api/auth/cambiar-password', methods=['POST'])
+@login_required
+def cambiar_password():
+    """Endpoint para cambiar contraseña"""
+    try:
+        data = request.get_json()
+        
+        # Agregar el user_id del usuario actual
+        data['user_id'] = session.get('user', {}).get('id')
+        
+        # Llamar al servicio de autenticación
+        response = make_request('POST', '/api/auth/cambiar-password', json_data=data)
+        
+        if response and response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            error_data = response.json() if response else {'message': 'Error de conexión'}
+            return jsonify(error_data), response.status_code if response else 500
+            
+    except Exception as e:
+        print(f"Error al cambiar contraseña: {str(e)}")
+        return jsonify({'message': 'Error interno del servidor'}), 500
+
 @app.route('/dashboard')
 @login_required
 def dashboard():

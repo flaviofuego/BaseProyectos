@@ -8,6 +8,7 @@ const fs = require('fs').promises;
 const helmet = require('helmet');
 const cors = require('cors');
 const axios = require('axios');
+const { createServiceRegistryClient } = require('./shared/service-registry-client');
 require('dotenv').config();
 
 const app = express();
@@ -490,6 +491,25 @@ app.use((err, req, res, next) => {
 app.listen(PORT, async () => {
   console.log(`Personas service running on port ${PORT}`);
   await ensureUploadsDirectory();
+  
+  // Auto-registrar en el Service Registry
+  const serviceConfig = {
+    serviceId: 'personas-service',
+    name: 'personas-service',
+    host: 'personas-service',
+    port: parseInt(PORT),
+    protocol: 'http',
+    metadata: {
+      version: '1.0.0',
+      description: 'Personas management service for CRUD operations',
+      maintainer: 'personas-team',
+      healthEndpoint: '/health',
+      tags: ['personas', 'crud', 'images', 'documents'],
+      capabilities: ['create-persona', 'read-persona', 'update-persona', 'delete-persona', 'image-upload', 'document-management']
+    }
+  };
+  
+  createServiceRegistryClient(serviceConfig);
 });
 
 

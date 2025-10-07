@@ -5,6 +5,7 @@ const { QdrantClient } = require('@qdrant/js-client-rest');
 const helmet = require('helmet');
 const cors = require('cors');
 const axios = require('axios');
+const { createServiceRegistryClient } = require('./shared/service-registry-client');
 require('dotenv').config();
 
 const app = express();
@@ -541,4 +542,23 @@ initializeVectorDB().then(() => {
 
 app.listen(PORT, () => {
   console.log(`NLP service running on port ${PORT}`);
+  
+  // Auto-registrar en el Service Registry
+  const serviceConfig = {
+    serviceId: 'nlp-service',
+    name: 'nlp-service',
+    host: 'nlp-service',
+    port: parseInt(PORT),
+    protocol: 'http',
+    metadata: {
+      version: '1.0.0',
+      description: 'Natural Language Processing service using Google Gemini and vector search',
+      maintainer: 'nlp-team',
+      healthEndpoint: '/health',
+      tags: ['nlp', 'ai', 'gemini', 'vector-search', 'embeddings', 'qdrant'],
+      capabilities: ['natural-language-query', 'vector-search', 'embeddings-generation', 'semantic-search', 'gemini-ai']
+    }
+  };
+  
+  createServiceRegistryClient(serviceConfig);
 });

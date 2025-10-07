@@ -1,5 +1,22 @@
-
 services:
+  # Service Registry
+  service-registry:
+    build: ./services/registry
+    container_name: service_registry
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=production
+      - SERVICE_REGISTRY_PORT=3010
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+
   # Base de datos PostgreSQL
   postgres:
     image: postgres:15
@@ -43,21 +60,13 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - PERSONAS_SERVICE_URL=http://personas-service:3002
-      - CONSULTA_SERVICE_URL=http://consulta-service:3003
-      - NLP_SERVICE_URL=http://nlp-service:3004
-      - LOG_SERVICE_URL=http://log-service:3005
+      - SERVICE_REGISTRY_URL=http://service-registry:3010
     depends_on:
-      - auth-service
-      - personas-service
-      - consulta-service
-      - nlp-service
-      - log-service
+      - service-registry
     networks:
       - app-network
 
-  # Servicio de Autenticación
+  # Servicio de Autenticacion
   auth-service:
     build: ./services/auth
     container_name: auth_service
@@ -72,25 +81,31 @@ services:
       - AUTH0_CALLBACK_URL=${AUTH0_CALLBACK_URL}
       - SESSION_SECRET=${SESSION_SECRET}
       - FRONTEND_URL=${FRONTEND_URL}
+      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - SERVICE_NAME=auth-service
+      - SERVICE_PORT=3001
     depends_on:
       - postgres
       - redis
+      - service-registry
     networks:
       - app-network
 
-  # Servicio de Gestión de Personas (CRUD)
+  # Servicio de Gestion de Personas (CRUD)
   personas-service:
     build: ./services/personas
     container_name: personas_service
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
-      - LOG_SERVICE_URL=http://log-service:3005
+      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - SERVICE_NAME=personas-service
+      - SERVICE_PORT=3002
     volumes:
       - personas_uploads:/uploads
     depends_on:
       - postgres
-      - log-service
+      - service-registry
     networks:
       - app-network
 
@@ -109,11 +124,13 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
       - REDIS_URL=redis://redis:6379
-      - LOG_SERVICE_URL=http://log-service:3005
+      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - SERVICE_NAME=consulta-service
+      - SERVICE_PORT=3003
     depends_on:
       - postgres
       - redis
-      - log-service
+      - service-registry
     networks:
       - app-network
 
@@ -125,11 +142,13 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - QDRANT_URL=http://qdrant:6333
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
-      - LOG_SERVICE_URL=http://log-service:3005
+      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - SERVICE_NAME=nlp-service
+      - SERVICE_PORT=3004
     depends_on:
       - postgres
       - qdrant
-      - log-service
+      - service-registry
     networks:
       - app-network
 
@@ -140,8 +159,12 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - SERVICE_NAME=log-service
+      - SERVICE_PORT=3005
     depends_on:
       - postgres
+      - service-registry
     networks:
       - app-network
 

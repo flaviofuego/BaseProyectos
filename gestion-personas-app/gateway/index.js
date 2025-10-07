@@ -7,10 +7,67 @@ const rateLimit = require('express-rate-limit');
 const axios = require('axios');
 require('dotenv').config();
 
-console.log('🚀 Iniciando API Gateway en modo desarrollo con hot reload...');
+// Service Discovery Client
+class ServiceDiscoveryClient {
+  constructor(registryUrl) {
+    this.registryUrl = registryUrl;
+    this.cache = new Map();
+    this.cacheTimeout = 30000; // 30 seconds cache
+  }
+
+  async discoverService(serviceName, useCache = true) {
+    try {
+      // Check cache first
+      if (useCache && this.cache.has(serviceName)) {
+        const cached = this.cache.get(serviceName);
+        if (Date.now() - cached.timestamp < this.cacheTimeout) {
+          return cached.data;
+        }
+      }
+
+      const response = await axios.get(`${this.registryUrl}/discover/${serviceName}`);
+      const serviceData = response.data;
+
+      // Cache the result
+      this.cache.set(serviceName, {
+        data: serviceData,
+        timestamp: Date.now()
+      });
+
+      return serviceData;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        throw new Error(`Service not found: ${serviceName}`);
+      }
+      console.error(`Failed to discover service ${serviceName}:`, error.message);
+      throw error;
+    }
+  }
+
+  async getServiceUrl(serviceName) {
+    try {
+      const discovery = await this.discoverService(serviceName);
+      return discovery.instance.url;
+    } catch (error) {
+      throw new Error(`Failed to get URL for service ${serviceName}: ${error.message}`);
+    }
+  }
+
+  clearCache() {
+    this.cache.clear();
+  }
+}
+
+console.log('🚀 Iniciando API Gateway con Service Discovery...');
 
 const app = express();
 const PORT = process.env.PORT || 8001;
+const SERVICE_REGISTRY_URL = process.env.SERVICE_REGISTRY_URL || 'http://service-registry:3010';
+
+// Initialize Service Discovery Client
+const serviceDiscovery = new ServiceDiscoveryClient(SERVICE_REGISTRY_URL);
+
+console.log(`🔍 Service Registry URL: ${SERVICE_REGISTRY_URL}`);
 
 // Middleware de seguridad con CSP personalizada para permitir imágenes
 app.use(helmet({
@@ -49,14 +106,27 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Configuración de servicios
-const services = {
-  auth: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
-  personas: process.env.PERSONAS_SERVICE_URL || 'http://personas-service:3002',
-  consulta: process.env.CONSULTA_SERVICE_URL || 'http://consulta-service:3003',
-  nlp: process.env.NLP_SERVICE_URL || 'http://nlp-service:3004',
-  log: process.env.LOG_SERVICE_URL || 'http://log-service:3005'
-};
+// Dynamic Service URL Resolution using Service Discovery
+async function getServiceUrl(serviceName) {
+  try {
+    return await serviceDiscovery.getServiceUrl(serviceName);
+  } catch (error) {
+    console.error(`❌ Failed to discover service ${serviceName}:`, error.message);
+    throw error;
+  }
+}
+
+// Service Health Check
+async function checkServiceHealth(serviceName) {
+  try {
+    const serviceUrl = await getServiceUrl(serviceName);
+    const response = await axios.get(`${serviceUrl}/health`, { timeout: 5000 });
+    return response.status === 200;
+  } catch (error) {
+    console.error(`❌ Health check failed for ${serviceName}:`, error.message);
+    return false;
+  }
+}
 
 // Middleware para verificar autenticación (excepto para login, health y uploads)
 const authMiddleware = async (req, res, next) => {
@@ -102,7 +172,8 @@ const authMiddleware = async (req, res, next) => {
 
   // Para tokens reales, verificar con el servicio de autenticación
   try {
-    const authResponse = await axios.get(`${process.env.AUTH_SERVICE_URL || 'http://auth-service:3001'}/verify`, {
+    const authServiceUrl = await getServiceUrl('auth-service');
+    const authResponse = await axios.get(`${authServiceUrl}/verify`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
@@ -118,165 +189,137 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// Middleware para verificar si el servicio de consulta está habilitado para el usuario
+const checkConsultaServiceEnabled = async (req, res, next) => {
+  try {
+    // Solo aplicar a rutas del servicio de consulta (excepto health checks)
+    if (!req.path.startsWith('/api/consulta') || req.path === '/api/consulta/health') {
+      return next();
+    }
+
+    const userId = req.headers['x-user-id'];
+    
+    if (!userId) {
+      console.warn('No user ID found in request, allowing consulta service access');
+      return next();
+    }
+
+    console.log(`DEBUG: Checking consulta service status for user ${userId}`);
+
+    // Check with auth service
+    const authServiceUrl = await getServiceUrl('auth-service');
+    const checkResponse = await axios.get(
+      `${authServiceUrl}/preferences/consulta-service/check/${userId}`,
+      { timeout: 2000 }
+    );
+
+    if (checkResponse.data.enabled === false) {
+      console.log(`DEBUG: Consulta service is DISABLED for user ${userId}`);
+      return res.status(403).json({ 
+        error: 'Servicio de consulta deshabilitado',
+        message: 'El servicio de consulta está deshabilitado para tu usuario. Puedes habilitarlo desde la configuración de tu cuenta.',
+        service_disabled: true
+      });
+    }
+
+    console.log(`DEBUG: Consulta service is ENABLED for user ${userId}`);
+    next();
+  } catch (error) {
+    console.error('Error checking consulta service status:', error.message);
+    // En caso de error, permitir acceso por defecto (fail-open para no romper funcionalidad)
+    next();
+  }
+};
+
 console.log('Configuring auth middleware...');
 app.use(authMiddleware);
 
-// Rutas del API Gateway
+console.log('Configuring consulta service check middleware...');
+app.use(checkConsultaServiceEnabled);
+
+// Dynamic Proxy Creator
+function createDynamicProxy(serviceName, pathRewrite = {}) {
+  return createProxyMiddleware({
+    target: 'http://placeholder', // Will be replaced dynamically
+    changeOrigin: true,
+    proxyTimeout: 30000,
+    timeout: 30000,
+    pathRewrite: pathRewrite,
+    router: async (req) => {
+      try {
+        const serviceUrl = await getServiceUrl(serviceName);
+        console.log(`🔄 Routing ${req.method} ${req.path} to ${serviceName} at ${serviceUrl}`);
+        return serviceUrl;
+      } catch (error) {
+        console.error(`❌ Failed to route to ${serviceName}:`, error.message);
+        throw error;
+      }
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      // Forward user_id from middleware
+      if (req.headers['x-user-id']) {
+        proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+        console.log(`DEBUG: Forwarding x-user-id to ${serviceName}:`, req.headers['x-user-id']);
+      }
+
+      // Reinyecta el body si existe
+      if (req.body && Object.keys(req.body).length) {
+        const bodyData = JSON.stringify(req.body);
+        proxyReq.setHeader('Content-Type', 'application/json');
+        proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+        proxyReq.write(bodyData);
+      }
+    },
+    onError: (err, req, res) => {
+      console.error(`Proxy error for ${serviceName}:`, err.message);
+      if (!res.headersSent) {
+        res.status(502).json({ 
+          error: 'Service temporarily unavailable', 
+          service: serviceName,
+          details: err.message 
+        });
+      }
+    }
+  });
+}
+
+// Rutas del API Gateway con Service Discovery
 
 // Servicio de Autenticación
-app.use('/api/auth', createProxyMiddleware({
-  target: services.auth,
-  changeOrigin: true,
-  proxyTimeout: 30000,
-  timeout: 30000,
-  pathRewrite: {
-    '^/api/auth': ''
-  },
-  onProxyReq: (proxyReq, req, res) => {
-    // Reinyecta el body si existe (cuando algún middleware lo haya parseado)
-    if (req.body && Object.keys(req.body).length) {
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader('Content-Type', 'application/json');
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-    }
-  },
-  onError: (err, req, res) => {
-    if (!res.headersSent) {
-      res.status(502).json({ error: 'Bad gateway', details: err.message });
-    }
-  }
-}));
+app.use('/api/auth', createDynamicProxy('auth-service', { '^/api/auth': '' }));
 
 // Servicio de Personas (CRUD)
-app.use('/api/personas', createProxyMiddleware({
-  target: services.personas,
-  changeOrigin: true,
-  proxyTimeout: 30000,
-  timeout: 30000,
-  pathRewrite: {
-    '^/api/personas': ''
-  },
-  onProxyReq: (proxyReq, req) => {
-    // Pass user_id from middleware if it exists
-    if (req.headers['x-user-id']) {
-      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
-      console.log('DEBUG: Forwarding x-user-id:', req.headers['x-user-id']);
-    } else {
-      console.log('WARNING: No x-user-id found in headers');
-    }
-
-    if (req.body && Object.keys(req.body).length) {
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader('Content-Type', 'application/json');
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-    }
-  }
-}));
+app.use('/api/personas', createDynamicProxy('personas-service', { '^/api/personas': '' }));
 
 // Servicio de Consultas
-app.use('/api/consulta', createProxyMiddleware({
-  target: services.consulta,
-  changeOrigin: true,
-  proxyTimeout: 30000,
-  timeout: 30000,
-  pathRewrite: {
-    '^/api/consulta': ''
-  },
-  onProxyReq: (proxyReq, req) => {
-    // Forward user_id from middleware
-    if (req.headers['x-user-id']) {
-      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
-      console.log('DEBUG: Forwarding x-user-id to consulta:', req.headers['x-user-id']);
-    }
-
-    if (req.body && Object.keys(req.body).length) {
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader('Content-Type', 'application/json');
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-    }
-  }
-}));
+app.use('/api/consulta', createDynamicProxy('consulta-service', { '^/api/consulta': '' }));
 
 // Servicio de NLP
-app.use('/api/nlp', createProxyMiddleware({
-  target: services.nlp,
-  changeOrigin: true,
-  proxyTimeout: 30000,
-  timeout: 30000,
-  pathRewrite: {
-    '^/api/nlp': ''
-  },
-  onProxyReq: (proxyReq, req) => {
-    // Forward user_id from middleware
-    if (req.headers['x-user-id']) {
-      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
-      console.log('DEBUG: Forwarding x-user-id to nlp:', req.headers['x-user-id']);
-    }
-
-    if (req.body && Object.keys(req.body).length) {
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader('Content-Type', 'application/json');
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-    }
-  }
-}));
+app.use('/api/nlp', createDynamicProxy('nlp-service', { '^/api/nlp': '' }));
 
 // Servicio de Logs
-app.use('/api/logs', createProxyMiddleware({
-  target: services.log,
-  changeOrigin: true,
-  proxyTimeout: 30000,
-  timeout: 30000,
-  pathRewrite: {
-    '^/api/logs': ''
-  },
-  onProxyReq: (proxyReq, req) => {
-    // Forward user_id from middleware
-    if (req.headers['x-user-id']) {
-      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
-      console.log('DEBUG: Forwarding x-user-id to logs:', req.headers['x-user-id']);
-    }
+app.use('/api/logs', createDynamicProxy('log-service', { '^/api/logs': '' }));
 
-    if (req.body && Object.keys(req.body).length) {
-      const bodyData = JSON.stringify(req.body);
-      proxyReq.setHeader('Content-Type', 'application/json');
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-      proxyReq.write(bodyData);
-    }
+// Servir imágenes desde el servicio de personas (usando service discovery)
+app.use('/uploads', createDynamicProxy('personas-service', { '^/uploads': '/uploads' }));
+
+// Health check endpoint con Service Discovery
+app.get('/health', async (req, res) => {
+  try {
+    const serviceList = await axios.get(`${SERVICE_REGISTRY_URL}/services`);
+    res.json({ 
+      status: 'OK', 
+      timestamp: new Date().toISOString(),
+      serviceRegistry: SERVICE_REGISTRY_URL,
+      registeredServices: serviceList.data.services || []
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'ERROR', 
+      message: 'Service Registry unavailable',
+      timestamp: new Date().toISOString()
+    });
   }
-}));
-
-// Servir imágenes desde el servicio de personas
-app.use('/uploads', createProxyMiddleware({
-  target: services.personas,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/uploads': '/uploads'
-  },
-  onProxyRes: function (proxyRes, req, res) {
-    // Agregar headers CORS para las imágenes
-    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-    proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
-    proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept';
-    proxyRes.headers['Cross-Origin-Resource-Policy'] = 'cross-origin';
-  },
-  onError: function (err, req, res) {
-    console.error('Proxy error for uploads:', err);
-    res.status(500).json({ error: 'Error serving image' });
-  }
-}));
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    services: services,
-    timestamp: new Date().toISOString()
-  });
 });
 
 // Manejo de errores
@@ -290,10 +333,16 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 API Gateway running on port ${PORT} - HOT RELOAD FUNCIONANDO!`);
-  console.log('Services:', services);
-  console.log('✅ Modo desarrollo activo');
+app.listen(PORT, async () => {
+  console.log(`🚀 API Gateway running on port ${PORT} with Service Discovery!`);
+  console.log(`🔍 Service Registry: ${SERVICE_REGISTRY_URL}`);
+  console.log('✅ Service Discovery enabled');
+  
+  // Test service registry connection
+  try {
+    await axios.get(`${SERVICE_REGISTRY_URL}/health`);
+    console.log('✅ Connected to Service Registry');
+  } catch (error) {
+    console.error('❌ Failed to connect to Service Registry:', error.message);
+  }
 });
-
-// Comentario para probar hot reload - 09/04/2025 09:25:19
