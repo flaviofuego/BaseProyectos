@@ -156,7 +156,7 @@ app.get('/preferences',
   }
 );
 
-// Update consulta service status
+// Update consulta service status (con control de contenedor Docker)
 app.put('/preferences/consulta-service',
   passport.authenticate('jwt', { session: false }),
   async (req, res) => {
@@ -172,7 +172,22 @@ app.put('/preferences/consulta-service',
         });
       }
 
-      // Update or insert preferences
+      // Verificar cuántos usuarios tienen el servicio habilitado
+      const usersWithServiceResult = await pool.query(
+        `SELECT COUNT(*) as count FROM user_preferences WHERE consulta_service_enabled = TRUE`
+      );
+      const usersWithService = parseInt(usersWithServiceResult.rows[0].count);
+
+      // Verificar si este usuario ya tiene el servicio habilitado
+      const currentUserPrefResult = await pool.query(
+        `SELECT consulta_service_enabled FROM user_preferences WHERE user_id = $1`,
+        [userId]
+      );
+      const currentUserHasServiceEnabled = currentUserPrefResult.rows[0]?.consulta_service_enabled === true;
+
+      console.log(`DEBUG: Users with service enabled: ${usersWithService}, current user enabled: ${currentUserHasServiceEnabled}, new state: ${enabled}`);
+
+      // Update or insert preferences en la base de datos
       await pool.query(
         `INSERT INTO user_preferences (user_id, consulta_service_enabled)
          VALUES ($1, $2)
@@ -184,10 +199,55 @@ app.put('/preferences/consulta-service',
       // Invalidate cache
       await invalidateUserPreferencesCache(userId);
 
+      // Control del contenedor Docker basado en si hay usuarios que lo necesitan
+      let dockerResult = null;
+      const dockerController = require('./docker-controller');
+
+      if (enabled) {
+        // Si se habilita para este usuario, asegurar que el contenedor esté corriendo
+        console.log(`✅ User ${userId} enabling service - ensuring container is running`);
+        dockerResult = await dockerController.startConsultaService();
+        
+        if (!dockerResult.success && !dockerResult.already_running) {
+          // Si falla al iniciar, revertir la preferencia
+          await pool.query(
+            `UPDATE user_preferences SET consulta_service_enabled = FALSE WHERE user_id = $1`,
+            [userId]
+          );
+          await invalidateUserPreferencesCache(userId);
+          
+          return res.status(500).json({
+            success: false,
+            message: 'No se pudo iniciar el servicio de consulta. Revisa que Docker esté funcionando.',
+            error: dockerResult.error
+          });
+        }
+      } else {
+        // Si se deshabilita para este usuario, verificar si es el último usuario
+        const remainingUsers = currentUserHasServiceEnabled ? usersWithService - 1 : usersWithService;
+        
+        console.log(`🛑 User ${userId} disabling service - remaining users with service: ${remainingUsers}`);
+        
+        if (remainingUsers === 0) {
+          // Si no quedan usuarios con el servicio habilitado, detener el contenedor
+          console.log(`🛑 No users left with service enabled - stopping container`);
+          dockerResult = await dockerController.stopConsultaService();
+          
+          if (!dockerResult.success && !dockerResult.already_stopped) {
+            console.warn(`⚠️ Failed to stop container, but preference was updated:`, dockerResult.error);
+            // No revertir la preferencia, solo advertir
+          }
+        } else {
+          console.log(`✅ Container will remain running for ${remainingUsers} other user(s)`);
+        }
+      }
+
       // Log the change
       logTransaction(userId, 'UPDATE_PREFERENCES', 'SUCCESS', req, {
         preference: 'consulta_service_enabled',
-        new_value: enabled
+        new_value: enabled,
+        docker_action: dockerResult ? (enabled ? 'start' : 'stop') : 'none',
+        docker_result: dockerResult?.success
       });
 
       res.json({
@@ -195,7 +255,12 @@ app.put('/preferences/consulta-service',
         message: `Servicio de consulta ${enabled ? 'habilitado' : 'deshabilitado'} correctamente`,
         preferences: {
           consulta_service_enabled: enabled
-        }
+        },
+        container_status: dockerResult ? {
+          action: enabled ? 'started' : 'stopped',
+          success: dockerResult.success,
+          message: dockerResult.message
+        } : null
       });
     } catch (error) {
       console.error('Error updating consulta service preference:', error);
@@ -234,6 +299,36 @@ app.get('/preferences/consulta-service/check/:userId',
         enabled: true,
         user_id: req.params.userId,
         error: 'Error checking preferences, defaulting to enabled'
+      });
+    }
+  }
+);
+
+// Get Docker container status for consulta-service (admin/monitoring)
+app.get('/preferences/consulta-service/container-status',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    try {
+      const dockerController = require('./docker-controller');
+      const info = await dockerController.getContainerInfo();
+      
+      // También obtener cuántos usuarios tienen el servicio habilitado
+      const usersResult = await pool.query(
+        `SELECT COUNT(*) as count FROM user_preferences WHERE consulta_service_enabled = TRUE`
+      );
+      const usersWithService = parseInt(usersResult.rows[0].count);
+
+      res.json({
+        success: true,
+        container: info,
+        users_with_service_enabled: usersWithService
+      });
+    } catch (error) {
+      console.error('Error getting container status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error obteniendo estado del contenedor',
+        error: error.message
       });
     }
   }

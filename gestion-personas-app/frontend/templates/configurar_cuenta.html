@@ -464,20 +464,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Actualizar badge de estado
-    function updateStatusBadge(isEnabled) {
+    function updateStatusBadge(isEnabled, containerInfo = null) {
+        let statusHtml = '';
+        
         if (isEnabled) {
-            consultaStatus.innerHTML = `
+            statusHtml = `
                 <span class="badge bg-success">
                     <i class="fas fa-check-circle"></i> Servicio Activo
                 </span>
             `;
+            
+            // Si tenemos info del contenedor, agregarla
+            if (containerInfo && containerInfo.container_status) {
+                const containerStatus = containerInfo.container_status;
+                if (containerStatus.success) {
+                    statusHtml += `
+                        <span class="badge bg-info ms-2">
+                            <i class="fas fa-docker"></i> Contenedor: ${containerStatus.action === 'started' ? 'Iniciado' : 'En ejecución'}
+                        </span>
+                    `;
+                }
+            }
         } else {
-            consultaStatus.innerHTML = `
+            statusHtml = `
                 <span class="badge bg-danger">
                     <i class="fas fa-times-circle"></i> Servicio Desactivado
                 </span>
             `;
+            
+            // Si tenemos info del contenedor, agregarla
+            if (containerInfo && containerInfo.container_status) {
+                const containerStatus = containerInfo.container_status;
+                if (containerStatus.success) {
+                    statusHtml += `
+                        <span class="badge bg-secondary ms-2">
+                            <i class="fas fa-docker"></i> Contenedor: ${containerStatus.action === 'stopped' ? 'Detenido' : 'Apagado'}
+                        </span>
+                    `;
+                } else if (containerStatus.message) {
+                    statusHtml += `
+                        <span class="badge bg-warning ms-2" title="${containerStatus.message}">
+                            <i class="fas fa-exclamation-triangle"></i> Contenedor: ${containerStatus.message}
+                        </span>
+                    `;
+                }
+            }
         }
+        
+        consultaStatus.innerHTML = statusHtml;
     }
     
     // Manejar cambio de toggle
@@ -497,7 +531,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </p>
                 <div class="alert alert-info mb-0">
                     <i class="fas fa-info-circle"></i>
-                    Podrás consultar datos de personas desde el menú "Personas" → "Consultar Datos".
+                    <strong>Acciones:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Se iniciará el contenedor Docker del servicio de consulta</li>
+                        <li>Podrás consultar datos de personas desde el menú "Personas" → "Consultar Datos"</li>
+                        <li>El servicio se registrará automáticamente en el service registry</li>
+                    </ul>
                 </div>
             `;
             confirmActionBtn.className = 'btn btn-success';
@@ -510,8 +549,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </p>
                 <div class="alert alert-warning mb-0">
                     <i class="fas fa-info-circle"></i>
-                    La opción "Consultar Datos" del menú de Personas se deshabilitará hasta que reactives este servicio.
-                    <br><br>
+                    <strong>Acciones:</strong>
+                    <ul class="mb-2">
+                        <li>Se detendrá el contenedor Docker del servicio de consulta (si no hay otros usuarios usándolo)</li>
+                        <li>La opción "Consultar Datos" del menú de Personas se deshabilitará</li>
+                        <li>El servicio se desregistrará del service registry</li>
+                    </ul>
                     <strong>Nota:</strong> La función "Consulta IA" permanecerá activa ya que usa un servicio independiente.
                     <br><br>
                     El servicio se reactivará automáticamente cuando cierres sesión.
@@ -546,9 +589,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (response.ok) {
                 consultaToggle.checked = pendingToggleState;
-                updateStatusBadge(pendingToggleState);
+                updateStatusBadge(pendingToggleState, data);
                 
-                window.showSuccess(data.message || `Servicio ${pendingToggleState ? 'activado' : 'desactivado'} correctamente`);
+                // Mensaje con información del contenedor
+                let message = data.message || `Servicio ${pendingToggleState ? 'activado' : 'desactivado'} correctamente`;
+                
+                if (data.container_status) {
+                    if (data.container_status.success) {
+                        message += ` (Contenedor ${pendingToggleState ? 'iniciado' : 'detenido'})`;
+                    } else if (data.container_status.message) {
+                        message += ` - Nota: ${data.container_status.message}`;
+                    }
+                }
+                
+                window.showSuccess(message);
                 
                 // Recargar la página para actualizar el menú
                 setTimeout(() => {
