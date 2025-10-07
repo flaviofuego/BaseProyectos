@@ -14,9 +14,9 @@ COPY . .
 # Expose port
 EXPOSE 3010
 
-# Health check
+# Health check (using wget as curl is not available in alpine by default)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3010/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3010/health || exit 1
 
 # Start the service
 CMD ["node", "index.js"]

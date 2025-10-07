@@ -9,7 +9,7 @@ services:
       - NODE_ENV=production
       - SERVICE_REGISTRY_PORT=3010
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3010/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010/health"]
       interval: 30s
       timeout: 10s
       retries: 3
