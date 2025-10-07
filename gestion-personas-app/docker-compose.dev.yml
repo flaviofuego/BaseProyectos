@@ -36,8 +36,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: auth_service_dev
     volumes:
-      - ./services/shared:/app/shared
       - ./services/auth:/app
+      - ./services/shared:/app/shared
       - /app/node_modules
     environment:
       - NODE_ENV=development
