@@ -8,6 +8,7 @@ const fs = require('fs').promises;
 const helmet = require('helmet');
 const cors = require('cors');
 const axios = require('axios');
+const { parse } = require('csv-parse/sync');
 const { createServiceRegistryClient } = require('./shared/service-registry-client');
 require('dotenv').config();
 
@@ -56,7 +57,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 
-// Multer configuration for file uploads
+// Multer configuration for file uploads (images)
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -72,6 +73,25 @@ const upload = multer({
       return cb(null, true);
     } else {
       cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, gif)'));
+    }
+  }
+});
+
+// Multer configuration for CSV uploads
+const uploadCSV = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit for CSV files
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /csv/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel' || file.mimetype === 'text/plain';
+    
+    if (mimetype || extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos CSV'));
     }
   }
 });
@@ -261,6 +281,129 @@ app.post('/', upload.single('foto'), async (req, res) => {
   } catch (error) {
     console.error('Error creating persona:', error);
     await logTransaction('CREATE', null, req.body?.numero_documento, null, 'ERROR', req, null, error.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Bulk upload personas from CSV
+app.post('/bulk-upload', uploadCSV.single('csv_file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó archivo CSV' });
+    }
+
+    // Parse CSV
+    const csvContent = req.file.buffer.toString('utf-8');
+    let records;
+    
+    try {
+      records = parse(csvContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+        bom: true // Handle BOM for UTF-8
+      });
+    } catch (parseError) {
+      return res.status(400).json({ 
+        error: 'Error al parsear el archivo CSV',
+        details: parseError.message 
+      });
+    }
+
+    if (records.length === 0) {
+      return res.status(400).json({ error: 'El archivo CSV está vacío' });
+    }
+
+    const results = {
+      total: records.length,
+      created: 0,
+      failed: [],
+      duplicates: [],
+      validation_errors: []
+    };
+
+    // Process each record
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      const rowNumber = i + 2; // +2 because: +1 for header, +1 for 1-based index
+
+      try {
+        // Validate record structure
+        const { error } = personaSchema.validate(record);
+        
+        if (error) {
+          results.validation_errors.push({
+            row: rowNumber,
+            data: record,
+            error: error.details[0].message
+          });
+          continue;
+        }
+
+        // Check if persona already exists
+        const checkResult = await pool.query(
+          'SELECT numero_documento FROM personas WHERE numero_documento = $1',
+          [record.numero_documento]
+        );
+
+        if (checkResult.rows.length > 0) {
+          results.duplicates.push({
+            row: rowNumber,
+            numero_documento: record.numero_documento,
+            data: record
+          });
+          continue;
+        }
+
+        // Insert persona (without photo)
+        const userId = req.headers['x-user-id'];
+        const insertResult = await pool.query(
+          `INSERT INTO personas (
+            numero_documento, tipo_documento, primer_nombre, segundo_nombre,
+            apellidos, fecha_nacimiento, genero, correo_electronico, celular,
+            created_by, updated_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING *`,
+          [
+            record.numero_documento,
+            record.tipo_documento,
+            record.primer_nombre,
+            record.segundo_nombre || null,
+            record.apellidos,
+            record.fecha_nacimiento,
+            record.genero,
+            record.correo_electronico,
+            record.celular,
+            userId,
+            userId
+          ]
+        );
+
+        results.created++;
+        
+        // Log successful creation
+        await logTransaction('CREATE_BULK', insertResult.rows[0].id, record.numero_documento, null, 'SUCCESS', req);
+
+      } catch (dbError) {
+        results.failed.push({
+          row: rowNumber,
+          data: record,
+          error: dbError.message
+        });
+      }
+    }
+
+    // Log bulk upload transaction
+    await logTransaction('BULK_UPLOAD', null, null, null, 'SUCCESS', req, results);
+
+    res.status(200).json({
+      message: 'Carga masiva completada',
+      results
+    });
+
+  } catch (error) {
+    console.error('Error in bulk upload:', error);
+    await logTransaction('BULK_UPLOAD', null, null, null, 'ERROR', req, null, error.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

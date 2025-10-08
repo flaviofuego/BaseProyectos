@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Carga Masiva de Personas - Sistema de Gestión de Personas{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-file-upload"></i> Carga Masiva de Personas
+        </h1>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Upload Form Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Subir Archivo CSV</h5>
+            </div>
+            <div class="card-body">
+                <!-- Download Template Button -->
+                <div class="mb-3 text-center">
+                    <a href="{{ url_for('static', filename='templates/personas_template.csv') }}" 
+                       class="btn btn-primary btn-lg" download>
+                        <i class="fas fa-download"></i> Descargar Plantilla CSV
+                    </a>
+                </div>
+
+                <!-- Instructions -->
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-info-circle text-primary"></i> Instrucciones de Uso</h6>
+                        <ol class="mb-2">
+                            <li>Descarga la plantilla haciendo clic en el botón de arriba</li>
+                            <li>Completa el archivo con los datos de las personas (sin fotos)</li>
+                            <li>Asegúrate de usar el formato correcto para cada columna</li>
+                            <li>Sube el archivo completado usando el formulario de abajo</li>
+                        </ol>
+                        
+                        <div class="accordion accordion-flush" id="accordionFormato">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFormato" aria-expanded="false" aria-controls="collapseFormato">
+                                        <i class="fas fa-table me-2"></i> Ver formato de columnas requeridas
+                                    </button>
+                                </h2>
+                                <div id="collapseFormato" class="accordion-collapse collapse" data-bs-parent="#accordionFormato">
+                                    <div class="accordion-body">
+                                        <ul class="mb-0">
+                                            <li><strong>numero_documento</strong>: Solo números, máximo 10 caracteres</li>
+                                            <li><strong>tipo_documento</strong>: "Tarjeta de identidad" o "Cédula"</li>
+                                            <li><strong>primer_nombre</strong>: Solo letras, máximo 30 caracteres</li>
+                                            <li><strong>segundo_nombre</strong>: Solo letras, máximo 30 caracteres (opcional)</li>
+                                            <li><strong>apellidos</strong>: Solo letras, máximo 60 caracteres</li>
+                                            <li><strong>fecha_nacimiento</strong>: Formato YYYY-MM-DD</li>
+                                            <li><strong>genero</strong>: "Masculino", "Femenino", "No binario", o "Prefiero no reportar"</li>
+                                            <li><strong>correo_electronico</strong>: Email válido, máximo 100 caracteres</li>
+                                            <li><strong>celular</strong>: Número de teléfono, máximo 15 caracteres</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p class="mb-0 mt-2"><small class="text-muted"><i class="fas fa-exclamation-triangle"></i> <strong>Nota:</strong> Las personas con datos inválidos o números de documento duplicados no serán creadas. Al finalizar, verás un reporte detallado.</small></p>
+                    </div>
+                </div>
+
+                <!-- Upload Form -->
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">Seleccionar Archivo CSV</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" 
+                               accept=".csv" required>
+                        <div class="form-text">Solo archivos .csv</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('consultar_personas') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload"></i> Subir y Procesar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results Card (only shown after processing) -->
+        {% if show_results %}
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0"><i class="fas fa-check-circle"></i> Resultados del Procesamiento</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-primary mb-0">{{ results.total|default(0) }}</h3>
+                            <small class="text-muted">Total Registros</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-success mb-0">{{ results.created|default(0) }}</h3>
+                            <small class="text-muted">Creados Exitosamente</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-warning mb-0">{{ (results.validation_errors|default([])|length) + (results.duplicates|default([])|length) }}</h3>
+                            <small class="text-muted">Errores de Validación</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border rounded p-3">
+                            <h3 class="text-danger mb-0">{{ results.failed|default([])|length }}</h3>
+                            <small class="text-muted">Errores de Base de Datos</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Errors Table -->
+                {% if results.validation_errors %}
+                <div class="mt-4">
+                    <h6 class="text-warning"><i class="fas fa-exclamation-triangle"></i> Errores de Validación ({{ results.validation_errors|length }})</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-warning">
+                                <tr>
+                                    <th style="width: 5%;">Fila</th>
+                                    <th style="width: 10%;">N° Documento</th>
+                                    <th style="width: 20%;">Nombres</th>
+                                    <th style="width: 15%;">Apellidos</th>
+                                    <th style="width: 50%;">Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for error in results.validation_errors %}
+                                <tr>
+                                    <td>{{ error.row }}</td>
+                                    <td>{{ error.data.numero_documento }}</td>
+                                    <td>{{ error.data.primer_nombre }} {{ error.data.segundo_nombre or '' }}</td>
+                                    <td>{{ error.data.apellidos }}</td>
+                                    <td><small class="text-danger">{{ error.error }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Duplicates Table -->
+                {% if results.duplicates %}
+                <div class="mt-4">
+                    <h6 class="text-info"><i class="fas fa-copy"></i> Documentos Duplicados ({{ results.duplicates|length }})</h6>
+                    <p class="text-muted small">Estas personas ya existen en el sistema</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-info">
+                                <tr>
+                                    <th style="width: 5%;">Fila</th>
+                                    <th style="width: 10%;">N° Documento</th>
+                                    <th style="width: 20%;">Nombres</th>
+                                    <th style="width: 15%;">Apellidos</th>
+                                    <th style="width: 50%;">Mensaje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dup in results.duplicates %}
+                                <tr>
+                                    <td>{{ dup.row }}</td>
+                                    <td>{{ dup.data.numero_documento }}</td>
+                                    <td>{{ dup.data.primer_nombre }} {{ dup.data.segundo_nombre or '' }}</td>
+                                    <td>{{ dup.data.apellidos }}</td>
+                                    <td><small class="text-info">Ya existe una persona con este número de documento</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Failed Inserts Table -->
+                {% if results.failed %}
+                <div class="mt-4">
+                    <h6 class="text-danger"><i class="fas fa-times-circle"></i> Errores de Base de Datos ({{ results.failed|length }})</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-danger">
+                                <tr>
+                                    <th style="width: 5%;">Fila</th>
+                                    <th style="width: 10%;">N° Documento</th>
+                                    <th style="width: 20%;">Nombres</th>
+                                    <th style="width: 15%;">Apellidos</th>
+                                    <th style="width: 50%;">Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fail in results.failed %}
+                                <tr>
+                                    <td>{{ fail.row }}</td>
+                                    <td>{{ fail.data.numero_documento }}</td>
+                                    <td>{{ fail.data.primer_nombre }} {{ fail.data.segundo_nombre or '' }}</td>
+                                    <td>{{ fail.data.apellidos }}</td>
+                                    <td><small class="text-danger">{{ fail.error }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Success message if no errors -->
+                {% if results.validation_errors|length == 0 and results.duplicates|length == 0 and results.failed|length == 0 %}
+                <div class="alert alert-success mt-3" role="alert">
+                    <h6 class="alert-heading"><i class="fas fa-check-circle"></i> ¡Carga Completada!</h6>
+                    <p class="mb-0">Todas las personas fueron creadas exitosamente sin errores.</p>
+                </div>
+                {% endif %}
+
+                <!-- Action buttons after results -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{{ url_for('bulk_upload_personas') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Cargar Más Personas
+                    </a>
+                    <a href="{{ url_for('consultar_personas') }}" class="btn btn-success">
+                        <i class="fas fa-list"></i> Ver Todas las Personas
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

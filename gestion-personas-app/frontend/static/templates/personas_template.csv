@@ -1,0 +1,7 @@
+﻿numero_documento,tipo_documento,primer_nombre,segundo_nombre,apellidos,fecha_nacimiento,genero,correo_electronico,celular
+1234567890,Cédula,Juan,Carlos,García López,1990-05-15,Masculino,juan.garcia@example.com,3001234567
+9876543210,Tarjeta de identidad,María,Fernanda,Rodríguez Pérez,2005-08-22,Femenino,maria.rodriguez@example.com,3109876543
+1122334455,Cédula,Carlos,Alberto,Martínez Silva,1985-11-30,Masculino,carlos.martinez@example.com,3201122334
+5544332211,Cédula,Laura,,Hernández Gómez,1992-03-10,Femenino,laura.hernandez@example.com,3155443322
+6677889900,Tarjeta de identidad,Andrés,Felipe,Sánchez Torres,2008-07-18,Masculino,andres.sanchez@example.com,3206677889
+4455667788,Cédula,Carmen,Patricia,Ramírez Díaz,1978-02-28,Femenino,carmen.ramirez@example.com,3154455667

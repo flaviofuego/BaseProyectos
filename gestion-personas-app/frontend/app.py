@@ -630,6 +630,122 @@ def crear_persona():
     
     return render_template('crear_persona.html', today_iso=today_iso())
 
+@app.route('/personas/bulk-upload', methods=['GET', 'POST'])
+@login_required
+def bulk_upload_personas():
+    """Bulk upload personas from CSV file"""
+    
+    if request.method == 'GET':
+        # Render the upload form
+        return render_template('bulk_upload.html')
+    
+    # POST: Process CSV upload
+    try:
+        # Check if file was uploaded
+        if 'csv_file' not in request.files:
+            flash('❌ No se seleccionó ningún archivo', 'error')
+            return render_template('bulk_upload.html')
+        
+        csv_file = request.files['csv_file']
+        
+        if csv_file.filename == '':
+            flash('❌ No se seleccionó ningún archivo', 'error')
+            return render_template('bulk_upload.html')
+        
+        # Validate file extension
+        if not csv_file.filename.endswith('.csv'):
+            flash('❌ El archivo debe ser un CSV (.csv)', 'error')
+            return render_template('bulk_upload.html')
+        
+        # Prepare multipart form data
+        files = {'csv_file': (csv_file.filename, csv_file.stream, csv_file.content_type)}
+        
+        # Make request to backend
+        print(f"DEBUG: Uploading CSV file: {csv_file.filename}")
+        response = make_request('POST', '/api/personas/bulk-upload', files=files)
+        
+        if response is not None:
+            if response.status_code == 200:
+                # Success - display results
+                try:
+                    response_data = response.json()
+                    print(f"DEBUG: Bulk upload response: {response_data}")
+                    
+                    # Extract results from response
+                    results = response_data.get('results', {})
+                    print(f"DEBUG: Extracted results: {results}")
+                    
+                    total = results.get('total', 0)
+                    created = results.get('created', 0)
+                    validation_errors = results.get('validation_errors', [])
+                    duplicates = results.get('duplicates', [])
+                    failed = results.get('failed', [])
+                    
+                    print(f"DEBUG: Stats - total:{total}, created:{created}, errors:{len(validation_errors)}, dups:{len(duplicates)}, failed:{len(failed)}")
+                    
+                    # Show success message
+                    if created > 0:
+                        flash(f'✅ Se crearon {created} de {total} personas exitosamente', 'success')
+                    
+                    # Show warnings for errors
+                    total_errors = len(validation_errors) + len(duplicates) + len(failed)
+                    if total_errors > 0:
+                        flash(f'⚠️ No se pudieron procesar {total_errors} registros. Ver detalles abajo.', 'warning')
+                    
+                    print(f"DEBUG: Rendering template with results: {results}")
+                    return render_template('bulk_upload.html', 
+                                         results=results,
+                                         show_results=True)
+                
+                except Exception as e:
+                    print(f"DEBUG: Error parsing 200 response: {e}")
+                    flash('❌ Error al procesar la respuesta del servidor', 'error')
+                    return render_template('bulk_upload.html')
+            
+            elif response.status_code == 400:
+                # Validation error
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Datos inválidos')
+                    print(f"DEBUG: 400 error response: {error_data}")
+                    flash(f'❌ {error_message}', 'error')
+                except Exception as e:
+                    print(f"DEBUG: Error parsing 400 response: {e}")
+                    flash('❌ Error de validación en el archivo CSV', 'error')
+            
+            elif response.status_code == 500:
+                # Server error
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Error interno del servidor')
+                    print(f"DEBUG: 500 error response: {error_data}")
+                    flash(f'❌ Error interno del servidor: {error_message}', 'error')
+                except Exception as e:
+                    print(f"DEBUG: Error parsing 500 response: {e}")
+                    flash('❌ Error interno del servidor', 'error')
+            
+            else:
+                # Other error
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', f'Error desconocido (Código: {response.status_code})')
+                    print(f"DEBUG: {response.status_code} error response: {error_data}")
+                    flash(f'❌ {error_message}', 'error')
+                except Exception as e:
+                    print(f"DEBUG: Error parsing {response.status_code} response: {e}")
+                    flash(f'❌ Error al procesar el archivo (Código: {response.status_code})', 'error')
+        
+        else:
+            # Connection error
+            print("DEBUG: Response is None - connection/timeout error occurred")
+            flash('❌ Error de conexión: No se pudo contactar con el servidor', 'error')
+    
+    except Exception as e:
+        print(f"DEBUG: Exception in bulk_upload_personas: {e}")
+        flash('❌ Error al procesar el archivo CSV', 'error')
+    
+    return render_template('bulk_upload.html')
+
 @app.route('/personas/check/<numero_documento>', methods=['GET'])
 @login_required
 def check_persona_exists(numero_documento):
