@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3004
 
 # Use nodemon for development with hot reload
-CMD ["nodemon", "index.js"]
+CMD ["nodemon", "index-v2.js"]
