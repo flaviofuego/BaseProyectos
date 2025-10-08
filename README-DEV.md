@@ -593,6 +593,89 @@ FLUSHALL  # Limpiar cache
 GET "session:*"
 ```
 
+### 🗄️ Sistema de Migraciones de Base de Datos
+
+El proyecto implementa un **sistema automático de backup/restore y migraciones** para garantizar la consistencia de la base de datos entre diferentes entornos.
+
+#### Comandos de Base de Datos
+
+```bash
+# Ver estado de la base de datos
+make db-status           # Muestra estadísticas (usuarios, personas, tablas, migraciones)
+
+# Crear backup manual
+make db-backup           # Crea un backup manual de la base de datos actual
+
+# Restaurar desde backup
+make db-restore          # Restaura desde latest_backup.sql (no destructivo)
+
+# Reset completo (⚠️ PELIGROSO)
+make db-reset            # Borra TODAS las tablas y restaura desde backup
+                         # Espera 5 segundos para cancelar con Ctrl+C
+
+# Ver migraciones aplicadas
+make db-migrations       # Lista todas las migraciones con sus fechas
+```
+
+#### Workflow Automático
+
+**Al iniciar contenedores** (`make up` o `make dev`):
+1. Si existe un backup → Restaura automáticamente
+2. Si NO existe backup → Ejecuta `init.sql` + aplica migraciones pendientes
+3. Registra cada migración en `schema_migrations` para evitar duplicados
+
+**Al detener contenedores** (`make down` o `make down-dev`):
+1. Crea automáticamente un backup de la base de datos actual
+2. Guarda como `latest_backup.sql` (último backup)
+3. También crea copia con timestamp: `backup_YYYYMMDD_HHMMSS.sql`
+4. Mantiene solo los últimos 5 backups
+
+#### Crear Nueva Migración
+
+```bash
+# 1. Crear archivo en database/migrations/
+# Ejemplo: database/migrations/003_add_notifications_table.sql
+
+# 2. Escribir SQL con IF NOT EXISTS para idempotencia
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+    mensaje TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+# 3. Aplicar migración automáticamente
+make down     # Crea backup
+make up       # Restaura + aplica nuevas migraciones
+
+# 4. Verificar migración aplicada
+make db-migrations
+```
+
+#### Estructura de Archivos
+
+```
+database/
+├── init.sql                    # Schema inicial
+├── init-db.sh                  # Script de inicialización
+├── backup.sh                   # Script de backup automático
+├── restore.sh                  # Script de restore automático
+├── backups/                    # Backups (NO en git)
+│   ├── latest_backup.sql       # Último backup (usado para restore)
+│   ├── backup_20240101_120000.sql
+│   └── .gitignore              
+└── migrations/                 # Migraciones (SÍ en git)
+    ├── add_user_preferences.sql
+    └── 002_add_notifications.sql
+```
+
+**📚 Documentación Completa**: Ver `DATABASE-MIGRATIONS.md` para detalles completos sobre:
+- Casos de uso (clonar repo en nueva máquina, testing, recuperación)
+- Troubleshooting
+- Mejores prácticas
+- Ejemplos avanzados
+
+
 ### Performance y Monitoring
 
 ```bash

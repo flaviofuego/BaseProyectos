@@ -18,8 +18,8 @@ COPY . .
 # Create upload directory
 RUN mkdir -p uploads
 
-# Expose Flask port
-EXPOSE 5000
+# Expose Flask port// cambiarlo en el app.py tambien
+EXPOSE 5000  
 
 # Set Flask environment for development
 ENV FLASK_ENV=development
