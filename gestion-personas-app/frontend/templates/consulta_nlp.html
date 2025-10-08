@@ -49,6 +49,34 @@
                                 <i class="fas fa-chevron-right text-info"></i>
                                 ¿Cuántas personas hay con cédula?
                             </li>
+                        </ul>
+                        
+                        <!-- Ejemplos de consultas estructuradas -->
+                        <h6 class="mt-3 mb-2">
+                            <i class="fas fa-star text-warning"></i> Consultas Estructuradas Avanzadas
+                        </h6>
+                        <div class="example-query-structured">
+                            <i class="fas fa-table text-success"></i>
+                            <strong>Dame un listado ordenado por edad de empleados cuyo nombre contenga "García", mayores de 18 años, con nombre, cédula y edad</strong>
+                        </div>
+                        <div class="example-query-structured">
+                            <i class="fas fa-sort-numeric-down text-success"></i>
+                            <strong>Lista las personas con apellido "quisa" mayores de 2 años, ordenadas por edad, mostrando solo nombre, documento y edad, incluye el total</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Nota informativa sobre consultas estructuradas -->
+                <div class="alert alert-info mt-3">
+                    <h6><i class="fas fa-lightbulb"></i> ¿Sabías que puedes hacer consultas muy específicas?</h6>
+                    <p class="mb-1">
+                        El sistema puede generar <strong>listados estructurados</strong> con campos específicos, ordenamiento y filtros complejos.
+                        Solo describe lo que necesitas de forma natural y el sistema interpretará tu solicitud.
+                    </p>
+                    <small class="text-muted">
+                        Ejemplo: "Dame una lista de mujeres entre 25 y 40 años, ordenada por apellido, mostrando nombre, edad y email, incluye el total al final"
+                    </small>
+                            </li>
                             <li class="mb-2">
                                 <i class="fas fa-chevron-right text-info"></i>
                                 ¿Cuál es la edad promedio de las personas registradas?
@@ -112,15 +140,148 @@
 
                 <div class="mb-3">
                     <h6>Respuesta:</h6>
-                    <p class="lead">{{ resultado.respuesta }}</p>
+                    {% if resultado.metadata and resultado.metadata.intent == 'structured_list_query' %}
+                        <!-- Respuesta estructurada con formato especial -->
+                        <div class="alert alert-light border-left-primary">
+                            <pre class="structured-response-pre">{{ resultado.respuesta }}</pre>
+                        </div>
+                    {% else %}
+                        <!-- Respuesta normal -->
+                        <p class="lead">{{ resultado.respuesta }}</p>
+                    {% endif %}
                 </div>
 
+                <!-- Verificar si hay resultados reales -->
+                {% set has_real_results = (resultado.datos and ((resultado.datos is iterable and resultado.datos|length > 0) or (resultado.datos is mapping and resultado.datos))) and (not resultado.metadata or resultado.metadata.results_count != 0) %}
+                
                 <!-- Datos encontrados -->
-                {% if resultado.datos %}
+                {% if has_real_results %}
                 <div class="mb-3">
-                    <h6>Datos encontrados:</h6>
+                    {% if resultado.metadata and resultado.metadata.intent == 'structured_list_query' %}
+                        <h6>
+                            <i class="fas fa-table"></i> Listado Estructurado
+                            <small class="text-muted">({{ resultado.metadata.results_count }} resultados)</small>
+                        </h6>
+                    {% else %}
+                        <h6>Datos encontrados:</h6>
+                    {% endif %}
                     
-                    {% if resultado.datos is mapping and 'primer_nombre' in resultado.datos %}
+                    {% if resultado.metadata and resultado.metadata.intent == 'structured_list_query' and resultado.datos is iterable %}
+                        <!-- Vista especial para consultas estructuradas -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover table-structured">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        {% if resultado.datos[0] %}
+                                            {% if 'primer_nombre' in resultado.datos[0] or 'apellidos' in resultado.datos[0] %}
+                                                <th><i class="fas fa-user"></i> Nombre Completo</th>
+                                            {% endif %}
+                                            {% if 'tipo_documento' in resultado.datos[0] or 'numero_documento' in resultado.datos[0] %}
+                                                <th><i class="fas fa-id-card"></i> Documento</th>
+                                            {% endif %}
+                                            {% if 'edad' in resultado.datos[0] %}
+                                                <th><i class="fas fa-birthday-cake"></i> Edad</th>
+                                            {% endif %}
+                                            {% if 'genero' in resultado.datos[0] %}
+                                                <th><i class="fas fa-venus-mars"></i> Género</th>
+                                            {% endif %}
+                                            {% if 'correo_electronico' in resultado.datos[0] %}
+                                                <th><i class="fas fa-envelope"></i> Email</th>
+                                            {% endif %}
+                                            {% if 'celular' in resultado.datos[0] %}
+                                                <th><i class="fas fa-phone"></i> Celular</th>
+                                            {% endif %}
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in resultado.datos %}
+                                        <tr>
+                                            <td><strong>{{ loop.index }}</strong></td>
+                                            {% if 'primer_nombre' in item or 'apellidos' in item %}
+                                                <td>
+                                                    <strong>
+                                                        {{ item.primer_nombre or '' }}
+                                                        {{ item.segundo_nombre or '' }}
+                                                        {{ item.apellidos or '' }}
+                                                    </strong>
+                                                </td>
+                                            {% endif %}
+                                            {% if 'tipo_documento' in item or 'numero_documento' in item %}
+                                                <td>
+                                                    <span class="badge bg-secondary">{{ item.tipo_documento or 'N/A' }}</span><br>
+                                                    <small class="text-muted">{{ item.numero_documento or 'N/A' }}</small>
+                                                </td>
+                                            {% endif %}
+                                            {% if 'edad' in item %}
+                                                <td>
+                                                    <span class="badge badge-edad">{{ item.edad or 'N/A' }} años</span>
+                                                </td>
+                                            {% endif %}
+                                            {% if 'genero' in item %}
+                                                <td>
+                                                    {% if item.genero == 'Masculino' %}
+                                                        <span class="badge badge-gender-masculino">{{ item.genero }}</span>
+                                                    {% elif item.genero == 'Femenino' %}
+                                                        <span class="badge badge-gender-femenino">{{ item.genero }}</span>
+                                                    {% elif item.genero == 'No binario' %}
+                                                        <span class="badge badge-gender-nobinario">{{ item.genero }}</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">{{ item.genero or 'N/A' }}</span>
+                                                    {% endif %}
+                                                </td>
+                                            {% endif %}
+                                            {% if 'correo_electronico' in item %}
+                                                <td>
+                                                    {% if item.correo_electronico %}
+                                                        <a href="mailto:{{ item.correo_electronico }}" class="text-decoration-none">
+                                                            <small>{{ item.correo_electronico }}</small>
+                                                        </a>
+                                                    {% else %}
+                                                        <small class="text-muted">N/A</small>
+                                                    {% endif %}
+                                                </td>
+                                            {% endif %}
+                                            {% if 'celular' in item %}
+                                                <td>
+                                                    {% if item.celular %}
+                                                        <a href="tel:{{ item.celular }}" class="text-decoration-none">
+                                                            <small>{{ item.celular }}</small>
+                                                        </a>
+                                                    {% else %}
+                                                        <small class="text-muted">N/A</small>
+                                                    {% endif %}
+                                                </td>
+                                            {% endif %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Resumen de la consulta estructurada -->
+                        <div class="alert query-summary-card mt-3">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>
+                                        <i class="fas fa-info-circle metadata-icon"></i> Resumen de la consulta:
+                                        <span class="query-type-indicator query-type-structured">Estructurada</span>
+                                    </strong><br>
+                                    <small><i class="fas fa-list-ol metadata-icon"></i>Total de resultados: <strong>{{ resultado.metadata.results_count }}</strong></small><br>
+                                    <small><i class="fas fa-clock metadata-icon"></i>Tiempo de procesamiento: <strong>{{ resultado.metadata.processing_time_ms }}ms</strong></small>
+                                </div>
+                                <div class="col-md-6">
+                                    {% if resultado.metadata.semantic_search_used %}
+                                        <small><i class="fas fa-brain text-success metadata-icon"></i>Búsqueda semántica utilizada</small><br>
+                                    {% endif %}
+                                    <small><i class="fas fa-layer-group metadata-icon"></i>Complejidad: <strong>{{ resultado.metadata.complexity }}</strong></small><br>
+                                    <small><i class="fas fa-cogs metadata-icon"></i>Tipo: <strong>{{ resultado.metadata.query_type }}</strong></small>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% elif resultado.datos is mapping and 'primer_nombre' in resultado.datos %}
                         <!-- Single person -->
                         <div class="card">
                             <div class="card-body">
@@ -196,6 +357,57 @@
                         </div>
                     {% endif %}
                 </div>
+                {% elif not has_real_results %}
+                <!-- Sin resultados - UI especial -->
+                <div class="mb-3">
+                    <div class="alert alert-warning border-left-warning no-results-alert">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="no-results-icon">
+                                <i class="fas fa-search fa-2x text-warning"></i>
+                            </div>
+                            <div class="ms-3 flex-grow-1">
+                                <h5 class="alert-heading mb-1">
+                                    <i class="fas fa-info-circle"></i> No se encontraron resultados
+                                </h5>
+                                <p class="mb-0 text-muted">No hay personas que coincidan con los criterios de tu búsqueda.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="no-results-suggestions">
+                            <h6><i class="fas fa-lightbulb text-warning"></i> Sugerencias:</h6>
+                            <ul class="mb-2">
+                                <li>Verifica la ortografía de nombres o términos de búsqueda</li>
+                                <li>Intenta con criterios menos específicos o más amplios</li>
+                                <li>Usa términos de búsqueda más generales</li>
+                                {% if resultado.metadata.intent == 'age_range_query' %}
+                                <li>Amplía el rango de edades especificado</li>
+                                {% elif resultado.metadata.intent == 'name_pattern_search' %}
+                                <li>Intenta buscar solo con la primera letra o parte del nombre</li>
+                                {% elif resultado.metadata.intent == 'structured_list_query' %}
+                                <li>Revisa los filtros aplicados (nombres, edad, etc.)</li>
+                                {% endif %}
+                            </ul>
+                            
+                            <div class="no-results-quick-actions">
+                                <h6><i class="fas fa-rocket"></i> Acciones rápidas:</h6>
+                                <div class="btn-group-vertical btn-group-sm d-grid gap-2 d-md-flex">
+                                    <button type="button" class="btn btn-outline-info btn-sm quick-action-btn" 
+                                            data-query="¿cuántas personas hay registradas?">
+                                        <i class="fas fa-users"></i> Ver total de personas
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success btn-sm quick-action-btn" 
+                                            data-query="muestra todos los empleados">
+                                        <i class="fas fa-list"></i> Listar todos los empleados
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm quick-action-btn" 
+                                            data-query="estadísticas de empleados">
+                                        <i class="fas fa-chart-bar"></i> Ver estadísticas
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 {% endif %}
 
                 <!-- Metadata -->
@@ -230,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
         preguntaField.focus();
     }
 
-    // Example questions click handler
+    // Example questions click handler (tradicionales)
     const exampleQuestions = document.querySelectorAll('.card-body ul li');
     exampleQuestions.forEach(function(li) {
         li.style.cursor = 'pointer';
@@ -238,9 +450,173 @@ document.addEventListener('DOMContentLoaded', function() {
             const questionText = this.textContent.trim();
             preguntaField.value = questionText;
             preguntaField.focus();
+            
+            // Añadir efecto visual
+            li.style.background = 'rgba(13, 110, 253, 0.1)';
+            setTimeout(() => {
+                li.style.background = '';
+            }, 300);
         });
     });
-});
+
+    // Example structured queries click handler
+    const structuredQueries = document.querySelectorAll('.example-query-structured');
+    structuredQueries.forEach(function(query) {
+        query.addEventListener('click', function() {
+            const questionText = this.textContent.trim();
+            preguntaField.value = questionText;
+            preguntaField.focus();
+            
+            // Añadir efecto visual específico para consultas estructuradas
+            this.style.background = 'linear-gradient(135deg, rgba(40, 167, 69, 0.25), rgba(32, 201, 151, 0.25))';
+            this.style.transform = 'translateX(10px) scale(1.02)';
+            setTimeout(() => {
+                this.style.background = 'linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1))';
+                this.style.transform = 'translateX(0) scale(1)';
+            }, 500);
+        });
+    });
+
+    // Loading state para el formulario
+    const form = document.querySelector('form');
+    const submitButton = form ? form.querySelector('button[type="submit"]') : null;
+    
+    if (form && submitButton) {
+        form.addEventListener('submit', function() {
+            // Mostrar estado de carga
+            submitButton.innerHTML = `
+                <div class="loading-spinner"></div>
+                <span class="ms-2">Procesando consulta...</span>
+            `;
+            submitButton.disabled = true;
+            
+            // Añadir indicador visual al textarea
+            preguntaField.style.borderColor = '#0d6efd';
+            preguntaField.style.boxShadow = '0 0 0 0.2rem rgba(13, 110, 253, 0.25)';
+        });
+    }
+
+    // Contador de caracteres para el textarea
+    if (preguntaField) {
+        const maxLength = 1000;
+        const counterDiv = document.createElement('div');
+        counterDiv.className = 'text-muted small mt-1 text-end';
+        counterDiv.id = 'char-counter';
+        preguntaField.parentNode.appendChild(counterDiv);
+        
+        function updateCounter() {
+            const currentLength = preguntaField.value.length;
+            const remaining = maxLength - currentLength;
+            counterDiv.textContent = `${currentLength}/${maxLength} caracteres`;
+            
+            if (remaining < 100) {
+                counterDiv.className = 'text-warning small mt-1 text-end';
+            } else if (remaining < 50) {
+                counterDiv.className = 'text-danger small mt-1 text-end';
+            } else {
+                counterDiv.className = 'text-muted small mt-1 text-end';
+            }
+        }
+        
+        preguntaField.addEventListener('input', updateCounter);
+        updateCounter(); // Inicializar contador
+    }
+
+    // Mejoras de UX para la tabla estructurada
+    const structuredTable = document.querySelector('.table-structured');
+    if (structuredTable) {
+        // Añadir funcionalidad de ordenamiento visual (solo visual, no funcional)
+        const headers = structuredTable.querySelectorAll('th');
+        headers.forEach(header => {
+            if (header.textContent.includes('Edad') || header.textContent.includes('Nombre')) {
+                header.style.cursor = 'pointer';
+                header.title = 'Columna utilizada para ordenamiento';
+                
+                // Añadir icono de ordenamiento si la columna está ordenada
+                if (header.textContent.includes('Edad')) {
+                    header.innerHTML += ' <i class="fas fa-sort-up text-warning ms-1"></i>';
+                }
+            }
+        });
+        
+        // Efecto hover mejorado para filas
+        const rows = structuredTable.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = 'rgba(0, 123, 255, 0.08)';
+                this.style.cursor = 'default';
+            });
+            
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
+    }
+
+    // Tooltip para badges de género
+    const genderBadges = document.querySelectorAll('.badge-gender-masculino, .badge-gender-femenino, .badge-gender-nobinario');
+    genderBadges.forEach(badge => {
+        badge.title = `Género: ${badge.textContent}`;
+    });
+
+    // Tooltip para badges de edad
+    const ageBadges = document.querySelectorAll('.badge-edad');
+    ageBadges.forEach(badge => {
+        badge.title = `Edad calculada: ${badge.textContent}`;
+    });
+
+    // Quick action buttons para casos sin resultados
+    const quickActionButtons = document.querySelectorAll('.quick-action-btn');
+    quickActionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const query = this.getAttribute('data-query');
+            if (query && preguntaField) {
+                preguntaField.value = query;
+                preguntaField.focus();
+                
+                // Efecto visual al hacer click
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 150);
+            }
+        });
+    });
+});    // Quick action buttons para casos sin resultados
+    const quickActionButtons = document.querySelectorAll('.quick-action-btn');
+    quickActionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const query = this.getAttribute('data-query');
+            if (query && preguntaField) {
+                preguntaField.value = query;
+                preguntaField.focus();
+                
+                // Efecto visual en el botón
+                this.style.transform = 'scale(0.95)';
+                this.style.opacity = '0.8';
+                setTimeout(() => {
+                    this.style.transform = '';
+                    this.style.opacity = '';
+                }, 150);
+                
+                // Auto-submit después de un breve delay para que el usuario vea el cambio
+                setTimeout(() => {
+                    if (form) {
+                        form.submit();
+                    }
+                }, 800);
+            }
+        });
+        
+        // Hover effect mejorado
+        button.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+            this.style.transform = '';
+        });
+    });
 </script>
 {% endblock %}
 
