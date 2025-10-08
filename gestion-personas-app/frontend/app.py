@@ -1,9 +1,10 @@
-﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 import requests
 import pandas as pd
 from datetime import datetime, date
 import json
 import os
+import io
 from dotenv import load_dotenv
 import base64
 from io import BytesIO
@@ -1006,6 +1007,126 @@ def consultar_personas():
                 flash('El servicio de consulta está deshabilitado. Puedes habilitarlo desde la configuración de tu cuenta.', 'warning')
     
     return render_template('consultar_personas.html', personas=personas)
+
+@app.route('/personas/exportar')
+@login_required
+def exportar_personas():
+    """Export personas to CSV or Excel based on current search criteria"""
+    
+    # Get export format
+    formato = request.args.get('formato', 'csv')  # csv or excel
+    
+    # Get search parameters (same as consultar_personas)
+    numero_documento = request.args.get('numero_documento')
+    tipo_documento = request.args.get('tipo_documento')
+    genero = request.args.get('genero')
+    edad_min = request.args.get('edad_min')
+    edad_max = request.args.get('edad_max')
+    
+    personas = []
+    
+    try:
+        if numero_documento:
+            # Individual search
+            response = make_request('GET', f'/api/consulta/persona/{numero_documento}')
+            
+            if response is not None and response.status_code == 200:
+                personas = [response.json()]
+        
+        elif any([tipo_documento, genero, edad_min, edad_max]):
+            # Advanced search
+            params = {}
+            if tipo_documento and tipo_documento != 'Todos':
+                params['tipo_documento'] = tipo_documento
+            if genero and genero != 'Todos':
+                params['genero'] = genero
+            if edad_min:
+                params['edad_min'] = edad_min
+            if edad_max:
+                params['edad_max'] = edad_max
+            
+            params['limit'] = 1000  # Get all results for export
+            
+            response = make_request('GET', '/api/consulta/search', params=params)
+            
+            if response is not None and response.status_code == 200:
+                data = response.json()
+                personas = data.get('personas', [])
+        
+        if not personas:
+            flash('No hay datos para exportar', 'warning')
+            return redirect(url_for('consultar_personas'))
+        
+        # Create DataFrame
+        df_data = []
+        for persona in personas:
+            df_data.append({
+                'numero_documento': persona.get('numero_documento', ''),
+                'tipo_documento': persona.get('tipo_documento', ''),
+                'primer_nombre': persona.get('primer_nombre', ''),
+                'segundo_nombre': persona.get('segundo_nombre', ''),
+                'apellidos': persona.get('apellidos', ''),
+                'fecha_nacimiento': persona.get('fecha_nacimiento', '').split('T')[0] if persona.get('fecha_nacimiento') else '',
+                'genero': persona.get('genero', ''),
+                'correo_electronico': persona.get('correo_electronico', ''),
+                'celular': persona.get('celular', '')
+            })
+        
+        df = pd.DataFrame(df_data)
+        
+        # Generate filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if formato == 'excel':
+            # Export to Excel
+            filename = f'personas_export_{timestamp}.xlsx'
+            output = io.BytesIO()
+            
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Personas')
+                
+                # Auto-adjust column widths
+                worksheet = writer.sheets['Personas']
+                for idx, col in enumerate(df.columns):
+                    max_length = max(
+                        df[col].astype(str).map(len).max(),
+                        len(col)
+                    )
+                    worksheet.column_dimensions[chr(65 + idx)].width = min(max_length + 2, 50)
+            
+            output.seek(0)
+            
+            return send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=filename
+            )
+        
+        else:  # CSV format
+            # Export to CSV with UTF-8 BOM (compatible with Excel)
+            filename = f'personas_export_{timestamp}.csv'
+            output = io.StringIO()
+            
+            df.to_csv(output, index=False, encoding='utf-8-sig')
+            
+            # Create bytes buffer with UTF-8 BOM
+            csv_bytes = io.BytesIO()
+            csv_bytes.write(b'\xef\xbb\xbf')  # UTF-8 BOM
+            csv_bytes.write(output.getvalue().encode('utf-8'))
+            csv_bytes.seek(0)
+            
+            return send_file(
+                csv_bytes,
+                mimetype='text/csv',
+                as_attachment=True,
+                download_name=filename
+            )
+    
+    except Exception as e:
+        print(f"DEBUG: Error in export: {e}")
+        flash('Error al exportar los datos', 'error')
+        return redirect(url_for('consultar_personas'))
 
 @app.route('/personas/nlp', methods=['GET', 'POST'])
 @login_required

@@ -99,13 +99,28 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-list"></i> Resultados
-                    <span class="badge bg-primary">{{ personas|length }}</span>
-                </h5>
-                {% if personas|length > 1 %}
-                <small class="text-muted">Se encontraron {{ personas|length }} personas</small>
-                {% endif %}
+                <div>
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list"></i> Resultados
+                        <span class="badge bg-primary">{{ personas|length }}</span>
+                    </h5>
+                    {% if personas|length > 1 %}
+                    <small class="text-muted">Se encontraron {{ personas|length }} personas</small>
+                    {% endif %}
+                </div>
+                <!-- Export Buttons -->
+                <div class="btn-group" role="group">
+                    <button onclick="exportarDatos('csv')" 
+                            class="btn btn-success btn-sm" 
+                            title="Exportar a CSV">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                    <button onclick="exportarDatos('excel')" 
+                            class="btn btn-primary btn-sm" 
+                            title="Exportar a Excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 {% if personas|length == 1 %}
@@ -251,6 +266,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Export data function
+function exportarDatos(formato) {
+    // Get current URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Add formato parameter
+    urlParams.set('formato', formato);
+    
+    // Build export URL
+    const exportUrl = '{{ url_for("exportar_personas") }}?' + urlParams.toString();
+    
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = ''; // This will use the filename from Content-Disposition header
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 </script>
 
 {% endblock %}
