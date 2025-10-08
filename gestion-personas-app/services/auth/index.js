@@ -1,3 +1,4 @@
+// Auth service for user authentication and authorization
 const express = require('express');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
@@ -12,6 +13,7 @@ const session = require('express-session');
 const Joi = require('joi');
 const helmet = require('helmet');
 const cors = require('cors');
+const { createServiceRegistryClient } = require('./shared/service-registry-client');
 require('dotenv').config();
 
 const app = express();
@@ -19,7 +21,10 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5000', 'http://localhost:3000', 'http://localhost:8001'],
+  credentials: true
+}));
 
 // Session configuration for Auth0
 app.use(session({
@@ -32,13 +37,10 @@ app.use(session({
 // Body parser
 app.use(express.json({ limit: '1mb' }));
 app.use((err, req, res, next) => {
-  if (err && err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'Payload too large' });
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Invalid JSON' });
   }
-  if (err && err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'Invalid JSON payload' });
-  }
-  return next(err);
+  next();
 });
 
 app.use(passport.initialize());
@@ -72,6 +74,542 @@ const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required()
 });
+
+// ============================================================================
+// USER PREFERENCES ENDPOINTS
+// ============================================================================
+
+// Helper function to get or create user preferences with caching
+async function getUserPreferences(userId) {
+  try {
+    // Check Redis cache first
+    const cacheKey = `user_prefs:${userId}`;
+    const cachedPrefs = await redisClient.get(cacheKey);
+    
+    if (cachedPrefs) {
+      return JSON.parse(cachedPrefs);
+    }
+
+    // Query database
+    let result = await pool.query(
+      'SELECT * FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+
+    // If no preferences exist, create default preferences
+    if (result.rows.length === 0) {
+      await pool.query(
+        'INSERT INTO user_preferences (user_id, consulta_service_enabled) VALUES ($1, TRUE)',
+        [userId]
+      );
+      
+      result = await pool.query(
+        'SELECT * FROM user_preferences WHERE user_id = $1',
+        [userId]
+      );
+    }
+
+    const preferences = result.rows[0];
+    
+    // Cache for 5 minutes
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(preferences));
+    
+    return preferences;
+  } catch (error) {
+    console.error('Error getting user preferences:', error);
+    throw error;
+  }
+}
+
+// Helper function to invalidate user preferences cache
+async function invalidateUserPreferencesCache(userId) {
+  try {
+    const cacheKey = `user_prefs:${userId}`;
+    await redisClient.del(cacheKey);
+  } catch (error) {
+    console.error('Error invalidating user preferences cache:', error);
+  }
+}
+
+// Get user preferences
+app.get('/preferences',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const preferences = await getUserPreferences(userId);
+
+      res.json({
+        success: true,
+        preferences: {
+          consulta_service_enabled: preferences.consulta_service_enabled,
+          updated_at: preferences.updated_at
+        }
+      });
+    } catch (error) {
+      console.error('Error getting preferences:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Error interno del servidor' 
+      });
+    }
+  }
+);
+
+// Update consulta service status (con control de contenedor Docker)
+app.put('/preferences/consulta-service',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const username = req.user.username || `User ${userId}`;
+      const { enabled } = req.body;
+
+      // Validate input
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ 
+          success: false,
+          message: 'El campo "enabled" debe ser un valor booleano' 
+        });
+      }
+
+      // Obtener estado anterior para saber qué cambió
+      const previousStateResult = await pool.query(
+        `SELECT consulta_service_enabled FROM user_preferences WHERE user_id = $1`,
+        [userId]
+      );
+      const previousState = previousStateResult.rows[0]?.consulta_service_enabled ?? true;
+
+      console.log(`🔄 User ${userId} (${username}) changing service from ${previousState} to ${enabled}`);
+
+      // Control del contenedor Docker
+      let dockerResult = null;
+      const dockerController = require('./docker-controller');
+
+      if (enabled) {
+        // ✅ ACTIVAR SERVICIO: Activar para TODOS y iniciar contenedor
+        console.log(`✅ User ${userId} (${username}) is ENABLING service - starting container and enabling for ALL users`);
+        dockerResult = await dockerController.startConsultaService();
+        
+        if (!dockerResult.success && !dockerResult.already_running) {
+          // Si falla al iniciar, NO guardar la preferencia
+          console.error(`❌ Failed to start container for user ${userId}:`, dockerResult.error);
+          
+          // Registrar en logs el intento fallido
+          logTransaction(userId, 'ENABLE_CONSULTA_SERVICE', 'ERROR', req, {
+            username: username,
+            enabled: true,
+            docker_action: 'start',
+            docker_result: 'failed',
+            error: dockerResult.error
+          }, dockerResult.error);
+          
+          return res.status(500).json({
+            success: false,
+            message: 'No se pudo iniciar el servicio de consulta. Revisa que Docker esté funcionando.',
+            error: dockerResult.error
+          });
+        }
+
+        // Contenedor iniciado exitosamente o ya estaba corriendo
+        console.log(`✅ Container started/running for user ${userId} (${username})`);
+
+        // 1. Activar para TODOS los usuarios
+        const enableAllResult = await pool.query(
+          `UPDATE user_preferences 
+           SET consulta_service_enabled = TRUE, updated_at = CURRENT_TIMESTAMP
+           WHERE consulta_service_enabled = FALSE
+           RETURNING user_id`
+        );
+        
+        const affectedUsers = enableAllResult.rows.map(row => row.user_id);
+        console.log(`✅ Enabled service for ${affectedUsers.length} user(s): [${affectedUsers.join(', ')}]`);
+
+        // 2. Invalidar cache de todos los usuarios afectados
+        for (const affectedUserId of affectedUsers) {
+          await invalidateUserPreferencesCache(affectedUserId);
+        }
+
+        // 3. Registrar en logs la activación masiva
+        logTransaction(userId, 'ENABLE_CONSULTA_SERVICE', 'SUCCESS', req, {
+          username: username,
+          enabled: true,
+          docker_action: 'start',
+          docker_result: dockerResult?.success ? 'success' : 'already_running',
+          affected_users: affectedUsers,
+          total_affected: affectedUsers.length,
+          container_started: dockerResult?.success || dockerResult?.already_running,
+          message: `User ${username} enabled service for all users`
+        });
+
+        // Retornar respuesta para activación
+        return res.json({
+          success: true,
+          message: `Servicio de consulta habilitado para todos los usuarios`,
+          affected_users: affectedUsers.length,
+          preferences: {
+            consulta_service_enabled: true
+          },
+          container_status: dockerResult ? {
+            action: 'started',
+            success: dockerResult.success || dockerResult.already_running,
+            message: dockerResult.message
+          } : null
+        });
+
+      } else {
+        // ❌ DESACTIVAR SERVICIO: Desactivar para TODOS y detener contenedor
+        console.log(`🛑 User ${userId} (${username}) is DISABLING service - stopping container and disabling for ALL users`);
+        
+        // 1. Desactivar para TODOS los usuarios
+        const disableAllResult = await pool.query(
+          `UPDATE user_preferences 
+           SET consulta_service_enabled = FALSE, updated_at = CURRENT_TIMESTAMP
+           WHERE consulta_service_enabled = TRUE
+           RETURNING user_id`
+        );
+        
+        const affectedUsers = disableAllResult.rows.map(row => row.user_id);
+        console.log(`🛑 Disabled service for ${affectedUsers.length} user(s): [${affectedUsers.join(', ')}]`);
+
+        // 2. Invalidar cache de todos los usuarios afectados
+        for (const affectedUserId of affectedUsers) {
+          await invalidateUserPreferencesCache(affectedUserId);
+        }
+
+        // 3. Detener el contenedor Docker
+        console.log(`🛑 Stopping Docker container`);
+        dockerResult = await dockerController.stopConsultaService();
+        
+        if (!dockerResult.success && !dockerResult.already_stopped) {
+          console.warn(`⚠️ Failed to stop container, but preferences were updated:`, dockerResult.error);
+          // No revertir las preferencias, solo advertir
+        } else {
+          console.log(`✅ Container stopped successfully`);
+        }
+
+        // 4. Registrar en logs la desactivación masiva
+        logTransaction(userId, 'DISABLE_CONSULTA_SERVICE', 'SUCCESS', req, {
+          username: username,
+          enabled: false,
+          docker_action: 'stop',
+          docker_result: dockerResult?.success ? 'success' : 'failed',
+          affected_users: affectedUsers,
+          total_affected: affectedUsers.length,
+          container_stopped: dockerResult?.success || dockerResult?.already_stopped,
+          message: `User ${username} disabled service for all users`
+        });
+
+        // Retornar respuesta temprano para desactivación
+        return res.json({
+          success: true,
+          message: `Servicio de consulta deshabilitado para todos los usuarios`,
+          affected_users: affectedUsers.length,
+          preferences: {
+            consulta_service_enabled: false
+          },
+          container_status: dockerResult ? {
+            action: 'stopped',
+            success: dockerResult.success || dockerResult.already_stopped,
+            message: dockerResult.message
+          } : null
+        });
+      }
+    } catch (error) {
+      console.error('Error updating consulta service preference:', error);
+      logTransaction(req.user.id, 'UPDATE_PREFERENCES', 'ERROR', req, null, error.message);
+      res.status(500).json({ 
+        success: false,
+        message: 'Error interno del servidor' 
+      });
+    }
+  }
+);
+
+// Check if consulta service is enabled for a user (used by gateway)
+app.get('/preferences/consulta-service/check/:userId',
+  async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+
+      if (isNaN(userId)) {
+        return res.status(400).json({ 
+          enabled: true, // Default to enabled on invalid input
+          message: 'Invalid user ID' 
+        });
+      }
+
+      const preferences = await getUserPreferences(userId);
+
+      res.json({
+        enabled: preferences.consulta_service_enabled,
+        user_id: userId
+      });
+    } catch (error) {
+      console.error('Error checking consulta service status:', error);
+      // Default to enabled on error to avoid breaking functionality
+      res.json({ 
+        enabled: true,
+        user_id: req.params.userId,
+        error: 'Error checking preferences, defaulting to enabled'
+      });
+    }
+  }
+);
+
+// Get Docker container status for consulta-service (admin/monitoring)
+app.get('/preferences/consulta-service/container-status',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res) => {
+    try {
+      const dockerController = require('./docker-controller');
+      const info = await dockerController.getContainerInfo();
+      
+      // También obtener cuántos usuarios tienen el servicio habilitado
+      const usersResult = await pool.query(
+        `SELECT COUNT(*) as count FROM user_preferences WHERE consulta_service_enabled = TRUE`
+      );
+      const usersWithService = parseInt(usersResult.rows[0].count);
+
+      res.json({
+        success: true,
+        container: info,
+        users_with_service_enabled: usersWithService
+      });
+    } catch (error) {
+      console.error('Error getting container status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error obteniendo estado del contenedor',
+        error: error.message
+      });
+    }
+  }
+);
+
+// ============================================================================
+// ACCOUNT MANAGEMENT ENDPOINTS
+// ============================================================================
+
+// Middleware de autenticación flexible: acepta JWT o x-user-id del gateway
+const flexibleAuth = async (req, res, next) => {
+  // Si viene el header x-user-id del gateway, usar ese usuario
+  if (req.headers['x-user-id']) {
+    try {
+      const userId = parseInt(req.headers['x-user-id']);
+      const userQuery = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      
+      if (userQuery.rows.length === 0) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+      
+      req.user = userQuery.rows[0];
+      return next();
+    } catch (error) {
+      console.error('Error loading user from x-user-id:', error);
+      return res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  }
+  
+  // Si no, intentar autenticación JWT tradicional
+  passport.authenticate('jwt', { session: false }, (err, user, info) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error de autenticación' });
+    }
+    if (!user) {
+      return res.status(401).json({ message: 'No autorizado' });
+    }
+    req.user = user;
+    next();
+  })(req, res, next);
+};
+
+// Auth0 logout
+app.get('/logout/auth0', (req, res) => {
+  if (!process.env.AUTH0_DOMAIN) {
+    return res.status(501).json({ error: 'Auth0 not configured' });
+  }
+  
+  const logoutURL = new URL(`https://${process.env.AUTH0_DOMAIN}/v2/logout`);
+  logoutURL.searchParams.set('client_id', process.env.AUTH0_CLIENT_ID);
+  logoutURL.searchParams.set('returnTo', `${process.env.FRONTEND_URL}/login`);
+  
+  res.redirect(logoutURL.toString());
+});
+
+// Cambiar correo electrónico
+app.post('/cambiar-email',
+  flexibleAuth,
+  async (req, res) => {
+    try {
+      const { nuevo_email, password_confirm, user_id } = req.body;
+
+      // Validar datos
+      if (!nuevo_email || !password_confirm) {
+        return res.status(400).json({ 
+          message: 'Nuevo correo electrónico y contraseña actual son requeridos' 
+        });
+      }
+
+      // Verificar que el user_id coincida con el usuario autenticado
+      if (req.user.id !== user_id) {
+        return res.status(403).json({ 
+          message: 'No autorizado para cambiar este correo' 
+        });
+      }
+
+      // Validar formato del email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(nuevo_email)) {
+        return res.status(400).json({ 
+          message: 'Por favor, ingresa un correo electrónico válido' 
+        });
+      }
+
+      // Obtener usuario actual de la base de datos
+      const userQuery = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [user_id]
+      );
+
+      if (userQuery.rows.length === 0) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+
+      const user = userQuery.rows[0];
+
+      // Verificar contraseña actual
+      const validPassword = await bcrypt.compare(password_confirm, user.password_hash);
+      if (!validPassword) {
+        // Log failed attempt
+        logTransaction(user_id, 'CHANGE_EMAIL_FAILED', 'FAILED', req, {
+          reason: 'Invalid password'
+        });
+        
+        return res.status(401).json({ message: 'Contraseña incorrecta' });
+      }
+
+      // Verificar que el nuevo email no esté en uso
+      const existingUser = await pool.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [nuevo_email, user_id]
+      );
+
+      if (existingUser.rows.length > 0) {
+        return res.status(409).json({ 
+          message: 'El correo electrónico ya está en uso' 
+        });
+      }
+
+      // Actualizar el email
+      await pool.query(
+        'UPDATE users SET email = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [nuevo_email, user_id]
+      );
+
+      // Log successful change
+      logTransaction(user_id, 'CHANGE_EMAIL', 'SUCCESS', req, {
+        old_email: user.email,
+        new_email: nuevo_email
+      });
+
+      res.json({ 
+        message: 'Correo electrónico actualizado correctamente. Por seguridad, inicia sesión nuevamente.',
+        email: nuevo_email
+      });
+
+    } catch (error) {
+      console.error('Error al cambiar correo:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  }
+);
+
+// Cambiar contraseña
+app.post('/cambiar-password',
+  flexibleAuth,
+  async (req, res) => {
+    try {
+      const { password_actual, password_nueva, user_id } = req.body;
+
+      // Validar datos
+      if (!password_actual || !password_nueva) {
+        return res.status(400).json({ 
+          message: 'Contraseña actual y nueva contraseña son requeridas' 
+        });
+      }
+
+      // Verificar que el user_id coincida con el usuario autenticado
+      if (req.user.id !== user_id) {
+        return res.status(403).json({ 
+          message: 'No autorizado para cambiar esta contraseña' 
+        });
+      }
+
+      // Validar fortaleza de la nueva contraseña
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!passwordRegex.test(password_nueva)) {
+        return res.status(400).json({ 
+          message: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número' 
+        });
+      }
+
+      // Obtener usuario actual de la base de datos
+      const userQuery = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [user_id]
+      );
+
+      if (userQuery.rows.length === 0) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+
+      const user = userQuery.rows[0];
+
+      // Verificar contraseña actual
+      const validPassword = await bcrypt.compare(password_actual, user.password_hash);
+      if (!validPassword) {
+        // Log failed attempt
+        logTransaction(user_id, 'CHANGE_PASSWORD_FAILED', 'FAILED', req, {
+          reason: 'Invalid current password'
+        });
+        
+        return res.status(401).json({ message: 'Contraseña actual incorrecta' });
+      }
+
+      // Verificar que la nueva contraseña sea diferente
+      const samePassword = await bcrypt.compare(password_nueva, user.password_hash);
+      if (samePassword) {
+        return res.status(400).json({ 
+          message: 'La nueva contraseña debe ser diferente a la actual' 
+        });
+      }
+
+      // Hash de la nueva contraseña
+      const hashedPassword = await bcrypt.hash(password_nueva, 10);
+
+      // Actualizar la contraseña
+      await pool.query(
+        'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [hashedPassword, user_id]
+      );
+
+      // Invalidar todos los tokens existentes del usuario
+      // (Opcional: podrías agregar lógica más sofisticada aquí)
+      
+      // Log successful change
+      logTransaction(user_id, 'CHANGE_PASSWORD', 'SUCCESS', req);
+
+      res.json({ 
+        message: 'Contraseña actualizada correctamente'
+      });
+
+    } catch (error) {
+      console.error('Error al cambiar contraseña:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    }
+  }
+);
 
 // Passport serialization
 passport.serializeUser((user, done) => {
@@ -220,12 +758,22 @@ app.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    passport.authenticate('local', { session: false }, (err, user, info) => {
+    passport.authenticate('local', { session: false }, async (err, user, info) => {
       if (err || !user) {
         return res.status(401).json({ error: info?.message || 'Authentication failed' });
       }
 
       const token = generateToken(user);
+      
+      // Get user preferences
+      let preferences = { consulta_service_enabled: true };
+      try {
+        const userPrefs = await getUserPreferences(user.id);
+        preferences.consulta_service_enabled = userPrefs.consulta_service_enabled;
+      } catch (error) {
+        console.error('Error loading user preferences on login:', error);
+        // Default to enabled on error
+      }
       
       // Log successful login
       logTransaction(user.id, 'LOGIN', 'SUCCESS', req);
@@ -235,7 +783,8 @@ app.post('/login', async (req, res, next) => {
         user: {
           id: user.id,
           username: user.username,
-          email: user.email
+          email: user.email,
+          consulta_service_enabled: preferences.consulta_service_enabled
         }
       });
     })(req, res, next);
@@ -413,4 +962,23 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Auth service running on port ${PORT}`);
   console.log(`Auth0 configured: ${!!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID)}`);
+  
+  // Auto-registrar en el Service Registry
+  const serviceConfig = {
+    serviceId: 'auth-service',
+    name: 'auth-service',
+    host: 'auth-service',
+    port: parseInt(PORT),
+    protocol: 'http',
+    metadata: {
+      version: '1.0.0',
+      description: 'Authentication and authorization service',
+      maintainer: 'auth-team',
+      healthEndpoint: '/health',
+      tags: ['auth', 'authentication', 'security'],
+      capabilities: ['local-auth', 'auth0', 'jwt', 'session-management']
+    }
+  };
+  
+  createServiceRegistryClient(serviceConfig);
 });

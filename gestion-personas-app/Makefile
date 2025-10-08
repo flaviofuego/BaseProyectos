@@ -1,4 +1,4 @@
-.PHONY: help build up down logs clean test init-db
+.PHONY: help build up down logs clean test init-db db-backup db-restore db-reset db-migrations db-status
 
 # Default target
 help:
@@ -17,6 +17,13 @@ help:
 	@echo "📋 MONITORING COMMANDS:"
 	@echo "  make logs        - Show logs from all services (production)"
 	@echo "  make logs-dev    - Show logs from all services (development)"
+	@echo ""
+	@echo "🗄️  DATABASE COMMANDS:"
+	@echo "  make db-backup   - Create manual backup of database"
+	@echo "  make db-restore  - Restore database from latest backup"
+	@echo "  make db-reset    - Reset database (delete all tables and restore)"
+	@echo "  make db-migrations - List applied migrations"
+	@echo "  make db-status   - Show database statistics"
 	@echo ""
 	@echo "🧹 MAINTENANCE COMMANDS:"
 	@echo "  make clean       - Stop services and remove volumes"
@@ -51,15 +58,23 @@ dev:
 	@echo "Waiting for services to be ready..."
 	@echo "Development services are starting up with hot reload enabled."
 	@echo "Access the application at http://localhost:5000"
-	@echo "API Gateway at http://localhost:8000"
+	@echo "API Gateway at http://localhost:8001"
 
 # Stop all services
 down:
+	@echo "🔄 Creating automatic backup before stopping..."
+	@docker exec personas_db bash /backups/backup.sh 2>/dev/null || true
+	@echo "⬇️  Stopping services..."
 	docker-compose down
+	@echo "✅ Services stopped!"
 
 # Stop development services
 down-dev:
+	@echo "🔄 Creating automatic backup before stopping..."
+	@docker exec personas_db bash /backups/backup.sh 2>/dev/null || true
+	@echo "⬇️  Stopping development services..."
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+	@echo "✅ Development services stopped!"
 
 # Show logs
 logs:
@@ -115,7 +130,7 @@ prod:
 # Check service health
 health:
 	@echo "Checking service health..."
-	@curl -s http://localhost:8000/health | jq .
+	@curl -s http://localhost:8001/health | jq .
 	@curl -s http://localhost:3001/health | jq .
 	@curl -s http://localhost:3002/health | jq .
 	@curl -s http://localhost:3003/health | jq .
@@ -125,11 +140,53 @@ health:
 # Sync embeddings for Gemini
 sync-embeddings:
 	@echo "Synchronizing embeddings with Gemini..."
-	@curl -X POST http://localhost:8000/api/nlp/sync-embeddings
+	@curl -X POST http://localhost:8001/api/nlp/sync-embeddings
 
 # Test NLP query
 test-nlp:
 	@echo "Testing NLP query..."
-	@curl -X POST http://localhost:8000/api/nlp/query \
+	@curl -X POST http://localhost:8001/api/nlp/query \
 		-H "Content-Type: application/json" \
 		-d '{"pregunta": "¿Cuál es el empleado más joven registrado?"}' | jq .
+
+# Database management commands
+db-backup:
+	@echo "📦 Creating database backup..."
+	@docker exec personas_db bash /backups/backup.sh
+	@echo "✅ Backup created successfully!"
+
+db-restore:
+	@echo "♻️  Restoring database from backup..."
+	@docker exec personas_db bash /backups/restore.sh
+	@echo "✅ Database restored successfully!"
+
+db-reset:
+	@echo "⚠️  WARNING: This will delete all data and restore from backup!"
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	@echo "🗑️  Dropping all tables..."
+	@docker exec personas_db psql -U admin -d personas_db -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	@echo "♻️  Restoring from backup..."
+	@docker exec personas_db bash /backups/restore.sh
+	@echo "✅ Database reset complete!"
+
+db-migrations:
+	@echo "📋 Applied migrations:"
+	@docker exec personas_db psql -U admin -d personas_db -c "CREATE TABLE IF NOT EXISTS schema_migrations (id SERIAL PRIMARY KEY, migration_name VARCHAR(255) UNIQUE NOT NULL, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);" > /dev/null 2>&1 || true
+	@docker exec personas_db psql -U admin -d personas_db -c "SELECT migration_name, applied_at FROM schema_migrations ORDER BY applied_at;"
+
+db-status:
+	@echo "📊 Database Statistics:"
+	@echo ""
+	@echo "👥 Users:"
+	@docker exec personas_db psql -U admin -d personas_db -c "SELECT COUNT(*) as total_users FROM users;"
+	@echo ""
+	@echo "👤 Personas:"
+	@docker exec personas_db psql -U admin -d personas_db -c "SELECT COUNT(*) as total_personas FROM personas;"
+	@echo ""
+	@echo "📋 Tables:"
+	@docker exec personas_db psql -U admin -d personas_db -c "SELECT schemaname, tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;"
+	@echo ""
+	@echo "🔄 Migrations:"
+	@docker exec personas_db psql -U admin -d personas_db -c "CREATE TABLE IF NOT EXISTS schema_migrations (id SERIAL PRIMARY KEY, migration_name VARCHAR(255) UNIQUE NOT NULL, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);" > /dev/null 2>&1 || true
+	@docker exec personas_db psql -U admin -d personas_db -c "SELECT COUNT(*) as applied_migrations FROM schema_migrations;"

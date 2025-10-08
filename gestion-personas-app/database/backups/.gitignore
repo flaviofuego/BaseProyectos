@@ -1,0 +1,9 @@
+# Ignore all backup SQL files
+*.sql
+
+# Keep the scripts in git
+!backup.sh
+!restore.sh
+
+# Keep the directory structure in git
+!.gitignore
