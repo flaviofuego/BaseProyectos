@@ -9,5 +9,5 @@ COPY . .
 
 EXPOSE 3004
 
-CMD ["node", "index-v2.js"]
+CMD ["node", "index.js"]
 

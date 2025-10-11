@@ -1,564 +1,1027 @@
+require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { QdrantClient } = require('@qdrant/js-client-rest');
+const axios = require('axios');
 const helmet = require('helmet');
 const cors = require('cors');
-const axios = require('axios');
+const compression = require('compression');
 const { createServiceRegistryClient } = require('./shared/service-registry-client');
-require('dotenv').config();
 
-const app = express();
-const PORT = process.env.PORT || 3004;
-
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-
-// Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
-
-// Google Gemini configuration
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-
-// Qdrant vector database client
-const qdrantClient = new QdrantClient({
-  url: process.env.QDRANT_URL || 'http://qdrant:6333'
-});
-
-const COLLECTION_NAME = 'personas_embeddings';
-
-// Initialize vector collection
-async function initializeVectorDB() {
-  try {
-    const collections = await qdrantClient.getCollections();
-    const exists = collections.collections.some(c => c.name === COLLECTION_NAME);
+class NLPService {
+  constructor() {
+    this.app = express();
+    this.PORT = process.env.SERVICE_PORT || 3004;
     
-    if (!exists) {
-      await qdrantClient.createCollection(COLLECTION_NAME, {
-        vectors: {
-          size: 768, // Gemini embedding dimension
-          distance: 'Cosine'
-        }
+    // Configuración de base de datos PostgreSQL
+    this.pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    });
+
+    // Configuración de Google Gemini AI
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this.geminiModel = this.genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-pro',
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 2048,
+      }
+    });
+
+    // Modelo para embeddings (más eficiente)
+    this.embeddingModel = this.genAI.getGenerativeModel({ 
+      model: 'embedding-001'
+    });
+
+    // Configuración de Qdrant (Vector Database)
+    this.qdrantClient = new QdrantClient({ 
+      url: process.env.QDRANT_URL || 'http://qdrant:6333'
+    });
+    this.COLLECTION_NAME = 'personas_embeddings';
+    this.VECTOR_SIZE = 768; // Dimensión de embeddings de Gemini
+
+    // Estado del servicio
+    this.serviceState = {
+      ready: false,
+      lastSync: null,
+      totalEmbeddings: 0,
+      startTime: Date.now()
+    };
+
+    this.setupMiddleware();
+    this.setupRoutes();
+    this.initializeService();
+  }
+
+  /**
+   * 🔧 Configuración de middleware
+   */
+  setupMiddleware() {
+    this.app.use(helmet());
+    this.app.use(cors());
+    this.app.use(compression());
+    this.app.use(express.json({ limit: '10mb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+    // Logging de requests
+    this.app.use((req, res, next) => {
+      const start = Date.now();
+      res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
       });
-      console.log('Vector collection created');
+      next();
+    });
+  }
+
+  /**
+   * 🚀 Inicialización del servicio
+   */
+  async initializeService() {
+    try {
+      console.log('🚀 Iniciando NLP Service v2.0...');
+      
+      // Verificar conexión a PostgreSQL
+      await this.pool.query('SELECT NOW()');
+      console.log('✅ Conexión a PostgreSQL establecida');
+
+      // Inicializar colección de Qdrant
+      await this.initializeQdrantCollection();
+      console.log('✅ Colección de Qdrant inicializada');
+
+      // Obtener estadísticas iniciales
+      await this.updateServiceStats();
+
+      this.serviceState.ready = true;
+      console.log('✅ NLP Service completamente inicializado');
+
+      // Registrar en Service Registry
+      this.registerService();
+      
+    } catch (error) {
+      console.error('❌ Error inicializando servicio:', error);
+      this.serviceState.ready = false;
     }
-  } catch (error) {
-    console.error('Error initializing vector DB:', error);
   }
-}
 
-// Generate embedding for text using Gemini
-async function generateEmbedding(text) {
-  try {
-    const result = await embeddingModel.embedContent(text);
-    return result.embedding.values;
-  } catch (error) {
-    console.error('Error generating embedding:', error);
-    throw error;
+  /**
+   * 🗄️ Inicializar colección de Qdrant
+   */
+  async initializeQdrantCollection() {
+    try {
+      const collections = await this.qdrantClient.getCollections();
+      const exists = collections.collections.some(c => c.name === this.COLLECTION_NAME);
+
+      if (!exists) {
+        await this.qdrantClient.createCollection(this.COLLECTION_NAME, {
+          vectors: {
+            size: this.VECTOR_SIZE,
+            distance: 'Cosine'
+          }
+        });
+        console.log(`✅ Colección '${this.COLLECTION_NAME}' creada`);
+      } else {
+        console.log(`ℹ️ Colección '${this.COLLECTION_NAME}' ya existe`);
+      }
+    } catch (error) {
+      console.error('❌ Error inicializando Qdrant:', error);
+      throw error;
+    }
   }
-}
 
-// Update embeddings for a persona
-async function updatePersonaEmbedding(persona) {
-  try {
-    // Create text representation of persona
-    const personaText = `
-      Nombre: ${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}
-      Documento: ${persona.tipo_documento} ${persona.numero_documento}
-      Fecha de nacimiento: ${persona.fecha_nacimiento}
-      Edad: ${persona.edad || 'No calculada'} años
-      Género: ${persona.genero}
-      Email: ${persona.correo_electronico}
-      Celular: ${persona.celular}
-    `.trim();
+  /**
+   * 📊 Actualizar estadísticas del servicio
+   */
+  async updateServiceStats() {
+    try {
+      const collectionInfo = await this.qdrantClient.getCollection(this.COLLECTION_NAME);
+      this.serviceState.totalEmbeddings = collectionInfo.points_count || 0;
+    } catch (error) {
+      console.error('⚠️ Error actualizando estadísticas:', error);
+    }
+  }
 
-    // Generate embedding
-    const embedding = await generateEmbedding(personaText);
+  /**
+   * 📝 Registrar transacciones en el servicio de logs
+   */
+  async logTransaction(type, query, status, req, responseData = null, error = null) {
+    try {
+      const logServiceUrl = process.env.LOG_SERVICE_URL || 'http://log-service:3005';
+      await axios.post(`${logServiceUrl}/log`, {
+        transaction_type: type,
+        entity_type: 'NLP_QUERY_V2',
+        user_id: req.headers['x-user-id'],
+        ip_address: req.ip || req.connection.remoteAddress,
+        user_agent: req.headers['user-agent'],
+        request_data: { query, timestamp: new Date().toISOString() },
+        response_data: responseData ? {
+          intent: responseData.metadata?.intent,
+          results_count: responseData.metadata?.results_count,
+          processing_time: responseData.metadata?.processing_time_ms
+        } : null,
+        status: status,
+        error_message: error
+      }, {
+        timeout: 5000
+      });
+    } catch (logError) {
+      console.error('⚠️ Error registrando transacción:', logError.message);
+    }
+  }
 
-    // Store in Qdrant
-    await qdrantClient.upsert(COLLECTION_NAME, {
-      wait: true,
-      points: [
-        {
-          id: persona.id,
-          vector: embedding,
-          payload: {
-            numero_documento: persona.numero_documento,
-            nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
-            edad: persona.edad,
-            genero: persona.genero,
-            tipo_documento: persona.tipo_documento
+  /**
+   * 🤖 Generar embedding usando Gemini
+   */
+  async generateEmbedding(text) {
+    try {
+      const result = await this.embeddingModel.embedContent(text);
+      return result.embedding.values;
+    } catch (error) {
+      console.error('❌ Error generando embedding:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🔍 Clasificar intención de consulta usando Gemini
+   */
+  async classifyIntent(query) {
+    const prompt = `Analiza la siguiente consulta en lenguaje natural y clasifica su intención.
+
+Consulta: "${query}"
+
+Clasifica en una de estas categorías:
+1. SEARCH - Búsqueda general de personas (ej: "buscar personas", "mostrar todos")
+2. FILTER - Filtrado específico (ej: "personas mayores de 30", "hombres de Bogotá")
+3. COUNT - Contar registros (ej: "cuántas personas hay", "número de mujeres")
+4. AGGREGATE - Estadísticas o agregaciones (ej: "edad promedio", "personas por ciudad")
+5. SPECIFIC - Búsqueda de persona específica (ej: "buscar Juan Pérez", "documento 123456")
+6. DEMOGRAPHIC - Análisis demográfico (ej: "distribución por género", "rango de edades")
+7. COMPLEX - Consulta compleja que requiere SQL avanzado
+
+Responde SOLO con el nombre de la categoría (una palabra en mayúsculas) seguido de un nivel de confianza (0-1).
+Formato: CATEGORIA|0.95
+
+No agregues explicaciones adicionales.`;
+
+    try {
+      const result = await this.geminiModel.generateContent(prompt);
+      const response = result.response.text().trim();
+      const [intent, confidence] = response.split('|');
+      
+      return {
+        intent: intent.trim(),
+        confidence: parseFloat(confidence) || 0.8
+      };
+    } catch (error) {
+      console.error('❌ Error clasificando intención:', error);
+      return { intent: 'SEARCH', confidence: 0.5 };
+    }
+  }
+
+  /**
+   * 🔎 Generar SQL dinámico desde lenguaje natural
+   */
+  async generateSQL(query, intent) {
+    const schemaInfo = `
+Esquema de base de datos en PostgreSQL:
+- Tabla: personas
+  Columnas:
+  * id (INTEGER, PRIMARY KEY)
+  * numero_documento (VARCHAR(10), UNIQUE)
+  * tipo_documento (VARCHAR(30), VALUES: 'Tarjeta de identidad', 'Cédula')
+  * primer_nombre (VARCHAR(30))
+  * segundo_nombre (VARCHAR(30), NULLABLE)
+  * apellidos (VARCHAR(60))
+  * fecha_nacimiento (DATE)
+  * genero (VARCHAR(20), VALUES: 'Masculino', 'Femenino', 'No binario', 'Prefiero no reportar')
+  * correo_electronico (VARCHAR(255))
+  * celular (VARCHAR(10))
+  * created_at (TIMESTAMP)
+
+- Vista: personas_con_edad
+  Incluye todas las columnas de 'personas' más:
+  * edad (INTEGER, calculada)
+  * grupo_edad (VARCHAR, VALUES: 'Menor de edad', 'Adulto', 'Adulto mayor')
+
+Reglas importantes:
+1. Usa personas_con_edad cuando necesites filtrar o mostrar edad
+2. SIEMPRE incluye LIMIT para evitar resultados masivos (máximo 100)
+3. Usa ORDER BY para resultados ordenados
+4. Para fechas, usa formato 'YYYY-MM-DD'
+5. Para nombres, usa ILIKE para búsqueda case-insensitive
+6. Los géneros son exactamente: 'Masculino', 'Femenino', 'No binario', 'Prefiero no reportar'
+`;
+
+    const prompt = `${schemaInfo}
+
+Consulta del usuario: "${query}"
+Intención detectada: ${intent}
+
+Genera UNA ÚNICA consulta SQL válida para PostgreSQL que responda a esta consulta.
+
+Requisitos:
+- SQL válido y seguro (sin inyección)
+- Incluye LIMIT apropiado (máximo 100)
+- Usa alias descriptivos para columnas calculadas
+- Para conteos usa COUNT(*)
+- Para promedios usa ROUND(AVG(...), 1)
+- Para agrupaciones usa GROUP BY con nombres claros
+
+Responde SOLO con el SQL, sin explicaciones, sin markdown, sin prefijos.`;
+
+    try {
+      const result = await this.geminiModel.generateContent(prompt);
+      let sql = result.response.text().trim();
+      
+      // Limpiar el SQL (remover markdown si existe)
+      sql = sql.replace(/```sql\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // Validación básica de seguridad
+      const dangerousKeywords = /drop|delete|truncate|alter|create|insert|update/gi;
+      if (dangerousKeywords.test(sql)) {
+        throw new Error('Consulta SQL potencialmente peligrosa detectada');
+      }
+
+      return sql;
+    } catch (error) {
+      console.error('❌ Error generando SQL:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🔍 Búsqueda semántica en Qdrant
+   */
+  async semanticSearch(query, limit = 10) {
+    try {
+      // Generar embedding de la consulta
+      const queryEmbedding = await this.generateEmbedding(query);
+
+      // Buscar en Qdrant
+      const searchResult = await this.qdrantClient.search(this.COLLECTION_NAME, {
+        vector: queryEmbedding,
+        limit: limit,
+        with_payload: true
+      });
+
+      return searchResult;
+    } catch (error) {
+      console.error('❌ Error en búsqueda semántica:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 📄 Generar respuesta en Markdown desde resultados
+   */
+  async generateMarkdownResponse(query, sqlResults, intent, useSemanticSearch = false) {
+    const resultsInfo = JSON.stringify(sqlResults.slice(0, 5), null, 2); // Primeros 5 resultados como muestra
+
+    const prompt = `Eres un asistente que presenta resultados de bases de datos de manera clara y profesional en formato Markdown.
+
+Consulta del usuario: "${query}"
+Intención: ${intent}
+Búsqueda semántica usada: ${useSemanticSearch ? 'Sí' : 'No'}
+Total de resultados: ${sqlResults.length}
+
+Muestra de datos (primeros 5 registros):
+${resultsInfo}
+
+Genera una respuesta en formato Markdown que incluya:
+
+1. **Resumen breve** (2-3 líneas) respondiendo la consulta
+2. **Tabla formateada** con los datos relevantes (usa sintaxis de tabla Markdown)
+3. **Insights adicionales** si hay patrones interesantes
+
+Reglas importantes:
+- Usa tablas Markdown (| Columna | Columna |)
+- Usa negritas (**texto**) para destacar
+- Usa listas cuando sea apropiado
+- Sé conciso y profesional
+- Si hay muchos resultados, menciona que se muestran los primeros N
+- Formatea fechas en formato legible (DD/MM/YYYY)
+- Para edades, agrega contexto (ej: "23 años")
+- Traduce nombres de columnas al español de forma natural
+
+NO uses bloques de código (no uses \`\`\`).
+Responde SOLO en Markdown puro.`;
+
+    try {
+      const result = await this.geminiModel.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (error) {
+      console.error('❌ Error generando respuesta Markdown:', error);
+      
+      // Fallback: generar tabla básica
+      if (sqlResults.length === 0) {
+        return '## Sin resultados\n\nNo se encontraron registros que coincidan con tu consulta.';
+      }
+
+      let markdown = `## Resultados (${sqlResults.length} registros)\n\n`;
+      
+      // Generar tabla básica
+      const columns = Object.keys(sqlResults[0]);
+      markdown += '| ' + columns.join(' | ') + ' |\n';
+      markdown += '| ' + columns.map(() => '---').join(' | ') + ' |\n';
+      
+      sqlResults.slice(0, 20).forEach(row => {
+        markdown += '| ' + columns.map(col => row[col] || 'N/A').join(' | ') + ' |\n';
+      });
+
+      if (sqlResults.length > 20) {
+        markdown += `\n*Se muestran los primeros 20 de ${sqlResults.length} resultados.*`;
+      }
+
+      return markdown;
+    }
+  }
+
+  /**
+   * 🛣️ Configuración de rutas
+   */
+  setupRoutes() {
+    // ============================================================
+    // GET /health - Health Check Avanzado
+    // ============================================================
+    this.app.get('/health', async (req, res) => {
+      try {
+        const health = {
+          status: this.serviceState.ready ? 'healthy' : 'starting',
+          service: 'nlp-service-v2',
+          version: '2.0.0',
+          uptime: Math.floor((Date.now() - this.serviceState.startTime) / 1000),
+          timestamp: new Date().toISOString(),
+          dependencies: {
+            postgresql: false,
+            qdrant: false,
+            gemini: false
+          },
+          capabilities: {
+            natural_language_processing: true,
+            semantic_search: true,
+            embeddings_generation: true,
+            markdown_responses: true
+          },
+          stats: {
+            total_embeddings: this.serviceState.totalEmbeddings,
+            last_sync: this.serviceState.lastSync
+          }
+        };
+
+        // Verificar PostgreSQL
+        try {
+          await this.pool.query('SELECT 1');
+          health.dependencies.postgresql = true;
+        } catch (error) {
+          console.error('PostgreSQL health check failed:', error);
+        }
+
+        // Verificar Qdrant
+        try {
+          await this.qdrantClient.getCollections();
+          health.dependencies.qdrant = true;
+        } catch (error) {
+          console.error('Qdrant health check failed:', error);
+        }
+
+        // Verificar Gemini (asumimos true si llegamos aquí)
+        health.dependencies.gemini = !!process.env.GEMINI_API_KEY;
+
+        const allHealthy = Object.values(health.dependencies).every(v => v === true);
+        health.status = allHealthy && this.serviceState.ready ? 'healthy' : 'degraded';
+
+        res.status(allHealthy ? 200 : 503).json(health);
+      } catch (error) {
+        res.status(503).json({
+          status: 'unhealthy',
+          error: error.message
+        });
+      }
+    });
+
+    // ============================================================
+    // POST /query - Consulta NLP Principal ⭐
+    // ============================================================
+    this.app.post('/query', async (req, res) => {
+      const startTime = Date.now();
+      const { query } = req.body;
+
+      try {
+        // 1. Validación
+        if (!query || typeof query !== 'string') {
+          return res.status(400).json({
+            success: false,
+            error: 'Se requiere un parámetro "query" válido'
+          });
+        }
+
+        if (query.length > 1000) {
+          return res.status(400).json({
+            success: false,
+            error: 'La consulta no puede exceder 1000 caracteres'
+          });
+        }
+
+        console.log(`🔍 Procesando consulta: "${query}"`);
+
+        // 2. Clasificar intención
+        const { intent, confidence } = await this.classifyIntent(query);
+        console.log(`🎯 Intención: ${intent} (confianza: ${confidence})`);
+
+        let results = [];
+        let useSemanticSearch = false;
+        let sql = null;
+
+        // 3. Decidir estrategia de búsqueda
+        if (intent === 'SPECIFIC' && confidence > 0.7) {
+          // Búsqueda semántica para consultas específicas
+          console.log('🔎 Usando búsqueda semántica...');
+          const semanticResults = await this.semanticSearch(query, 10);
+          
+          if (semanticResults.length > 0) {
+            // Obtener IDs de personas encontradas
+            const personaIds = semanticResults.map(r => r.payload.persona_id);
+            sql = `SELECT * FROM personas_con_edad WHERE id IN (${personaIds.join(',')}) LIMIT 10`;
+            const dbResult = await this.pool.query(sql);
+            results = dbResult.rows;
+            useSemanticSearch = true;
           }
         }
-      ]
-    });
-  } catch (error) {
-    console.error('Error updating persona embedding:', error);
-  }
-}
 
-// Search similar personas using embeddings
-async function searchSimilarPersonas(query, limit = 5) {
-  try {
-    const queryEmbedding = await generateEmbedding(query);
-    
-    const searchResult = await qdrantClient.search(COLLECTION_NAME, {
-      vector: queryEmbedding,
-      limit: limit,
-      with_payload: true
-    });
+        // 4. Si no se usó búsqueda semántica o no dio resultados, usar SQL
+        if (results.length === 0) {
+          console.log('🔧 Generando consulta SQL...');
+          sql = await this.generateSQL(query, intent);
+          console.log(`📝 SQL generado: ${sql}`);
 
-    return searchResult;
-  } catch (error) {
-    console.log('Vector search not available, using fallback search');
-    return []; // Return empty array as fallback
-  }
-}
-
-// Fallback query classification (when Gemini is not available)
-function classifyQueryFallback(query) {
-  const lowerQuery = query.toLowerCase();
-  
-  // Check for system/security queries first
-  if (lowerQuery.includes('.env') || lowerQuery.includes('variable') || lowerQuery.includes('configuración')) {
-    return { intent: 'security_blocked', parameters: {} };
-  }
-  
-  // Check for common patterns
-  if (lowerQuery.includes('más joven') || lowerQuery.includes('menor edad')) {
-    return { intent: 'youngest', parameters: {} };
-  }
-  
-  if (lowerQuery.includes('más viejo') || lowerQuery.includes('más vieja') || lowerQuery.includes('mayor edad')) {
-    return { intent: 'oldest', parameters: {} };
-  }
-  
-  if (lowerQuery.includes('cuántas') || lowerQuery.includes('cuantas') || lowerQuery.includes('contar')) {
-    return { intent: 'count', parameters: {} };
-  }
-  
-  if (lowerQuery.includes('estadística') || lowerQuery.includes('estadisticas') || lowerQuery.includes('total')) {
-    return { intent: 'stats', parameters: {} };
-  }
-  
-  if (lowerQuery.includes('empiec') || lowerQuery.includes('empiez')) {
-    // Extract letter from query
-    const letterMatch = lowerQuery.match(/empiec[ae]n?\s+con\s+([a-z])/i);
-    if (letterMatch) {
-      return { 
-        intent: 'name_starts_with', 
-        parameters: { letter: letterMatch[1].toUpperCase(), field: 'primer_nombre' }
-      };
-    }
-  }
-  
-  // Default to search for most queries
-  return { intent: 'search', parameters: {} };
-}
-
-// Process natural language query
-async function processNLQuery(query) {
-  try {
-    // Try to classify the query using simple rules first (fallback)
-    let intent = classifyQueryFallback(query);
-    
-    // If we have Gemini available and it's not a quota error, try to use it
-    try {
-      const prompt = `Eres un asistente que ayuda a interpretar consultas sobre personas en una base de datos.
-Las personas tienen los siguientes campos: primer_nombre, segundo_nombre, apellidos, numero_documento, tipo_documento, edad, genero, correo_electronico, celular.
-Debes identificar qué tipo de consulta es y extraer los parámetros relevantes.
-Responde ÚNICAMENTE en formato JSON con la estructura: { "intent": "tipo_consulta", "parameters": {...} }
-
-Tipos de consulta posibles:
-- "youngest": buscar la persona más joven
-- "oldest": buscar la persona más vieja  
-- "count": contar personas con ciertos criterios
-- "search": buscar personas por criterios específicos usando búsqueda semántica
-- "stats": obtener estadísticas generales
-- "name_starts_with": buscar personas cuyo nombre empiece con una letra o string específico
-- "direct_search": búsqueda directa por campos específicos (nombre, apellido, documento, etc.)
-
-Ejemplos:
-- "dame la lista de personas que su nombre empiece con F" → {"intent": "name_starts_with", "parameters": {"letter": "F", "field": "primer_nombre"}}
-- "personas con apellido García" → {"intent": "direct_search", "parameters": {"apellidos": "García"}}
-- "busca personas mayores de 30 años" → {"intent": "direct_search", "parameters": {"edad_min": 30}}
-- "cuántas mujeres hay" → {"intent": "count", "parameters": {"genero": "Femenino"}}
-
-Consulta: ${query}
-
-Respuesta JSON:`;
-
-      const intentResponse = await model.generateContent(prompt);
-      const responseText = intentResponse.response.text();
-      
-      // Extract JSON from response (in case there's extra text)
-      const jsonMatch = responseText.match(/\{.*\}/s);
-      if (jsonMatch) {
-        intent = JSON.parse(jsonMatch[0]);
-      }
-    } catch (geminiError) {
-      console.log('Usando clasificación local (Gemini no disponible):', geminiError.message);
-      // Usar el intent del fallback
-    }
-
-    // Execute query based on intent
-    let result;
-    switch (intent.intent) {
-      case 'security_blocked':
-        return {
-          answer: 'Lo siento, no puedo proporcionar información sobre configuraciones del sistema o variables de entorno por razones de seguridad. Solo puedo ayudarte con consultas sobre las personas registradas en la base de datos.',
-          data: null,
-          intent: intent
-        };
-
-      case 'youngest':
-        result = await pool.query(`
-          SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad
-          FROM personas
-          ORDER BY fecha_nacimiento DESC
-          LIMIT 1
-        `);
-        return {
-          answer: result.rows[0] ? 
-            `La persona más joven registrada es ${result.rows[0].primer_nombre} ${result.rows[0].apellidos}, con ${result.rows[0].edad} años.` :
-            'No se encontraron personas registradas.',
-          data: result.rows[0] || null,
-          intent: intent
-        };
-
-      case 'oldest':
-        result = await pool.query(`
-          SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad
-          FROM personas
-          ORDER BY fecha_nacimiento ASC
-          LIMIT 1
-        `);
-        return {
-          answer: result.rows[0] ? 
-            `La persona más vieja registrada es ${result.rows[0].primer_nombre} ${result.rows[0].apellidos}, con ${result.rows[0].edad} años.` :
-            'No se encontraron personas registradas.',
-          data: result.rows[0] || null,
-          intent: intent
-        };
-
-      case 'count':
-        let countQuery = 'SELECT COUNT(*) FROM personas WHERE 1=1';
-        const countParams = [];
-        let paramIndex = 1;
-
-        if (intent.parameters.genero) {
-          countQuery += ` AND genero = $${paramIndex}`;
-          countParams.push(intent.parameters.genero);
-          paramIndex++;
+          const dbResult = await this.pool.query(sql);
+          results = dbResult.rows;
         }
 
-        if (intent.parameters.tipo_documento) {
-          countQuery += ` AND tipo_documento = $${paramIndex}`;
-          countParams.push(intent.parameters.tipo_documento);
-          paramIndex++;
-        }
+        console.log(`✅ Resultados obtenidos: ${results.length}`);
 
-        result = await pool.query(countQuery, countParams);
-        return {
-          answer: `Se encontraron ${result.rows[0].count} personas con los criterios especificados.`,
-          data: { count: parseInt(result.rows[0].count) },
-          intent: intent
-        };
+        // 5. Generar respuesta en Markdown
+        console.log('📄 Generando respuesta en Markdown...');
+        const markdownResponse = await this.generateMarkdownResponse(
+          query,
+          results,
+          intent,
+          useSemanticSearch
+        );
 
-      case 'search':
-        // Use vector search for semantic queries
-        const searchResults = await searchSimilarPersonas(query);
-        
-        if (searchResults.length > 0) {
-          // Get full data for top results
-          const ids = searchResults.map(r => r.id);
-          result = await pool.query(
-            'SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad FROM personas WHERE id = ANY($1::int[])',
-            [ids]
-          );
+        const processingTime = Date.now() - startTime;
 
-          return {
-            answer: `Encontré ${result.rows.length} personas que coinciden con tu búsqueda.`,
-            data: result.rows,
+        // 6. Preparar respuesta
+        const response = {
+          success: true,
+          data: {
+            markdown: markdownResponse,
+            raw_results: results,
+            sql: sql
+          },
+          metadata: {
             intent: intent,
-            similarity_scores: searchResults.map(r => ({ id: r.id, score: r.score }))
-          };
-        } else {
-          // Fallback: return all persons when vector search fails
-          result = await pool.query(`
-            SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad 
-            FROM personas 
-            ORDER BY primer_nombre, apellidos
-          `);
-          
-          return {
-            answer: `Búsqueda general: encontré ${result.rows.length} personas registradas en el sistema.`,
-            data: result.rows,
-            intent: intent
-          };
-        }
-
-      case 'stats':
-        const stats = await pool.query(`
-          SELECT 
-            COUNT(*) as total,
-            COUNT(CASE WHEN genero = 'Masculino' THEN 1 END) as masculino,
-            COUNT(CASE WHEN genero = 'Femenino' THEN 1 END) as femenino,
-            COUNT(CASE WHEN genero = 'No binario' THEN 1 END) as no_binario,
-            AVG(EXTRACT(YEAR FROM AGE(fecha_nacimiento))) as edad_promedio
-          FROM personas
-        `);
-
-        const statsData = stats.rows[0];
-        return {
-          answer: `En el sistema hay ${statsData.total} personas registradas. 
-                   ${statsData.masculino} son masculinos, ${statsData.femenino} son femeninos, 
-                   y ${statsData.no_binario} se identifican como no binario. 
-                   La edad promedio es de ${Math.round(statsData.edad_promedio)} años.`,
-          data: statsData,
-          intent: intent
+            confidence: confidence,
+            results_count: results.length,
+            processing_time_ms: processingTime,
+            used_semantic_search: useSemanticSearch,
+            complexity: intent === 'COMPLEX' ? 'high' : 'medium'
+          }
         };
 
-      case 'name_starts_with':
-        const letter = intent.parameters.letter || '';
-        const field = intent.parameters.field || 'primer_nombre';
-        
-        result = await pool.query(`
-          SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad
-          FROM personas 
-          WHERE ${field} ILIKE $1
-          ORDER BY ${field}, apellidos
-        `, [`${letter}%`]);
+        // 7. Registrar en logs
+        await this.logTransaction('NLP_QUERY', query, 'SUCCESS', req, response);
 
-        if (result.rows.length > 0) {
-          return {
-            answer: `Encontré ${result.rows.length} persona(s) cuyo ${field} empieza con "${letter}": ${result.rows.map(p => `${p.primer_nombre} ${p.segundo_nombre || ''} ${p.apellidos}`).join(', ')}.`,
-            data: result.rows,
-            intent: intent
-          };
-        } else {
-          return {
-            answer: `No encontré personas cuyo ${field} empiece con "${letter}".`,
-            data: [],
-            intent: intent
-          };
+        res.json(response);
+
+      } catch (error) {
+        console.error('❌ Error procesando consulta:', error);
+        
+        const processingTime = Date.now() - startTime;
+        
+        await this.logTransaction('NLP_QUERY', query, 'ERROR', req, null, error.message);
+
+        res.status(500).json({
+          success: false,
+          error: 'Error procesando la consulta',
+          details: error.message,
+          metadata: {
+            processing_time_ms: processingTime
+          }
+        });
+      }
+    });
+
+    // ============================================================
+    // POST /update-embedding - Actualizar Embedding Individual
+    // ============================================================
+    this.app.post('/update-embedding', async (req, res) => {
+      try {
+        const { persona_id } = req.body;
+
+        if (!persona_id) {
+          return res.status(400).json({
+            success: false,
+            error: 'Se requiere persona_id'
+          });
         }
 
-      case 'direct_search':
-        let searchQuery = 'SELECT *, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad FROM personas WHERE 1=1';
-        const searchParams = [];
-        let searchParamIndex = 1;
+        // Obtener datos de la persona
+        const result = await this.pool.query(
+          'SELECT * FROM personas_con_edad WHERE id = $1',
+          [persona_id]
+        );
 
-        // Valid database columns for direct search
-        const validColumns = ['primer_nombre', 'segundo_nombre', 'apellidos', 'numero_documento', 'tipo_documento', 'genero', 'correo_electronico', 'celular'];
+        if (result.rows.length === 0) {
+          return res.status(404).json({
+            success: false,
+            error: 'Persona no encontrada'
+          });
+        }
 
-        // Build dynamic query based on parameters
-        Object.keys(intent.parameters).forEach(key => {
-          const value = intent.parameters[key];
-          if (value !== undefined && value !== null) {
-            if (key === 'edad_min') {
-              searchQuery += ` AND EXTRACT(YEAR FROM AGE(fecha_nacimiento)) >= $${searchParamIndex}`;
-              searchParams.push(value);
-              searchParamIndex++;
-            } else if (key === 'edad_max') {
-              searchQuery += ` AND EXTRACT(YEAR FROM AGE(fecha_nacimiento)) <= $${searchParamIndex}`;
-              searchParams.push(value);
-              searchParamIndex++;
-            } else if (validColumns.includes(key)) {
-              if (key === 'primer_nombre' || key === 'apellidos') {
-                searchQuery += ` AND ${key} ILIKE $${searchParamIndex}`;
-                searchParams.push(`%${value}%`);
-              } else {
-                searchQuery += ` AND ${key} = $${searchParamIndex}`;
-                searchParams.push(value);
+        const persona = result.rows[0];
+
+        // Crear texto para embedding
+        const embeddingText = `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos} 
+          ${persona.tipo_documento} ${persona.numero_documento} 
+          ${persona.genero} edad ${persona.edad} años 
+          ${persona.correo_electronico} ${persona.celular}`.trim();
+
+        // Generar embedding
+        const embedding = await this.generateEmbedding(embeddingText);
+
+        // Almacenar en Qdrant
+        await this.qdrantClient.upsert(this.COLLECTION_NAME, {
+          wait: true,
+          points: [
+            {
+              id: persona.id,
+              vector: embedding,
+              payload: {
+                persona_id: persona.id,
+                nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
+                numero_documento: persona.numero_documento,
+                tipo_documento: persona.tipo_documento,
+                genero: persona.genero,
+                edad: persona.edad,
+                correo: persona.correo_electronico,
+                updated_at: new Date().toISOString()
               }
-              searchParamIndex++;
             }
-            // Skip invalid columns to prevent SQL errors
+          ]
+        });
+
+        await this.updateServiceStats();
+
+        console.log(`✅ Embedding actualizado para persona ${persona_id}`);
+
+        await this.logTransaction('UPDATE_EMBEDDING', `persona_id: ${persona_id}`, 'SUCCESS', req);
+
+        res.json({
+          success: true,
+          message: 'Embedding actualizado correctamente',
+          persona_id: persona_id
+        });
+
+      } catch (error) {
+        console.error('❌ Error actualizando embedding:', error);
+        await this.logTransaction('UPDATE_EMBEDDING', req.body, 'ERROR', req, null, error.message);
+        
+        res.status(500).json({
+          success: false,
+          error: 'Error actualizando embedding',
+          details: error.message
+        });
+      }
+    });
+
+    // ============================================================
+    // POST /sync-embeddings - Sincronización Masiva
+    // ============================================================
+    this.app.post('/sync-embeddings', async (req, res) => {
+      try {
+        console.log('🔄 Iniciando sincronización masiva de embeddings...');
+
+        // Obtener todas las personas
+        const result = await this.pool.query('SELECT * FROM personas_con_edad ORDER BY id');
+        const personas = result.rows;
+
+        console.log(`📊 Total de personas a sincronizar: ${personas.length}`);
+
+        let successCount = 0;
+        let errorCount = 0;
+        const batchSize = 10;
+
+        // Procesar en lotes
+        for (let i = 0; i < personas.length; i += batchSize) {
+          const batch = personas.slice(i, i + batchSize);
+          
+          const points = await Promise.all(batch.map(async (persona) => {
+            try {
+              const embeddingText = `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos} 
+                ${persona.tipo_documento} ${persona.numero_documento} 
+                ${persona.genero} edad ${persona.edad} años 
+                ${persona.correo_electronico} ${persona.celular}`.trim();
+
+              const embedding = await this.generateEmbedding(embeddingText);
+
+              successCount++;
+              return {
+                id: persona.id,
+                vector: embedding,
+                payload: {
+                  persona_id: persona.id,
+                  nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
+                  numero_documento: persona.numero_documento,
+                  tipo_documento: persona.tipo_documento,
+                  genero: persona.genero,
+                  edad: persona.edad,
+                  correo: persona.correo_electronico,
+                  updated_at: new Date().toISOString()
+                }
+              };
+            } catch (error) {
+              console.error(`❌ Error procesando persona ${persona.id}:`, error);
+              errorCount++;
+              return null;
+            }
+          }));
+
+          // Filtrar nulos y hacer upsert
+          const validPoints = points.filter(p => p !== null);
+          if (validPoints.length > 0) {
+            await this.qdrantClient.upsert(this.COLLECTION_NAME, {
+              wait: true,
+              points: validPoints
+            });
+          }
+
+          console.log(`✅ Lote ${Math.floor(i / batchSize) + 1} procesado`);
+        }
+
+        this.serviceState.lastSync = new Date().toISOString();
+        await this.updateServiceStats();
+
+        console.log(`✅ Sincronización completada: ${successCount} éxitos, ${errorCount} errores`);
+
+        await this.logTransaction('SYNC_EMBEDDINGS', `Total: ${personas.length}`, 'SUCCESS', req, {
+          success_count: successCount,
+          error_count: errorCount
+        });
+
+        res.json({
+          success: true,
+          message: 'Sincronización completada',
+          stats: {
+            total: personas.length,
+            success: successCount,
+            errors: errorCount,
+            synced_at: this.serviceState.lastSync
           }
         });
 
-        searchQuery += ' ORDER BY primer_nombre, apellidos';
+      } catch (error) {
+        console.error('❌ Error en sincronización:', error);
+        await this.logTransaction('SYNC_EMBEDDINGS', 'bulk', 'ERROR', req, null, error.message);
+        
+        res.status(500).json({
+          success: false,
+          error: 'Error en sincronización',
+          details: error.message
+        });
+      }
+    });
 
-        result = await pool.query(searchQuery, searchParams);
+    // ============================================================
+    // DELETE /embedding/:personaId - Eliminar Embedding
+    // ============================================================
+    this.app.delete('/embedding/:personaId', async (req, res) => {
+      try {
+        const { personaId } = req.params;
 
-        if (result.rows.length > 0) {
-          return {
-            answer: `Encontré ${result.rows.length} persona(s) que coinciden con los criterios: ${result.rows.map(p => `${p.primer_nombre} ${p.segundo_nombre || ''} ${p.apellidos}`).join(', ')}.`,
-            data: result.rows,
-            intent: intent
-          };
-        } else {
-          return {
-            answer: 'No encontré personas que coincidan con los criterios especificados.',
-            data: [],
-            intent: intent
+        if (!personaId || isNaN(personaId)) {
+          return res.status(400).json({
+            success: false,
+            error: 'ID de persona inválido'
+          });
+        }
+
+        await this.qdrantClient.delete(this.COLLECTION_NAME, {
+          wait: true,
+          points: [parseInt(personaId)]
+        });
+
+        await this.updateServiceStats();
+
+        console.log(`🗑️ Embedding eliminado para persona ${personaId}`);
+
+        await this.logTransaction('DELETE_EMBEDDING', `persona_id: ${personaId}`, 'SUCCESS', req);
+
+        res.json({
+          success: true,
+          message: 'Embedding eliminado correctamente',
+          persona_id: personaId
+        });
+
+      } catch (error) {
+        console.error('❌ Error eliminando embedding:', error);
+        await this.logTransaction('DELETE_EMBEDDING', req.params.personaId, 'ERROR', req, null, error.message);
+        
+        res.status(500).json({
+          success: false,
+          error: 'Error eliminando embedding',
+          details: error.message
+        });
+      }
+    });
+
+    // ============================================================
+    // GET /stats - Estadísticas del Servicio
+    // ============================================================
+    this.app.get('/stats', async (req, res) => {
+      try {
+        // Estadísticas de base de datos
+        const dbStats = await this.pool.query(`
+          SELECT 
+            COUNT(*) as total_personas,
+            COUNT(CASE WHEN fecha_nacimiento IS NOT NULL THEN 1 END) as personas_con_edad,
+            COUNT(CASE WHEN correo_electronico IS NOT NULL THEN 1 END) as personas_con_email,
+            MAX(created_at) as ultima_persona_creada
+          FROM personas
+        `);
+
+        // Estadísticas de Qdrant
+        const collectionInfo = await this.qdrantClient.getCollection(this.COLLECTION_NAME);
+
+        res.json({
+          success: true,
+          stats: {
+            database: {
+              total_personas: parseInt(dbStats.rows[0].total_personas),
+              personas_con_edad: parseInt(dbStats.rows[0].personas_con_edad),
+              personas_con_email: parseInt(dbStats.rows[0].personas_con_email),
+              ultima_persona: dbStats.rows[0].ultima_persona_creada
+            },
+            embeddings: {
+              total_embeddings: collectionInfo.points_count,
+              vector_size: collectionInfo.config.params.vectors.size,
+              distance_metric: collectionInfo.config.params.vectors.distance
+            },
+            service: {
+              version: '2.0.0',
+              uptime_seconds: Math.floor((Date.now() - this.serviceState.startTime) / 1000),
+              last_sync: this.serviceState.lastSync,
+              ready: this.serviceState.ready,
+              capabilities: [
+                'natural-language-query',
+                'semantic-search',
+                'embeddings-generation',
+                'markdown-responses',
+                'sql-generation'
+              ]
+            }
+          }
+        });
+
+      } catch (error) {
+        console.error('❌ Error obteniendo estadísticas:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Error obteniendo estadísticas',
+          details: error.message
+        });
+      }
+    });
+
+    // ============================================================
+    // POST /test - Pruebas de Conectividad
+    // ============================================================
+    this.app.post('/test', async (req, res) => {
+      const { test_type = 'basic' } = req.body;
+      const results = {
+        test_type,
+        timestamp: new Date().toISOString(),
+        tests: {}
+      };
+
+      try {
+        // Test de Base de Datos
+        if (test_type === 'all' || test_type === 'database') {
+          try {
+            const start = Date.now();
+            await this.pool.query('SELECT COUNT(*) FROM personas');
+            results.tests.database = {
+              status: 'pass',
+              response_time_ms: Date.now() - start
+            };
+          } catch (error) {
+            results.tests.database = {
+              status: 'fail',
+              error: error.message
+            };
+          }
+        }
+
+        // Test de Gemini
+        if (test_type === 'all' || test_type === 'gemini') {
+          try {
+            const start = Date.now();
+            const result = await this.geminiModel.generateContent('Di solo "OK"');
+            const response = result.response.text();
+            results.tests.gemini = {
+              status: 'pass',
+              response_time_ms: Date.now() - start,
+              response: response.substring(0, 50)
+            };
+          } catch (error) {
+            results.tests.gemini = {
+              status: 'fail',
+              error: error.message
+            };
+          }
+        }
+
+        // Test de Qdrant
+        if (test_type === 'all' || test_type === 'qdrant') {
+          try {
+            const start = Date.now();
+            const collections = await this.qdrantClient.getCollections();
+            results.tests.qdrant = {
+              status: 'pass',
+              response_time_ms: Date.now() - start,
+              collections: collections.collections.length
+            };
+          } catch (error) {
+            results.tests.qdrant = {
+              status: 'fail',
+              error: error.message
+            };
+          }
+        }
+
+        // Test básico
+        if (test_type === 'basic') {
+          results.tests.basic = {
+            status: 'pass',
+            message: 'Servicio NLP funcionando correctamente'
           };
         }
 
-      default:
-        // Fallback to semantic search
-        return processNLQuery(query);
-    }
-  } catch (error) {
-    console.error('Error processing NL query:', error);
-    throw error;
-  }
-}
+        const allPassed = Object.values(results.tests).every(t => t.status === 'pass');
 
-// Helper function to log transactions
-async function logTransaction(type, query, status, req, responseData = null, error = null) {
-  try {
-    const logServiceUrl = process.env.LOG_SERVICE_URL || 'http://log-service:3005';
-    await axios.post(`${logServiceUrl}/log`, {
-      transaction_type: type,
-      entity_type: 'NLP_QUERY',
-      user_id: req.headers['x-user-id'],
-      ip_address: req.ip,
-      user_agent: req.headers['user-agent'],
-      request_data: { query },
-      response_data: responseData,
-      status: status,
-      error_message: error
-    });
-  } catch (error) {
-    console.error('Error logging transaction:', error);
-  }
-}
+        res.status(allPassed ? 200 : 500).json({
+          success: allPassed,
+          results
+        });
 
-// Routes
-
-// Health check
-app.get('/health', async (req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.json({ 
-      status: 'OK', 
-      service: 'nlp-service',
-      gemini_configured: !!process.env.GEMINI_API_KEY,
-      qdrant_url: process.env.QDRANT_URL || 'http://qdrant:6333'
-    });
-  } catch (error) {
-    res.status(503).json({ status: 'ERROR', error: error.message });
-  }
-});
-
-// Natural language query endpoint
-app.post('/query', async (req, res) => {
-  try {
-    const { pregunta } = req.body;
-
-    if (!pregunta) {
-      return res.status(400).json({ error: 'La pregunta es requerida' });
-    }
-
-    // Process the query
-    const result = await processNLQuery(pregunta);
-
-    // Log successful query
-    await logTransaction('NLP_QUERY', pregunta, 'SUCCESS', req, result);
-
-    res.json({
-      pregunta,
-      respuesta: result.answer,
-      datos: result.data,
-      metadata: {
-        intent: result.intent,
-        timestamp: new Date().toISOString()
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          error: 'Error ejecutando pruebas',
+          details: error.message
+        });
       }
     });
-  } catch (error) {
-    console.error('Error processing query:', error);
-    
-    // Log error
-    await logTransaction('NLP_QUERY', req.body.pregunta, 'ERROR', req, null, error.message);
 
-    res.status(500).json({ 
-      error: 'Error procesando la consulta',
-      message: error.message 
+    // Ruta 404
+    this.app.use((req, res) => {
+      res.status(404).json({
+        success: false,
+        error: 'Ruta no encontrada',
+        available_endpoints: [
+          'GET /health',
+          'POST /query',
+          'POST /update-embedding',
+          'POST /sync-embeddings',
+          'DELETE /embedding/:personaId',
+          'GET /stats',
+          'POST /test'
+        ]
+      });
+    });
+
+    // Manejo de errores global
+    this.app.use((err, req, res, next) => {
+      console.error('❌ Error no manejado:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor',
+        details: err.message
+      });
     });
   }
-});
 
-// Update embeddings endpoint (called when personas are created/updated)
-app.post('/update-embedding', async (req, res) => {
-  try {
-    const { persona } = req.body;
+  /**
+   * 📝 Registrar servicio en Service Registry
+   */
+  registerService() {
+    const serviceConfig = {
+      serviceId: 'nlp-service-v2',
+      name: 'nlp-service',
+      host: 'nlp-service',
+      port: parseInt(this.PORT),
+      protocol: 'http',
+      metadata: {
+        version: '2.0.0',
+        description: 'Advanced Natural Language Processing service with RAG capabilities using Google Gemini and Qdrant vector search',
+        maintainer: 'nlp-team',
+        healthEndpoint: '/health',
+        tags: ['nlp', 'ai', 'gemini', 'vector-search', 'embeddings', 'qdrant', 'rag', 'semantic-search'],
+        capabilities: [
+          'natural-language-query',
+          'vector-search',
+          'embeddings-generation',
+          'semantic-search',
+          'gemini-ai',
+          'advanced-intent-classification',
+          'complex-query-processing',
+          'demographic-analysis',
+          'statistical-queries',
+          'markdown-responses'
+        ]
+      }
+    };
 
-    if (!persona) {
-      return res.status(400).json({ error: 'Persona data is required' });
-    }
-
-    // Calculate age if not provided
-    if (!persona.edad && persona.fecha_nacimiento) {
-      const birthDate = new Date(persona.fecha_nacimiento);
-      const today = new Date();
-      persona.edad = today.getFullYear() - birthDate.getFullYear();
-    }
-
-    await updatePersonaEmbedding(persona);
-
-    res.json({ message: 'Embedding updated successfully' });
-  } catch (error) {
-    console.error('Error updating embedding:', error);
-    res.status(500).json({ error: 'Error updating embedding' });
+    createServiceRegistryClient(serviceConfig);
   }
-});
 
-// Sync all personas embeddings
-app.post('/sync-embeddings', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT p.*, EXTRACT(YEAR FROM AGE(fecha_nacimiento)) as edad
-      FROM personas p
-    `);
-
-    const personas = result.rows;
-    
-    for (const persona of personas) {
-      await updatePersonaEmbedding(persona);
-    }
-
-    res.json({ 
-      message: 'Embeddings synchronized successfully',
-      count: personas.length 
+  /**
+   * 🚀 Iniciar servidor
+   */
+  start() {
+    this.app.listen(this.PORT, () => {
+      console.log('='.repeat(60));
+      console.log('🧠 NLP Service v2.0 con RAG');
+      console.log('='.repeat(60));
+      console.log(`✅ Servidor escuchando en puerto ${this.PORT}`);
+      console.log(`🔗 URL: http://localhost:${this.PORT}`);
+      console.log(`📊 Health Check: http://localhost:${this.PORT}/health`);
+      console.log(`📈 Estadísticas: http://localhost:${this.PORT}/stats`);
+      console.log('='.repeat(60));
     });
-  } catch (error) {
-    console.error('Error syncing embeddings:', error);
-    res.status(500).json({ error: 'Error syncing embeddings' });
   }
+}
+
+// Iniciar servicio
+const nlpService = new NLPService();
+nlpService.start();
+
+// Manejo de cierre graceful
+process.on('SIGTERM', async () => {
+  console.log('\n🔄 Cerrando servicio...');
+  await nlpService.pool.end();
+  process.exit(0);
 });
 
-// Initialize on startup
-initializeVectorDB().then(() => {
-  console.log('Vector DB initialized');
-}).catch(console.error);
-
-app.listen(PORT, () => {
-  console.log(`NLP service running on port ${PORT}`);
-  
-  // Auto-registrar en el Service Registry
-  const serviceConfig = {
-    serviceId: 'nlp-service',
-    name: 'nlp-service',
-    host: 'nlp-service',
-    port: parseInt(PORT),
-    protocol: 'http',
-    metadata: {
-      version: '1.0.0',
-      description: 'Natural Language Processing service using Google Gemini and vector search',
-      maintainer: 'nlp-team',
-      healthEndpoint: '/health',
-      tags: ['nlp', 'ai', 'gemini', 'vector-search', 'embeddings', 'qdrant'],
-      capabilities: ['natural-language-query', 'vector-search', 'embeddings-generation', 'semantic-search', 'gemini-ai']
-    }
-  };
-  
-  createServiceRegistryClient(serviceConfig);
+process.on('SIGINT', async () => {
+  console.log('\n🔄 Cerrando servicio...');
+  await nlpService.pool.end();
+  process.exit(0);
 });

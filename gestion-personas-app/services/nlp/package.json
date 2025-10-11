@@ -2,10 +2,10 @@
   "name": "nlp-service",
   "version": "2.0.0",
   "description": "Advanced NLP Service with RAG capabilities for natural language queries using Gemini AI and Qdrant vector database",
-  "main": "index-v2.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node index-v2.js",
-    "dev": "nodemon index-v2.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "legacy": "node index.js",
     "test": "node test-comprehensive.js",
     "test:basic": "node test-basic.js",
