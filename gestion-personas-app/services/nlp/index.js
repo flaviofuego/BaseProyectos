@@ -189,24 +189,26 @@ class NLPService {
   }
 
   /**
-   * 🔍 Clasificar intención de consulta usando Gemini
+   * 🔍 Clasificar intención de consulta usando Gemini (RAG con Qdrant)
    */
   async classifyIntent(query) {
-    const prompt = `Analiza la siguiente consulta en lenguaje natural y clasifica su intención.
+    const prompt = `Analiza la siguiente consulta en lenguaje natural y clasifica su intención para un sistema RAG con búsqueda vectorial.
 
 Consulta: "${query}"
 
 Clasifica en una de estas categorías:
-1. SEARCH - Búsqueda general de personas (ej: "buscar personas", "mostrar todos")
-2. FILTER - Filtrado específico (ej: "personas mayores de 30", "hombres de Bogotá")
-3. COUNT - Contar registros (ej: "cuántas personas hay", "número de mujeres")
-4. AGGREGATE - Estadísticas o agregaciones (ej: "edad promedio", "personas por ciudad")
-5. SPECIFIC - Búsqueda de persona específica (ej: "buscar Juan Pérez", "documento 123456")
-6. DEMOGRAPHIC - Análisis demográfico (ej: "distribución por género", "rango de edades")
-7. COMPLEX - Consulta compleja que requiere SQL avanzado
+1. SEARCH_VECTOR - Búsqueda general semántica (ej: "buscar personas", "mostrar todos", "listar personas")
+2. FILTER_VECTOR - Filtrado con parámetros específicos (ej: "personas mayores de 30", "hombres", "con cédula")
+3. COUNT_VECTOR - Contar registros con filtros (ej: "cuántas personas hay", "número de mujeres mayores de edad")
+4. AGGREGATE_VECTOR - Agregaciones y estadísticas (ej: "edad promedio", "distribución por género")
+5. SPECIFIC_VECTOR - Búsqueda de persona específica por nombre o documento (ej: "buscar Juan Pérez", "documento 123456")
+6. DEMOGRAPHIC_VECTOR - Análisis demográfico complejo (ej: "rango de edades por género", "grupos etarios")
 
-Responde SOLO con el nombre de la categoría (una palabra en mayúsculas) seguido de un nivel de confianza (0-1).
-Formato: CATEGORIA|0.95
+IMPORTANTE: Todas las consultas se resolverán usando búsqueda vectorial en Qdrant.
+No se usará SQL ni PostgreSQL para consultas, solo para sincronización de datos.
+
+Responde SOLO con el nombre de la categoría (una palabra) seguido de un nivel de confianza (0-1).
+Formato: CATEGORIA_VECTOR|0.95
 
 No agregues explicaciones adicionales.`;
 
@@ -221,78 +223,72 @@ No agregues explicaciones adicionales.`;
       };
     } catch (error) {
       console.error('❌ Error clasificando intención:', error);
-      return { intent: 'SEARCH', confidence: 0.5 };
+      return { intent: 'SEARCH_VECTOR', confidence: 0.5 };
     }
   }
 
   /**
-   * 🔎 Generar SQL dinámico desde lenguaje natural
+   * 🧩 Extraer parámetros de consulta usando Gemini
    */
-  async generateSQL(query, intent) {
-    const schemaInfo = `
-Esquema de base de datos en PostgreSQL:
-- Tabla: personas
-  Columnas:
-  * id (INTEGER, PRIMARY KEY)
-  * numero_documento (VARCHAR(10), UNIQUE)
-  * tipo_documento (VARCHAR(30), VALUES: 'Tarjeta de identidad', 'Cédula')
-  * primer_nombre (VARCHAR(30))
-  * segundo_nombre (VARCHAR(30), NULLABLE)
-  * apellidos (VARCHAR(60))
-  * fecha_nacimiento (DATE)
-  * genero (VARCHAR(20), VALUES: 'Masculino', 'Femenino', 'No binario', 'Prefiero no reportar')
-  * correo_electronico (VARCHAR(255))
-  * celular (VARCHAR(10))
-  * created_at (TIMESTAMP)
+  async extractQueryParameters(query, intent) {
+    const prompt = `Analiza la siguiente consulta en lenguaje natural y extrae los parámetros de filtrado.
 
-- Vista: personas_con_edad
-  Incluye todas las columnas de 'personas' más:
-  * edad (INTEGER, calculada)
-  * grupo_edad (VARCHAR, VALUES: 'Menor de edad', 'Adulto', 'Adulto mayor')
+Consulta: "${query}"
+Intención: ${intent}
 
-Reglas importantes:
-1. Usa personas_con_edad cuando necesites filtrar o mostrar edad
-2. SIEMPRE incluye LIMIT para evitar resultados masivos (máximo 100)
-3. Usa ORDER BY para resultados ordenados
-4. Para fechas, usa formato 'YYYY-MM-DD'
-5. Para nombres, usa ILIKE para búsqueda case-insensitive
-6. Los géneros son exactamente: 'Masculino', 'Femenino', 'No binario', 'Prefiero no reportar'
-`;
+Extrae estos parámetros si están presentes:
+- edad_min: edad mínima (número entero o null)
+- edad_max: edad máxima (número entero o null)
+- genero: género específico (valores posibles: "Masculino", "Femenino", "No binario", "Prefiero no reportar", o null)
+- tipo_documento: tipo de documento (valores: "Cédula", "Tarjeta de identidad", o null)
+- numero_documento: número específico de documento (string o null)
+- nombre: nombre o parte del nombre a buscar (string o null)
+- limit: cantidad máxima de resultados a devolver (número entre 10-100, por defecto 50)
 
-    const prompt = `${schemaInfo}
+Reglas:
+- Si menciona "mayor de X años" → edad_min = X
+- Si menciona "menor de X años" → edad_max = X
+- Si menciona "entre X y Y años" → edad_min = X, edad_max = Y
+- Si menciona "adultos" → edad_min = 18
+- Si menciona "menores" o "niños" → edad_max = 17
+- Si menciona "adultos mayores" → edad_min = 60
+- Género debe ser exacto: "Masculino", "Femenino", etc.
+- Si no se especifica un parámetro, devuelve null
 
-Consulta del usuario: "${query}"
-Intención detectada: ${intent}
-
-Genera UNA ÚNICA consulta SQL válida para PostgreSQL que responda a esta consulta.
-
-Requisitos:
-- SQL válido y seguro (sin inyección)
-- Incluye LIMIT apropiado (máximo 100)
-- Usa alias descriptivos para columnas calculadas
-- Para conteos usa COUNT(*)
-- Para promedios usa ROUND(AVG(...), 1)
-- Para agrupaciones usa GROUP BY con nombres claros
-
-Responde SOLO con el SQL, sin explicaciones, sin markdown, sin prefijos.`;
+Responde SOLO con un objeto JSON válido. No agregues explicaciones.
+Formato:
+{
+  "edad_min": 18,
+  "edad_max": null,
+  "genero": "Masculino",
+  "tipo_documento": null,
+  "numero_documento": null,
+  "nombre": null,
+  "limit": 50
+}`;
 
     try {
       const result = await this.geminiModel.generateContent(prompt);
-      let sql = result.response.text().trim();
+      let response = result.response.text().trim();
       
-      // Limpiar el SQL (remover markdown si existe)
-      sql = sql.replace(/```sql\n?/g, '').replace(/```\n?/g, '').trim();
+      // Limpiar markdown si existe
+      response = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
-      // Validación básica de seguridad
-      const dangerousKeywords = /drop|delete|truncate|alter|create|insert|update/gi;
-      if (dangerousKeywords.test(sql)) {
-        throw new Error('Consulta SQL potencialmente peligrosa detectada');
-      }
-
-      return sql;
+      const parameters = JSON.parse(response);
+      console.log('📋 Parámetros extraídos:', parameters);
+      
+      return parameters;
     } catch (error) {
-      console.error('❌ Error generando SQL:', error);
-      throw error;
+      console.error('❌ Error extrayendo parámetros:', error);
+      return {
+        edad_min: null,
+        edad_max: null,
+        genero: null,
+        tipo_documento: null,
+        numero_documento: null,
+        nombre: null,
+        limit: 50
+      };
     }
   }
 
@@ -319,39 +315,294 @@ Responde SOLO con el SQL, sin explicaciones, sin markdown, sin prefijos.`;
   }
 
   /**
-   * 📄 Generar respuesta en Markdown desde resultados
+   * 🗄️ Consultar base de datos vectorial con filtros dinámicos
    */
-  async generateMarkdownResponse(query, sqlResults, intent, useSemanticSearch = false) {
-    const resultsInfo = JSON.stringify(sqlResults.slice(0, 5), null, 2); // Primeros 5 resultados como muestra
+  async queryVectorDatabase(query, intent, parameters) {
+    try {
+      console.log(`🔎 Consultando Qdrant con intent: ${intent}`);
+      console.log('📋 Parámetros de filtro:', parameters);
 
-    const prompt = `Eres un asistente que presenta resultados de bases de datos de manera clara y profesional en formato Markdown.
+      // Construir filtros de Qdrant
+      const filters = { must: [] };
+
+      // Filtro por edad
+      if (parameters.edad_min !== null || parameters.edad_max !== null) {
+        if (parameters.edad_min !== null && parameters.edad_max !== null) {
+          // Rango de edad
+          filters.must.push({
+            key: 'edad',
+            range: {
+              gte: parameters.edad_min,
+              lte: parameters.edad_max
+            }
+          });
+        } else if (parameters.edad_min !== null) {
+          // Solo edad mínima
+          filters.must.push({
+            key: 'edad',
+            range: {
+              gte: parameters.edad_min
+            }
+          });
+        } else if (parameters.edad_max !== null) {
+          // Solo edad máxima
+          filters.must.push({
+            key: 'edad',
+            range: {
+              lte: parameters.edad_max
+            }
+          });
+        }
+      }
+
+      // Filtro por género
+      if (parameters.genero !== null) {
+        filters.must.push({
+          key: 'genero',
+          match: { value: parameters.genero }
+        });
+      }
+
+      // Filtro por tipo de documento
+      if (parameters.tipo_documento !== null) {
+        filters.must.push({
+          key: 'tipo_documento',
+          match: { value: parameters.tipo_documento }
+        });
+      }
+
+      // Filtro por número de documento específico
+      if (parameters.numero_documento !== null) {
+        filters.must.push({
+          key: 'numero_documento',
+          match: { value: parameters.numero_documento }
+        });
+      }
+
+      const limit = parameters.limit || 100;
+
+      let results = [];
+
+      // Estrategia según intención
+      if (intent === 'SPECIFIC_VECTOR' || parameters.nombre !== null) {
+        // Búsqueda semántica con filtros
+        console.log('🔍 Usando búsqueda semántica...');
+        const queryEmbedding = await this.generateEmbedding(query);
+
+        const searchParams = {
+          vector: queryEmbedding,
+          limit: limit,
+          with_payload: true
+        };
+
+        // Agregar filtros solo si hay condiciones
+        if (filters.must.length > 0) {
+          searchParams.filter = filters;
+        }
+
+        const searchResults = await this.qdrantClient.search(this.COLLECTION_NAME, searchParams);
+        
+        results = searchResults.map(r => ({
+          ...r.payload,
+          score: r.score
+        }));
+
+      } else {
+        // Scroll para obtener todos los registros con filtros
+        console.log('📜 Usando scroll con filtros...');
+        
+        const scrollParams = {
+          limit: limit,
+          with_payload: true
+        };
+
+        // Agregar filtros solo si hay condiciones
+        if (filters.must.length > 0) {
+          scrollParams.filter = filters;
+        }
+
+        const scrollResults = await this.qdrantClient.scroll(this.COLLECTION_NAME, scrollParams);
+        
+        results = scrollResults.points.map(p => p.payload);
+      }
+
+      console.log(`✅ Resultados de Qdrant: ${results.length}`);
+
+      // Para consultas de agregación, realizar cálculos
+      if (intent === 'AGGREGATE_VECTOR' || intent === 'DEMOGRAPHIC_VECTOR') {
+        return this.performAggregations(results, query);
+      }
+
+      // Para COUNT, devolver solo el conteo
+      if (intent === 'COUNT_VECTOR') {
+        return [{
+          total: results.length,
+          filtros_aplicados: parameters
+        }];
+      }
+
+      return results;
+
+    } catch (error) {
+      console.error('❌ Error consultando Qdrant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📊 Realizar agregaciones sobre resultados
+   */
+  performAggregations(results, query) {
+    if (results.length === 0) {
+      return [];
+    }
+
+    const aggregations = {
+      total: results.length
+    };
+
+    // Calcular edad promedio
+    const edades = results.map(r => r.edad).filter(e => e !== null && e !== undefined);
+    if (edades.length > 0) {
+      aggregations.edad_promedio = parseFloat((edades.reduce((a, b) => a + b, 0) / edades.length).toFixed(1));
+      aggregations.edad_minima = Math.min(...edades);
+      aggregations.edad_maxima = Math.max(...edades);
+    }
+
+    // Distribución por género
+    const generos = {};
+    results.forEach(r => {
+      if (r.genero) {
+        generos[r.genero] = (generos[r.genero] || 0) + 1;
+      }
+    });
+    aggregations.distribucion_genero = generos;
+
+    // Distribución por grupo de edad
+    const grupos = {};
+    results.forEach(r => {
+      if (r.grupo_edad) {
+        grupos[r.grupo_edad] = (grupos[r.grupo_edad] || 0) + 1;
+      }
+    });
+    aggregations.distribucion_grupo_edad = grupos;
+
+    // Distribución por tipo de documento
+    const tipos_doc = {};
+    results.forEach(r => {
+      if (r.tipo_documento) {
+        tipos_doc[r.tipo_documento] = (tipos_doc[r.tipo_documento] || 0) + 1;
+      }
+    });
+    aggregations.distribucion_tipo_documento = tipos_doc;
+
+    return [aggregations];
+  }
+
+  /**
+   * 📄 Generar respuesta en Markdown desde resultados (RAG con Qdrant)
+   */
+  async generateMarkdownResponse(query, vectorResults, intent, useSemanticSearch = false) {
+    // Detectar si son agregaciones
+    const isAggregation = intent.includes('AGGREGATE') || intent.includes('DEMOGRAPHIC') || 
+                          (vectorResults.length > 0 && vectorResults[0].hasOwnProperty('distribucion_genero'));
+    
+    const isCount = intent === 'COUNT_VECTOR' || 
+                    (vectorResults.length > 0 && vectorResults[0].hasOwnProperty('total') && 
+                     Object.keys(vectorResults[0]).length <= 3);
+
+    const resultsInfo = JSON.stringify(vectorResults.slice(0, 5), null, 2);
+
+    let prompt;
+
+    if (isAggregation) {
+      // Prompt para agregaciones
+      prompt = `Eres un asistente que presenta estadísticas y análisis demográficos de manera clara en formato Markdown.
 
 Consulta del usuario: "${query}"
 Intención: ${intent}
-Búsqueda semántica usada: ${useSemanticSearch ? 'Sí' : 'No'}
-Total de resultados: ${sqlResults.length}
+Fuente de datos: Base de datos vectorial Qdrant
+
+Datos de agregación:
+${resultsInfo}
+
+Genera una respuesta en formato Markdown que incluya:
+
+1. **Título atractivo** con el tipo de análisis
+2. **Resumen ejecutivo** (2-3 líneas) con los hallazgos principales
+3. **Métricas clave** usando listas con negritas
+4. **Tablas de distribución** si hay múltiples categorías (género, edad, etc.)
+5. **Insights adicionales** interpretando los datos
+
+Reglas importantes:
+- Usa negritas (**texto**) para números y métricas importantes
+- Usa tablas Markdown para distribuciones (| Categoría | Cantidad | Porcentaje |)
+- Calcula porcentajes cuando presentes distribuciones
+- Usa emojis sutiles para mejorar legibilidad (📊, 👥, 📈)
+- Interpreta los datos de forma profesional
+- Traduce nombres técnicos al español natural
+
+NO uses bloques de código (no uses \`\`\`).
+Responde SOLO en Markdown puro.`;
+
+    } else if (isCount) {
+      // Prompt para conteos
+      prompt = `Eres un asistente que responde consultas de conteo de manera clara en formato Markdown.
+
+Consulta del usuario: "${query}"
+Intención: ${intent}
+Fuente de datos: Base de datos vectorial Qdrant
+
+Resultado del conteo:
+${resultsInfo}
+
+Genera una respuesta concisa en formato Markdown que incluya:
+
+1. **Respuesta directa** con el número en negritas
+2. **Contexto adicional** si hay filtros aplicados
+3. **Desglose breve** si es relevante
+
+Reglas importantes:
+- Sé breve y directo
+- Usa negritas para el número principal
+- Menciona los filtros aplicados si existen
+- Usa emojis sutiles (📊, 👥)
+
+NO uses bloques de código (no uses \`\`\`).
+Responde SOLO en Markdown puro.`;
+
+    } else {
+      // Prompt para listados normales
+      prompt = `Eres un asistente que presenta resultados de búsqueda vectorial de manera clara y profesional en formato Markdown.
+
+Consulta del usuario: "${query}"
+Intención: ${intent}
+Fuente de datos: Base de datos vectorial Qdrant (búsqueda semántica)
+Total de resultados: ${vectorResults.length}
 
 Muestra de datos (primeros 5 registros):
 ${resultsInfo}
 
 Genera una respuesta en formato Markdown que incluya:
 
-1. **Resumen breve** (2-3 líneas) respondiendo la consulta
-2. **Tabla formateada** con los datos relevantes (usa sintaxis de tabla Markdown)
-3. **Insights adicionales** si hay patrones interesantes
+1. **Título relevante** (2-3 palabras)
+2. **Resumen breve** (1-2 líneas) respondiendo la consulta
+3. **Tabla formateada** con los datos más relevantes (máximo 6 columnas)
+4. **Insights adicionales** si hay patrones interesantes
 
 Reglas importantes:
 - Usa tablas Markdown (| Columna | Columna |)
-- Usa negritas (**texto**) para destacar
-- Usa listas cuando sea apropiado
-- Sé conciso y profesional
-- Si hay muchos resultados, menciona que se muestran los primeros N
+- Incluye SOLO columnas relevantes (nombre completo, edad, género, documento, correo)
+- Usa negritas (**texto**) para destacar información clave
+- Si hay muchos resultados (>20), menciona que se muestran los primeros N
 - Formatea fechas en formato legible (DD/MM/YYYY)
-- Para edades, agrega contexto (ej: "23 años")
-- Traduce nombres de columnas al español de forma natural
+- Para edades, solo el número sin "años" (se entiende por contexto)
+- Traduce nombres de columnas al español natural
+- Si hay un "score" de relevancia >0.8, es una coincidencia fuerte
 
 NO uses bloques de código (no uses \`\`\`).
 Responde SOLO en Markdown puro.`;
+    }
 
     try {
       const result = await this.geminiModel.generateContent(prompt);
@@ -359,24 +610,59 @@ Responde SOLO en Markdown puro.`;
     } catch (error) {
       console.error('❌ Error generando respuesta Markdown:', error);
       
-      // Fallback: generar tabla básica
-      if (sqlResults.length === 0) {
-        return '## Sin resultados\n\nNo se encontraron registros que coincidan con tu consulta.';
+      // Fallback: generar respuesta básica según el tipo
+      if (vectorResults.length === 0) {
+        return '## Sin resultados\n\n❌ No se encontraron registros que coincidan con tu consulta en la base de datos vectorial.';
       }
 
-      let markdown = `## Resultados (${sqlResults.length} registros)\n\n`;
+      if (isCount) {
+        return `## Resultado del Conteo\n\n**Total:** ${vectorResults[0].total} registro(s)`;
+      }
+
+      if (isAggregation) {
+        const agg = vectorResults[0];
+        let markdown = `## Análisis Estadístico\n\n**Total de registros:** ${agg.total}\n\n`;
+        
+        if (agg.edad_promedio) {
+          markdown += `### Estadísticas de Edad\n\n`;
+          markdown += `- **Edad promedio:** ${agg.edad_promedio} años\n`;
+          markdown += `- **Edad mínima:** ${agg.edad_minima} años\n`;
+          markdown += `- **Edad máxima:** ${agg.edad_maxima} años\n\n`;
+        }
+
+        if (agg.distribucion_genero) {
+          markdown += `### Distribución por Género\n\n`;
+          markdown += `| Género | Cantidad |\n| --- | --- |\n`;
+          Object.entries(agg.distribucion_genero).forEach(([k, v]) => {
+            markdown += `| ${k} | ${v} |\n`;
+          });
+          markdown += '\n';
+        }
+
+        return markdown;
+      }
+
+      // Fallback para listados
+      let markdown = `## Resultados (${vectorResults.length} registros)\n\n`;
       
-      // Generar tabla básica
-      const columns = Object.keys(sqlResults[0]);
-      markdown += '| ' + columns.join(' | ') + ' |\n';
-      markdown += '| ' + columns.map(() => '---').join(' | ') + ' |\n';
+      const columns = ['nombre_completo', 'edad', 'genero', 'numero_documento', 'correo'];
+      const availableColumns = columns.filter(c => vectorResults[0].hasOwnProperty(c));
       
-      sqlResults.slice(0, 20).forEach(row => {
-        markdown += '| ' + columns.map(col => row[col] || 'N/A').join(' | ') + ' |\n';
+      markdown += '| ' + availableColumns.map(c => {
+        return c === 'nombre_completo' ? 'Nombre' : 
+               c === 'edad' ? 'Edad' :
+               c === 'genero' ? 'Género' :
+               c === 'numero_documento' ? 'Documento' :
+               c === 'correo' ? 'Correo' : c;
+      }).join(' | ') + ' |\n';
+      markdown += '| ' + availableColumns.map(() => '---').join(' | ') + ' |\n';
+      
+      vectorResults.slice(0, 20).forEach(row => {
+        markdown += '| ' + availableColumns.map(col => row[col] || 'N/A').join(' | ') + ' |\n';
       });
 
-      if (sqlResults.length > 20) {
-        markdown += `\n*Se muestran los primeros 20 de ${sqlResults.length} resultados.*`;
+      if (vectorResults.length > 20) {
+        markdown += `\n*Se muestran los primeros 20 de ${vectorResults.length} resultados.*`;
       }
 
       return markdown;
@@ -447,7 +733,7 @@ Responde SOLO en Markdown puro.`;
     });
 
     // ============================================================
-    // POST /query - Consulta NLP Principal ⭐
+    // POST /query - Consulta NLP Principal ⭐ (RAG con Qdrant)
     // ============================================================
     this.app.post('/query', async (req, res) => {
       const startTime = Date.now();
@@ -469,43 +755,21 @@ Responde SOLO en Markdown puro.`;
           });
         }
 
-        console.log(`🔍 Procesando consulta: "${query}"`);
+        console.log(`🔍 Procesando consulta RAG: "${query}"`);
 
         // 2. Clasificar intención
         const { intent, confidence } = await this.classifyIntent(query);
         console.log(`🎯 Intención: ${intent} (confianza: ${confidence})`);
 
-        let results = [];
-        let useSemanticSearch = false;
-        let sql = null;
+        // 3. Extraer parámetros de la consulta
+        console.log('🧩 Extrayendo parámetros de la consulta...');
+        const parameters = await this.extractQueryParameters(query, intent);
 
-        // 3. Decidir estrategia de búsqueda
-        if (intent === 'SPECIFIC' && confidence > 0.7) {
-          // Búsqueda semántica para consultas específicas
-          console.log('🔎 Usando búsqueda semántica...');
-          const semanticResults = await this.semanticSearch(query, 10);
-          
-          if (semanticResults.length > 0) {
-            // Obtener IDs de personas encontradas
-            const personaIds = semanticResults.map(r => r.payload.persona_id);
-            sql = `SELECT * FROM personas_con_edad WHERE id IN (${personaIds.join(',')}) LIMIT 10`;
-            const dbResult = await this.pool.query(sql);
-            results = dbResult.rows;
-            useSemanticSearch = true;
-          }
-        }
+        // 4. Consultar base de datos vectorial (Qdrant)
+        console.log('🗄️ Consultando base de datos vectorial...');
+        const results = await this.queryVectorDatabase(query, intent, parameters);
 
-        // 4. Si no se usó búsqueda semántica o no dio resultados, usar SQL
-        if (results.length === 0) {
-          console.log('🔧 Generando consulta SQL...');
-          sql = await this.generateSQL(query, intent);
-          console.log(`📝 SQL generado: ${sql}`);
-
-          const dbResult = await this.pool.query(sql);
-          results = dbResult.rows;
-        }
-
-        console.log(`✅ Resultados obtenidos: ${results.length}`);
+        console.log(`✅ Resultados obtenidos de Qdrant: ${results.length}`);
 
         // 5. Generar respuesta en Markdown
         console.log('📄 Generando respuesta en Markdown...');
@@ -513,7 +777,7 @@ Responde SOLO en Markdown puro.`;
           query,
           results,
           intent,
-          useSemanticSearch
+          true // Siempre usamos búsqueda vectorial ahora
         );
 
         const processingTime = Date.now() - startTime;
@@ -524,33 +788,34 @@ Responde SOLO en Markdown puro.`;
           data: {
             markdown: markdownResponse,
             raw_results: results,
-            sql: sql
+            source: 'qdrant_vector_db' // Indicar que viene de Qdrant
           },
           metadata: {
             intent: intent,
             confidence: confidence,
             results_count: results.length,
             processing_time_ms: processingTime,
-            used_semantic_search: useSemanticSearch,
-            complexity: intent === 'COMPLEX' ? 'high' : 'medium'
+            query_parameters: parameters,
+            data_source: 'qdrant',
+            rag_mode: true
           }
         };
 
         // 7. Registrar en logs
-        await this.logTransaction('NLP_QUERY', query, 'SUCCESS', req, response);
+        await this.logTransaction('NLP_QUERY_RAG', query, 'SUCCESS', req, response);
 
         res.json(response);
 
       } catch (error) {
-        console.error('❌ Error procesando consulta:', error);
+        console.error('❌ Error procesando consulta RAG:', error);
         
         const processingTime = Date.now() - startTime;
         
-        await this.logTransaction('NLP_QUERY', query, 'ERROR', req, null, error.message);
+        await this.logTransaction('NLP_QUERY_RAG', query, 'ERROR', req, null, error.message);
 
         res.status(500).json({
           success: false,
-          error: 'Error procesando la consulta',
+          error: 'Error procesando la consulta RAG',
           details: error.message,
           metadata: {
             processing_time_ms: processingTime
@@ -588,16 +853,17 @@ Responde SOLO en Markdown puro.`;
 
         const persona = result.rows[0];
 
-        // Crear texto para embedding
+        // Crear texto para embedding (enriquecido con contexto)
         const embeddingText = `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos} 
           ${persona.tipo_documento} ${persona.numero_documento} 
-          ${persona.genero} edad ${persona.edad} años 
-          ${persona.correo_electronico} ${persona.celular}`.trim();
+          ${persona.genero} edad ${persona.edad} años ${persona.grupo_edad || ''}
+          ${persona.correo_electronico} ${persona.celular}
+          nacimiento ${persona.fecha_nacimiento || ''}`.trim();
 
         // Generar embedding
         const embedding = await this.generateEmbedding(embeddingText);
 
-        // Almacenar en Qdrant
+        // Almacenar en Qdrant con payload enriquecido
         await this.qdrantClient.upsert(this.COLLECTION_NAME, {
           wait: true,
           points: [
@@ -605,14 +871,34 @@ Responde SOLO en Markdown puro.`;
               id: persona.id,
               vector: embedding,
               payload: {
+                // IDs y referencias
                 persona_id: persona.id,
+                
+                // Información personal completa
+                primer_nombre: persona.primer_nombre,
+                segundo_nombre: persona.segundo_nombre || null,
+                apellidos: persona.apellidos,
                 nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
+                
+                // Documento
                 numero_documento: persona.numero_documento,
                 tipo_documento: persona.tipo_documento,
+                
+                // Demografía
                 genero: persona.genero,
                 edad: persona.edad,
+                grupo_edad: persona.grupo_edad || null,
+                fecha_nacimiento: persona.fecha_nacimiento ? persona.fecha_nacimiento.toISOString().split('T')[0] : null,
+                
+                // Contacto
                 correo: persona.correo_electronico,
-                updated_at: new Date().toISOString()
+                correo_electronico: persona.correo_electronico, // Alias
+                celular: persona.celular,
+                
+                // Metadatos
+                created_at: persona.created_at ? persona.created_at.toISOString() : null,
+                updated_at: new Date().toISOString(),
+                synced_at: new Date().toISOString()
               }
             }
           ]
@@ -665,10 +951,12 @@ Responde SOLO en Markdown puro.`;
           
           const points = await Promise.all(batch.map(async (persona) => {
             try {
+              // Texto enriquecido para embedding
               const embeddingText = `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos} 
                 ${persona.tipo_documento} ${persona.numero_documento} 
-                ${persona.genero} edad ${persona.edad} años 
-                ${persona.correo_electronico} ${persona.celular}`.trim();
+                ${persona.genero} edad ${persona.edad} años ${persona.grupo_edad || ''}
+                ${persona.correo_electronico} ${persona.celular}
+                nacimiento ${persona.fecha_nacimiento || ''}`.trim();
 
               const embedding = await this.generateEmbedding(embeddingText);
 
@@ -677,14 +965,34 @@ Responde SOLO en Markdown puro.`;
                 id: persona.id,
                 vector: embedding,
                 payload: {
+                  // IDs y referencias
                   persona_id: persona.id,
+                  
+                  // Información personal completa
+                  primer_nombre: persona.primer_nombre,
+                  segundo_nombre: persona.segundo_nombre || null,
+                  apellidos: persona.apellidos,
                   nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
+                  
+                  // Documento
                   numero_documento: persona.numero_documento,
                   tipo_documento: persona.tipo_documento,
+                  
+                  // Demografía
                   genero: persona.genero,
                   edad: persona.edad,
+                  grupo_edad: persona.grupo_edad || null,
+                  fecha_nacimiento: persona.fecha_nacimiento ? persona.fecha_nacimiento.toISOString().split('T')[0] : null,
+                  
+                  // Contacto
                   correo: persona.correo_electronico,
-                  updated_at: new Date().toISOString()
+                  correo_electronico: persona.correo_electronico, // Alias
+                  celular: persona.celular,
+                  
+                  // Metadatos
+                  created_at: persona.created_at ? persona.created_at.toISOString() : null,
+                  updated_at: new Date().toISOString(),
+                  synced_at: new Date().toISOString()
                 }
               };
             } catch (error) {
@@ -840,96 +1148,6 @@ Responde SOLO en Markdown puro.`;
       }
     });
 
-    // ============================================================
-    // POST /test - Pruebas de Conectividad
-    // ============================================================
-    this.app.post('/test', async (req, res) => {
-      const { test_type = 'basic' } = req.body;
-      const results = {
-        test_type,
-        timestamp: new Date().toISOString(),
-        tests: {}
-      };
-
-      try {
-        // Test de Base de Datos
-        if (test_type === 'all' || test_type === 'database') {
-          try {
-            const start = Date.now();
-            await this.pool.query('SELECT COUNT(*) FROM personas');
-            results.tests.database = {
-              status: 'pass',
-              response_time_ms: Date.now() - start
-            };
-          } catch (error) {
-            results.tests.database = {
-              status: 'fail',
-              error: error.message
-            };
-          }
-        }
-
-        // Test de Gemini
-        if (test_type === 'all' || test_type === 'gemini') {
-          try {
-            const start = Date.now();
-            const result = await this.geminiModel.generateContent('Di solo "OK"');
-            const response = result.response.text();
-            results.tests.gemini = {
-              status: 'pass',
-              response_time_ms: Date.now() - start,
-              response: response.substring(0, 50)
-            };
-          } catch (error) {
-            results.tests.gemini = {
-              status: 'fail',
-              error: error.message
-            };
-          }
-        }
-
-        // Test de Qdrant
-        if (test_type === 'all' || test_type === 'qdrant') {
-          try {
-            const start = Date.now();
-            const collections = await this.qdrantClient.getCollections();
-            results.tests.qdrant = {
-              status: 'pass',
-              response_time_ms: Date.now() - start,
-              collections: collections.collections.length
-            };
-          } catch (error) {
-            results.tests.qdrant = {
-              status: 'fail',
-              error: error.message
-            };
-          }
-        }
-
-        // Test básico
-        if (test_type === 'basic') {
-          results.tests.basic = {
-            status: 'pass',
-            message: 'Servicio NLP funcionando correctamente'
-          };
-        }
-
-        const allPassed = Object.values(results.tests).every(t => t.status === 'pass');
-
-        res.status(allPassed ? 200 : 500).json({
-          success: allPassed,
-          results
-        });
-
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: 'Error ejecutando pruebas',
-          details: error.message
-        });
-      }
-    });
-
     // Ruta 404
     this.app.use((req, res) => {
       res.status(404).json({
@@ -997,14 +1215,11 @@ Responde SOLO en Markdown puro.`;
    */
   start() {
     this.app.listen(this.PORT, () => {
-      console.log('='.repeat(60));
       console.log('🧠 NLP Service v2.0 con RAG');
-      console.log('='.repeat(60));
       console.log(`✅ Servidor escuchando en puerto ${this.PORT}`);
       console.log(`🔗 URL: http://localhost:${this.PORT}`);
       console.log(`📊 Health Check: http://localhost:${this.PORT}/health`);
       console.log(`📈 Estadísticas: http://localhost:${this.PORT}/stats`);
-      console.log('='.repeat(60));
     });
   }
 }
