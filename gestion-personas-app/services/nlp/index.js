@@ -1,13 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const axios = require('axios');
 const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
 const { createServiceRegistryClient } = require('./shared/service-registry-client');
+const { AIAdapterFactory } = require('./adapters');
 
 class NLPService {
   constructor() {
@@ -22,29 +22,23 @@ class NLPService {
       connectionTimeoutMillis: 2000,
     });
 
-    // Configuración de Google Gemini AI
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.geminiModel = this.genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-pro',
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 2048,
-      }
-    });
-
-    // Modelo para embeddings (más eficiente)
-    this.embeddingModel = this.genAI.getGenerativeModel({ 
-      model: 'embedding-001'
-    });
+    // Inicializar adaptador de IA (Gemini, OpenAI, etc.)
+    try {
+      this.aiAdapter = AIAdapterFactory.createFromEnv();
+      console.log(`✅ Adaptador de IA inicializado: ${this.aiAdapter.getProviderName()}`);
+      console.log(`📊 Modelo de texto: ${this.aiAdapter.getModelInfo().textModel}`);
+      console.log(`📊 Modelo de embeddings: ${this.aiAdapter.getModelInfo().embeddingModel}`);
+    } catch (error) {
+      console.error('❌ Error inicializando adaptador de IA:', error);
+      throw error;
+    }
 
     // Configuración de Qdrant (Vector Database)
     this.qdrantClient = new QdrantClient({ 
       url: process.env.QDRANT_URL || 'http://qdrant:6333'
     });
     this.COLLECTION_NAME = 'personas_embeddings';
-    this.VECTOR_SIZE = 768; // Dimensión de embeddings de Gemini
+    this.VECTOR_SIZE = this.aiAdapter.getEmbeddingDimension(); // Dimensión dinámica según el proveedor
 
     // Estado del servicio
     this.serviceState = {
@@ -207,12 +201,11 @@ class NLPService {
   }
 
   /**
-   * 🤖 Generar embedding usando Gemini
+   * 🤖 Generar embedding usando el adaptador de IA configurado
    */
   async generateEmbedding(text) {
     try {
-      const result = await this.embeddingModel.embedContent(text);
-      return result.embedding.values;
+      return await this.aiAdapter.generateEmbedding(text);
     } catch (error) {
       console.error('❌ Error generando embedding:', error);
       throw error;
@@ -335,8 +328,7 @@ Formato: CATEGORIA|0.95
 No agregues explicaciones adicionales.`;
 
     try {
-      const result = await this.geminiModel.generateContent(prompt);
-      const response = result.response.text().trim();
+      const response = await this.aiAdapter.generateText(prompt);
       const [intent, confidence] = response.split('|');
       
       return {
@@ -392,8 +384,7 @@ Respuesta: {"grupo_edad": "Adulto mayor"}
 Responde SOLO con el objeto JSON, sin explicaciones, sin markdown.`;
 
     try {
-      const result = await this.geminiModel.generateContent(prompt);
-      let response = result.response.text().trim();
+      let response = await this.aiAdapter.generateText(prompt);
       
       // Limpiar markdown si existe
       response = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -605,8 +596,8 @@ NO uses bloques de código (no uses \`\`\`).
 Responde SOLO en Markdown puro.`;
 
     try {
-      const result = await this.geminiModel.generateContent(prompt);
-      return result.response.text().trim();
+      const response = await this.aiAdapter.generateText(prompt);
+      return response;
     } catch (error) {
       console.error('❌ Error generando respuesta Markdown:', error);
       
@@ -663,12 +654,14 @@ Responde SOLO en Markdown puro.`;
           service: 'nlp-service-v2',
           version: '2.0.0',
           mode: 'vector-only',
+          ai_provider: this.aiAdapter.getProviderName(),
+          ai_model_info: this.aiAdapter.getModelInfo(),
           uptime: Math.floor((Date.now() - this.serviceState.startTime) / 1000),
           timestamp: new Date().toISOString(),
           dependencies: {
             postgresql: false,
             qdrant: false,
-            gemini: false
+            ai_provider: false
           },
           capabilities: {
             natural_language_processing: true,
@@ -703,8 +696,13 @@ Responde SOLO en Markdown puro.`;
           console.error('Qdrant health check failed:', error);
         }
 
-        // Verificar Gemini (asumimos true si llegamos aquí)
-        health.dependencies.gemini = !!process.env.GEMINI_API_KEY;
+        // Verificar proveedor de IA
+        try {
+          health.dependencies.ai_provider = await this.aiAdapter.healthCheck();
+        } catch (error) {
+          console.error('AI Provider health check failed:', error);
+          health.dependencies.ai_provider = false;
+        }
 
         const allHealthy = Object.values(health.dependencies).every(v => v === true);
         health.status = allHealthy && this.serviceState.ready ? 'healthy' : 'degraded';
@@ -1017,6 +1015,10 @@ Responde SOLO en Markdown puro.`;
               distance_metric: collectionInfo.config.params.vectors.distance,
               sync_status: collectionInfo.points_count === parseInt(dbStats.rows[0].total_personas) ? 'synced' : 'out-of-sync'
             },
+            ai_provider: {
+              name: this.aiAdapter.getProviderName(),
+              model_info: this.aiAdapter.getModelInfo()
+            },
             service: {
               version: '2.0.0',
               mode: 'vector-only',
@@ -1031,7 +1033,8 @@ Responde SOLO en Markdown puro.`;
                 'markdown-responses',
                 'intent-classification',
                 'filter-extraction',
-                'aggregations'
+                'aggregations',
+                'multi-provider-ai'
               ]
             }
           }
@@ -1042,96 +1045,6 @@ Responde SOLO en Markdown puro.`;
         res.status(500).json({
           success: false,
           error: 'Error obteniendo estadísticas',
-          details: error.message
-        });
-      }
-    });
-
-    // ============================================================
-    // POST /test - Pruebas de Conectividad
-    // ============================================================
-    this.app.post('/test', async (req, res) => {
-      const { test_type = 'basic' } = req.body;
-      const results = {
-        test_type,
-        timestamp: new Date().toISOString(),
-        tests: {}
-      };
-
-      try {
-        // Test de Base de Datos
-        if (test_type === 'all' || test_type === 'database') {
-          try {
-            const start = Date.now();
-            await this.pool.query('SELECT COUNT(*) FROM personas');
-            results.tests.database = {
-              status: 'pass',
-              response_time_ms: Date.now() - start
-            };
-          } catch (error) {
-            results.tests.database = {
-              status: 'fail',
-              error: error.message
-            };
-          }
-        }
-
-        // Test de Gemini
-        if (test_type === 'all' || test_type === 'gemini') {
-          try {
-            const start = Date.now();
-            const result = await this.geminiModel.generateContent('Di solo "OK"');
-            const response = result.response.text();
-            results.tests.gemini = {
-              status: 'pass',
-              response_time_ms: Date.now() - start,
-              response: response.substring(0, 50)
-            };
-          } catch (error) {
-            results.tests.gemini = {
-              status: 'fail',
-              error: error.message
-            };
-          }
-        }
-
-        // Test de Qdrant
-        if (test_type === 'all' || test_type === 'qdrant') {
-          try {
-            const start = Date.now();
-            const collections = await this.qdrantClient.getCollections();
-            results.tests.qdrant = {
-              status: 'pass',
-              response_time_ms: Date.now() - start,
-              collections: collections.collections.length
-            };
-          } catch (error) {
-            results.tests.qdrant = {
-              status: 'fail',
-              error: error.message
-            };
-          }
-        }
-
-        // Test básico
-        if (test_type === 'basic') {
-          results.tests.basic = {
-            status: 'pass',
-            message: 'Servicio NLP funcionando correctamente'
-          };
-        }
-
-        const allPassed = Object.values(results.tests).every(t => t.status === 'pass');
-
-        res.status(allPassed ? 200 : 500).json({
-          success: allPassed,
-          results
-        });
-
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: 'Error ejecutando pruebas',
           details: error.message
         });
       }
@@ -1149,7 +1062,6 @@ Responde SOLO en Markdown puro.`;
           'POST /sync-embeddings',
           'DELETE /embedding/:personaId',
           'GET /stats',
-          'POST /test'
         ]
       });
     });
@@ -1206,16 +1118,12 @@ Responde SOLO en Markdown puro.`;
    */
   start() {
     this.app.listen(this.PORT, () => {
-      console.log('='.repeat(60));
       console.log('🧠 NLP Service v2.0 - Vector Database Only');
-      console.log('🔍 Búsqueda semántica con Qdrant + Gemini Embeddings');
-      console.log('='.repeat(60));
       console.log(`✅ Servidor escuchando en puerto ${this.PORT}`);
       console.log(`🔗 URL: http://localhost:${this.PORT}`);
       console.log(`📊 Health Check: http://localhost:${this.PORT}/health`);
       console.log(`📈 Estadísticas: http://localhost:${this.PORT}/stats`);
       console.log(`🔄 Sincronización automática al inicio: ACTIVADA`);
-      console.log('='.repeat(60));
     });
   }
 }
