@@ -98,6 +98,10 @@ class NLPService {
       // Obtener estadísticas iniciales
       await this.updateServiceStats();
 
+      // Sincronizar embeddings automáticamente al iniciar
+      console.log('🔄 Sincronizando embeddings con Qdrant...');
+      await this.autoSyncEmbeddings();
+
       this.serviceState.ready = true;
       console.log('✅ NLP Service completamente inicializado');
 
@@ -144,6 +148,113 @@ class NLPService {
       this.serviceState.totalEmbeddings = collectionInfo.points_count || 0;
     } catch (error) {
       console.error('⚠️ Error actualizando estadísticas:', error);
+    }
+  }
+
+  /**
+   * 🔄 Sincronización automática de embeddings al iniciar
+   */
+  async autoSyncEmbeddings() {
+    try {
+      console.log('📊 Verificando estado de sincronización...');
+
+      // Obtener total de personas en PostgreSQL
+      const dbResult = await this.pool.query('SELECT COUNT(*) as total FROM personas_con_edad');
+      const totalPersonasDB = parseInt(dbResult.rows[0].total);
+
+      // Obtener total de embeddings en Qdrant
+      const collectionInfo = await this.qdrantClient.getCollection(this.COLLECTION_NAME);
+      const totalEmbeddings = collectionInfo.points_count || 0;
+
+      console.log(`📊 PostgreSQL: ${totalPersonasDB} personas | Qdrant: ${totalEmbeddings} embeddings`);
+
+      // Si hay diferencia, sincronizar
+      if (totalPersonasDB !== totalEmbeddings) {
+        console.log(`🔄 Diferencia detectada. Iniciando sincronización automática...`);
+        
+        // Obtener todas las personas
+        const result = await this.pool.query('SELECT * FROM personas_con_edad ORDER BY id');
+        const personas = result.rows;
+
+        let successCount = 0;
+        let errorCount = 0;
+        const batchSize = 10;
+
+        // Procesar en lotes
+        for (let i = 0; i < personas.length; i += batchSize) {
+          const batch = personas.slice(i, i + batchSize);
+          
+          const points = await Promise.all(batch.map(async (persona) => {
+            try {
+              // Texto enriquecido para embedding
+              const embeddingText = `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos} 
+                ${persona.tipo_documento} ${persona.numero_documento} 
+                ${persona.genero} edad ${persona.edad} años ${persona.grupo_edad || ''}
+                ${persona.correo_electronico} ${persona.celular}
+                nacimiento ${persona.fecha_nacimiento || ''}`.trim();
+
+              const embedding = await this.generateEmbedding(embeddingText);
+
+              successCount++;
+              return {
+                id: persona.id,
+                vector: embedding,
+                payload: {
+                  persona_id: persona.id,
+                  primer_nombre: persona.primer_nombre,
+                  segundo_nombre: persona.segundo_nombre || null,
+                  apellidos: persona.apellidos,
+                  nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
+                  numero_documento: persona.numero_documento,
+                  tipo_documento: persona.tipo_documento,
+                  genero: persona.genero,
+                  edad: persona.edad,
+                  grupo_edad: persona.grupo_edad || null,
+                  fecha_nacimiento: persona.fecha_nacimiento ? persona.fecha_nacimiento.toISOString().split('T')[0] : null,
+                  correo: persona.correo_electronico,
+                  correo_electronico: persona.correo_electronico,
+                  celular: persona.celular,
+                  created_at: persona.created_at ? persona.created_at.toISOString() : null,
+                  updated_at: new Date().toISOString(),
+                  synced_at: new Date().toISOString()
+                }
+              };
+            } catch (error) {
+              console.error(`❌ Error procesando persona ${persona.id}:`, error.message);
+              errorCount++;
+              return null;
+            }
+          }));
+
+          // Filtrar nulos y hacer upsert
+          const validPoints = points.filter(p => p !== null);
+          if (validPoints.length > 0) {
+            await this.qdrantClient.upsert(this.COLLECTION_NAME, {
+              wait: true,
+              points: validPoints
+            });
+          }
+
+          console.log(`✅ Lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(personas.length / batchSize)} sincronizado`);
+          
+          // Pequeña pausa entre lotes para no saturar la API
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        this.serviceState.lastSync = new Date().toISOString();
+        await this.updateServiceStats();
+
+        console.log(`✅ Sincronización automática completada: ${successCount} éxitos, ${errorCount} errores`);
+        
+      } else {
+        console.log('✅ Base de datos vectorial ya está sincronizada');
+        this.serviceState.lastSync = new Date().toISOString();
+      }
+
+    } catch (error) {
+      console.error('❌ Error en sincronización automática:', error.message);
+      // No lanzar error para no detener el inicio del servicio
+      console.log('⚠️ Servicio continuará sin sincronización completa');
     }
   }
 
