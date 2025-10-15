@@ -1,5 +1,5 @@
 # Ignore all backup SQL files
-*.sql
+#*.sql
 
 # Keep the scripts in git
 !backup.sh
