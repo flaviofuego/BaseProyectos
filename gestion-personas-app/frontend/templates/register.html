@@ -1,98 +1,402 @@
-{% extends "base.html" %}
-
-{% block title %}Registro - Sistema de Gestión de Personas{% endblock %}
-
-{% block content %}
-<div class="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card shadow">
-                    <div class="card-body p-5">
-                        <div class="text-center mb-4">
-                            <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
-                            <h2 class="card-title">Registro de Usuario</h2>
-                        </div>
-
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Usuario</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" class="form-control" id="username" name="username" 
-                                           value="{{ request.form.username if request.form.username }}"
-                                           placeholder="Elige un nombre de usuario" required>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Correo Electrónico</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                    <input type="email" class="form-control" id="email" name="email" 
-                                           value="{{ request.form.email if request.form.email }}"
-                                           placeholder="tu@email.com" required>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Contraseña</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                    <input type="password" class="form-control" id="password" name="password" 
-                                           placeholder="Mínimo 6 caracteres" required minlength="6">
-                                </div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label for="confirm_password" class="form-label">Confirmar Contraseña</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
-                                           placeholder="Repite la contraseña" required>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-6">
-                                    <a href="{{ url_for('login') }}" class="btn btn-outline-secondary w-100">
-                                        <i class="fas fa-arrow-left"></i> Volver
-                                    </a>
-                                </div>
-                                <div class="col-6">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="fas fa-user-plus"></i> Registrarse
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+{% extends "base.html" %} {% block title %}Registro - Sistema de Gestión de
+Personas{% endblock %} {% block content %}
+<div
+  class="min-vh-100 d-flex align-items-center justify-content-center bg-light"
+>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+          <div class="card-body p-5">
+            <div class="text-center mb-4">
+              <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
+              <h2 class="card-title">Registro de Usuario</h2>
             </div>
+
+            <form method="POST">
+              <div class="mb-3">
+                <label for="username" class="form-label">Usuario</label>
+                <div class="input-group">
+                  <span class="input-group-text"
+                    ><i class="fas fa-user"></i
+                  ></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="username"
+                    name="username"
+                    value="{{ request.form.username if request.form.username }}"
+                    placeholder="Elige un nombre de usuario"
+                    required
+                  />
+                </div>
+                <!-- Requisitos del username -->
+                <div
+                  id="username-requirements"
+                  class="mt-2 small"
+                  style="display: none"
+                >
+                  <div id="username-length" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Mínimo 3 caracteres</span>
+                  </div>
+                  <div id="username-format" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span
+                      >Solo letras minúsculas, números y guión bajo (_)</span
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="email" class="form-label">Correo Electrónico</label>
+                <div class="input-group">
+                  <span class="input-group-text"
+                    ><i class="fas fa-envelope"></i
+                  ></span>
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="email"
+                    name="email"
+                    value="{{ request.form.email if request.form.email }}"
+                    placeholder="tu@email.com"
+                    required
+                  />
+                </div>
+                <!-- Requisitos del email -->
+                <div
+                  id="email-requirements"
+                  class="mt-2 small"
+                  style="display: none"
+                >
+                  <div id="email-format" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Formato de email válido (usuario@dominio.com)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="password" class="form-label">Contraseña</label>
+                <div class="input-group">
+                  <span class="input-group-text"
+                    ><i class="fas fa-lock"></i
+                  ></span>
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="password"
+                    name="password"
+                    placeholder="Mínimo 8 caracteres"
+                    required
+                  />
+                </div>
+                <!-- Requisitos de la contraseña -->
+                <div
+                  id="password-requirements"
+                  class="mt-2 small"
+                  style="display: none"
+                >
+                  <div id="password-length" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Mínimo 8 caracteres</span>
+                  </div>
+                  <div id="password-lowercase" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Al menos una letra minúscula</span>
+                  </div>
+                  <div id="password-uppercase" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Al menos una letra mayúscula</span>
+                  </div>
+                  <div id="password-number" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Al menos un número</span>
+                  </div>
+                  <div id="password-special" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Al menos un carácter especial (@$!%*?&)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label for="confirm_password" class="form-label"
+                  >Confirmar Contraseña</label
+                >
+                <div class="input-group">
+                  <span class="input-group-text"
+                    ><i class="fas fa-lock"></i
+                  ></span>
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="confirm_password"
+                    name="confirm_password"
+                    placeholder="Repite la contraseña"
+                    required
+                  />
+                </div>
+                <!-- Indicador de coincidencia -->
+                <div
+                  id="password-match-indicator"
+                  class="mt-2 small"
+                  style="display: none"
+                >
+                  <div id="password-match" class="requirement-item">
+                    <i class="fas fa-circle-notch"></i>
+                    <span>Las contraseñas coinciden</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-6">
+                  <a
+                    href="{{ url_for('login') }}"
+                    class="btn btn-outline-secondary w-100"
+                  >
+                    <i class="fas fa-arrow-left"></i> Volver
+                  </a>
+                </div>
+                <div class="col-6">
+                  <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-user-plus"></i> Registrarse
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
-{% endblock %}
+{% endblock %} {% block extra_js %}
+<style>
+  .requirement-item {
+    padding: 3px 0;
+    transition: all 0.3s ease;
+  }
 
-{% block extra_js %}
+  .requirement-item i {
+    width: 20px;
+    margin-right: 5px;
+  }
+
+  .requirement-item.valid {
+    color: #28a745;
+  }
+
+  .requirement-item.invalid {
+    color: #dc3545;
+  }
+
+  .requirement-item.valid i::before {
+    content: "\f058"; /* fa-check-circle */
+  }
+
+  .requirement-item.invalid i::before {
+    content: "\f057"; /* fa-times-circle */
+  }
+
+  .form-control.is-valid-custom {
+    border-color: #28a745 !important;
+  }
+
+  .form-control.is-invalid-custom {
+    border-color: #dc3545 !important;
+  }
+</style>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const passwordField = document.getElementById('password');
-    const confirmPasswordField = document.getElementById('confirm_password');
+  document.addEventListener("DOMContentLoaded", function () {
+    const usernameField = document.getElementById("username");
+    const emailField = document.getElementById("email");
+    const passwordField = document.getElementById("password");
+    const confirmPasswordField = document.getElementById("confirm_password");
+    const submitButton = document.querySelector('button[type="submit"]');
 
-    function checkPasswordMatch() {
-        if (confirmPasswordField.value !== '' && passwordField.value !== confirmPasswordField.value) {
-            confirmPasswordField.setCustomValidity('Las contraseñas no coinciden');
-        } else {
-            confirmPasswordField.setCustomValidity('');
-        }
+    // Mostrar/ocultar requisitos cuando el campo tiene foco
+    usernameField.addEventListener("focus", function () {
+      document.getElementById("username-requirements").style.display = "block";
+    });
+
+    emailField.addEventListener("focus", function () {
+      document.getElementById("email-requirements").style.display = "block";
+    });
+
+    passwordField.addEventListener("focus", function () {
+      document.getElementById("password-requirements").style.display = "block";
+    });
+
+    // Validar username en tiempo real
+    usernameField.addEventListener("input", function () {
+      const value = this.value.toLowerCase(); // Normalizar a minúsculas
+      this.value = value; // Actualizar el campo con minúsculas
+
+      const requirements = {
+        length: value.length >= 3 && value.length <= 30,
+        format: /^[a-z0-9_]*$/.test(value) && value.length > 0,
+      };
+
+      updateRequirement("username-length", requirements.length);
+      updateRequirement("username-format", requirements.format);
+
+      // Actualizar borde del input
+      const allValid = Object.values(requirements).every((v) => v);
+      updateInputBorder(usernameField, allValid && value.length > 0);
+    });
+
+    // Validar email en tiempo real
+    emailField.addEventListener("input", function () {
+      const value = this.value.toLowerCase(); // Normalizar a minúsculas
+      this.value = value; // Actualizar el campo con minúsculas
+
+      // Validación de email: debe tener @ y dominio.tld
+      const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+      const isValid = emailRegex.test(value);
+
+      updateRequirement("email-format", isValid);
+      updateInputBorder(emailField, isValid);
+    });
+
+    // Validar contraseña en tiempo real
+    passwordField.addEventListener("input", function () {
+      const value = this.value;
+
+      const requirements = {
+        length: value.length >= 8 && value.length <= 128,
+        lowercase: /[a-z]/.test(value),
+        uppercase: /[A-Z]/.test(value),
+        number: /\d/.test(value),
+        special: /[@$!%*?&]/.test(value),
+      };
+
+      updateRequirement("password-length", requirements.length);
+      updateRequirement("password-lowercase", requirements.lowercase);
+      updateRequirement("password-uppercase", requirements.uppercase);
+      updateRequirement("password-number", requirements.number);
+      updateRequirement("password-special", requirements.special);
+
+      // Actualizar borde del input
+      const allValid = Object.values(requirements).every((v) => v);
+      updateInputBorder(passwordField, allValid);
+
+      // Validar coincidencia de contraseñas
+      checkPasswordMatch();
+    });
+
+    // Validar confirmación de contraseña
+    confirmPasswordField.addEventListener("input", checkPasswordMatch);
+
+    confirmPasswordField.addEventListener("focus", function () {
+      if (this.value.length > 0 || passwordField.value.length > 0) {
+        document.getElementById("password-match-indicator").style.display =
+          "block";
+      }
+    });
+
+    function updateRequirement(elementId, isValid) {
+      const element = document.getElementById(elementId);
+      if (isValid) {
+        element.classList.remove("invalid");
+        element.classList.add("valid");
+      } else {
+        element.classList.remove("valid");
+        element.classList.add("invalid");
+      }
     }
 
-    passwordField.addEventListener('input', checkPasswordMatch);
-    confirmPasswordField.addEventListener('input', checkPasswordMatch);
-});
+    function updateInputBorder(inputElement, isValid) {
+      if (inputElement.value.length === 0) {
+        // No mostrar validación si está vacío
+        inputElement.classList.remove("is-valid-custom", "is-invalid-custom");
+      } else if (isValid) {
+        inputElement.classList.remove("is-invalid-custom");
+        inputElement.classList.add("is-valid-custom");
+      } else {
+        inputElement.classList.remove("is-valid-custom");
+        inputElement.classList.add("is-invalid-custom");
+      }
+    }
+
+    function checkPasswordMatch() {
+      const password = passwordField.value;
+      const confirmPassword = confirmPasswordField.value;
+
+      // Mostrar indicador si hay algo escrito
+      if (confirmPassword.length > 0) {
+        document.getElementById("password-match-indicator").style.display =
+          "block";
+      }
+
+      if (confirmPassword.length === 0) {
+        confirmPasswordField.classList.remove(
+          "is-valid-custom",
+          "is-invalid-custom"
+        );
+        confirmPasswordField.setCustomValidity("");
+        document.getElementById("password-match-indicator").style.display =
+          "none";
+      } else if (password === confirmPassword && password.length > 0) {
+        confirmPasswordField.classList.remove("is-invalid-custom");
+        confirmPasswordField.classList.add("is-valid-custom");
+        confirmPasswordField.setCustomValidity("");
+        updateRequirement("password-match", true);
+      } else {
+        confirmPasswordField.classList.remove("is-valid-custom");
+        confirmPasswordField.classList.add("is-invalid-custom");
+        confirmPasswordField.setCustomValidity("Las contraseñas no coinciden");
+        updateRequirement("password-match", false);
+      }
+    }
+
+    // Prevenir submit si hay errores de validación
+    const form = document.querySelector("form");
+    form.addEventListener("submit", function (e) {
+      // Validar username
+      const username = usernameField.value;
+      const usernameValid =
+        username.length >= 3 &&
+        username.length <= 30 &&
+        /^[a-z0-9_]+$/.test(username);
+
+      // Validar email
+      const email = emailField.value;
+      const emailValid = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email);
+
+      // Validar password
+      const password = passwordField.value;
+      const passwordValid =
+        password.length >= 8 &&
+        password.length <= 128 &&
+        /[a-z]/.test(password) &&
+        /[A-Z]/.test(password) &&
+        /\d/.test(password) &&
+        /[@$!%*?&]/.test(password);
+
+      // Validar confirmación
+      const confirmPassword = confirmPasswordField.value;
+      const confirmValid = password === confirmPassword;
+
+      if (!usernameValid || !emailValid || !passwordValid || !confirmValid) {
+        e.preventDefault();
+
+        // Mostrar mensaje de error
+        let errorMsg = "Por favor, corrige los siguientes errores:\n";
+        if (!usernameValid) errorMsg += "- Username inválido\n";
+        if (!emailValid) errorMsg += "- Email inválido\n";
+        if (!passwordValid)
+          errorMsg += "- Contraseña no cumple los requisitos\n";
+        if (!confirmValid) errorMsg += "- Las contraseñas no coinciden\n";
+
+        alert(errorMsg);
+        return false;
+      }
+    });
+  });
 </script>
 {% endblock %}
-
-
-

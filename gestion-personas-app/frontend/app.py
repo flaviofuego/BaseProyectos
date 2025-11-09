@@ -180,7 +180,15 @@ def login():
                 else:
                     app.logger.info(f"DEBUG: Login failed - status: {response.status_code if response is not None else 'None'}")
                     if response is not None:
-                        if response.status_code == 401:
+                        if response.status_code == 400:
+                            # Error de validación en los datos enviados
+                            try:
+                                error_data = response.json()
+                                error_message = error_data.get('error', 'Error de validación en los datos proporcionados')
+                                flash(error_message, 'error')
+                            except:
+                                flash('Error de validación. Verifica que los datos sean correctos.', 'error')
+                        elif response.status_code == 401:
                             # Error de autenticación (credenciales incorrectas)
                             try:
                                 error_data = response.json()
@@ -254,22 +262,27 @@ def register():
                 session['user'] = data['user']
                 flash('Registro exitoso', 'success')
                 return redirect(url_for('dashboard'))
+            elif response is not None and response.status_code == 400:
+                # Error de validación - mostrar mensaje específico del backend
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Error de validación en los datos proporcionados')
+                    flash(error_message, 'error')
+                except:
+                    flash('Error de validación. Verifica que los datos sean correctos.', 'error')
             elif response is not None and response.status_code == 409:
                 flash('Usuario o email ya existe', 'error')
+            elif response is None:
+                # No hay conexión con el servidor
+                flash('No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente.', 'error')
             else:
-                # Solo como ultimo recurso, crear usuario temporal
-                if len(username) >= 3 and '@' in email and len(password) >= 6:
-                    flash('Error de conexiÃ³n con el servidor. Usando modo temporal.', 'warning')
-                    session['authenticated'] = True
-                    session['token'] = f'temp-{username}-token'
-                    session['user'] = {
-                        'id': hash(username) % 1000,
-                        'username': username,
-                        'email': email
-                    }
-                    return redirect(url_for('dashboard'))
-                else:
-                    flash('Error al registrar usuario. Revisa que el username tenga al menos 3 caracteres, el email sea vÃ¡lido y la contraseÃ±a al menos 6 caracteres.', 'error')
+                # Otro error del servidor (500, etc)
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', 'Error del servidor')
+                    flash(f'Error: {error_message}', 'error')
+                except:
+                    flash(f'Error del servidor (código {response.status_code})', 'error')
         else:
             flash('Por favor, completa todos los campos', 'warning')
     
@@ -1562,4 +1575,4 @@ def auth0_logout():
     return render_template('logout_cleanup.html', auth0_logout=True)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    app.run(host='0.0.0.0', port=5001, debug=True) 
