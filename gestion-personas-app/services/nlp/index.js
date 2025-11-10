@@ -42,6 +42,115 @@ class NLPService {
         // Configuración de pgvector
     this.VECTOR_SIZE = 1536; // Dimensión de embeddings de Gemini
 
+    // 🎯 System Prompt Principal para el Asistente NLP
+    this.SYSTEM_PROMPT = `Eres un asistente inteligente especializado en consultas de gestión de personas para una base de datos empresarial.
+
+## 🎯 TU FUNCIÓN
+Ayudar a usuarios a consultar información sobre personas registradas en la base de datos mediante lenguaje natural, utilizando búsqueda vectorial semántica con pgvector y PostgreSQL.
+
+## 📊 DATOS DISPONIBLES
+La base de datos contiene información EXCLUSIVAMENTE de personas con estos campos:
+- **Identificación**: número de documento, tipo de documento (Cédula, Tarjeta de identidad)
+- **Información personal**: primer nombre, segundo nombre, apellidos, fecha de nacimiento, edad (calculada), género (Masculino, Femenino, No binario, Prefiero no reportar)
+- **Contacto**: correo electrónico, celular
+- **Clasificación**: grupo de edad (Menor de edad, Adulto, Adulto mayor)
+
+## ✅ CONSULTAS PERMITIDAS
+Puedes responder preguntas sobre:
+- Búsqueda de personas por nombre, documento, edad, género
+- Estadísticas demográficas (promedios, conteos, distribuciones)
+- Filtros combinados (ej: "mujeres mayores de 30 años")
+- Análisis de grupos etarios
+- Listados con criterios específicos
+
+## 🚫 RESTRICCIONES IMPORTANTES
+**NO DEBES**:
+2. Responder preguntas sobre temas fuera del ámbito de gestión de personas
+3. Inventar o asumir datos que no existen en la base de datos
+4. Proporcionar información de seguridad del sistema, contraseñas, o detalles técnicos internos
+5. Responder consultas sobre otros sistemas, servicios o información externa
+6. Hacer análisis predictivos o especulativos sobre personas
+7. Compartir datos que puedan comprometer la privacidad (ej: "dame todos los correos")
+
+## 📝 FORMATO DE RESPUESTAS
+Siempre responde en **Markdown formateado profesionalmente**:
+
+### Para Listados de Personas:
+- Usa **tablas Markdown** con columnas relevantes
+- Incluye: Nombre completo, Edad, Género, Documento (solo últimos 4 dígitos si es sensible)
+- Limita a 20 resultados por defecto, indica si hay más
+- Ejemplo:
+
+\`\`\`markdown
+## Resultados de Búsqueda (15 personas)
+
+| Nombre | Edad | Género | Documento |
+|--------|------|--------|-----------|
+| Juan Pérez García | 34 | Masculino | ****5678 |
+| María López Silva | 28 | Femenino | ****9012 |
+
+*Mostrando 15 de 15 resultados encontrados.*
+\`\`\`
+
+### Para Estadísticas:
+- Usa **listas con negritas** para métricas clave
+- Incluye **tablas** para distribuciones
+- Agrega **insights breves** interpretando los datos
+- Ejemplo:
+
+\`\`\`markdown
+## Análisis Demográfico
+
+**Métricas Generales:**
+- Total de personas: **150**
+- Edad promedio: **34.5 años**
+- Rango de edad: 18 - 75 años
+
+### Distribución por Género
+
+| Género | Cantidad | Porcentaje |
+|--------|----------|------------|
+| Masculino | 75 | 50% |
+| Femenino | 70 | 46.7% |
+| No binario | 5 | 3.3% |
+\`\`\`
+
+### Para Consultas Vacías:
+Si no hay resultados, responde amablemente sugiriendo ajustar la búsqueda:
+
+\`\`\`markdown
+## Sin Resultados
+
+❌ No se encontraron personas que coincidan con los criterios especificados.
+
+**Sugerencias:**
+- Verifica los filtros aplicados
+- Intenta con criterios más amplios
+- Revisa la ortografía de los nombres
+\`\`\`
+
+## 🛡️ MANEJO DE CONSULTAS INAPROPIADAS
+Si el usuario pregunta algo fuera de alcance:
+- Responde cortésmente indicando tu función específica
+- Redirige hacia consultas válidas
+- Ejemplo: "Lo siento, solo puedo ayudarte con consultas sobre personas registradas en la base de datos. ¿Te gustaría buscar información demográfica o una persona específica?"
+
+## 🎨 ESTILO DE COMUNICACIÓN
+- **Profesional y claro**: Usa lenguaje formal pero accesible
+- **Conciso**: Evita explicaciones innecesarias
+- **Estructurado**: Organiza la información con títulos y secciones
+- **Preciso**: Reporta números exactos, no aproximaciones
+
+## 🔐 PRIVACIDAD Y SEGURIDAD
+- Si detectas una consulta sospechosa, responde con precaución
+
+## ⚡ EFICIENCIA
+- Prioriza búsquedas vectoriales semánticas para mejor precisión
+- Limita resultados a cantidades manejables (10-50 registros)
+- Calcula porcentajes y métricas derivadas cuando sea útil
+
+Recuerda: Eres un asistente de consulta de base de datos, no un sistema de análisis predictivo ni un chatbot general. Mantente dentro de tu ámbito de gestión de personas y protege la privacidad de los datos.`;
+
     // Estado del servicio
     this.serviceState = {
       ready: false,
@@ -89,7 +198,6 @@ class NLPService {
         await client.query('SELECT NOW()');
         await pgvector.registerType(client);
         console.log('✅ Conexión a PostgreSQL establecida');
-        console.log('✅ Tipo pgvector registrado');
       } finally {
         client.release();
       }
@@ -108,8 +216,7 @@ class NLPService {
       this.serviceState.ready = true;
       console.log('✅ NLP Service completamente inicializado');
 
-      // Registrar en Service Registry
-      this.registerService();
+      this.registerService(); // Registrar en Service Registry
       
     } catch (error) {
       console.error('❌ Error inicializando servicio:', error);
@@ -297,23 +404,30 @@ class NLPService {
    * 🔍 Clasificar intención de consulta usando Gemini (RAG con Qdrant)
    */
   async classifyIntent(query) {
-    const prompt = `Analiza la siguiente consulta en lenguaje natural y clasifica su intención para un sistema RAG con búsqueda vectorial.
+    const prompt = `${this.SYSTEM_PROMPT}
 
-Consulta: "${query}"
+## TAREA ACTUAL: Clasificación de Intención
 
-Clasifica en una de estas categorías:
-1. SEARCH_VECTOR - Búsqueda general semántica (ej: "buscar personas", "mostrar todos", "listar personas")
-2. FILTER_VECTOR - Filtrado con parámetros específicos (ej: "personas mayores de 30", "hombres", "con cédula")
-3. COUNT_VECTOR - Contar registros con filtros (ej: "cuántas personas hay", "número de mujeres mayores de edad")
-4. AGGREGATE_VECTOR - Agregaciones y estadísticas (ej: "edad promedio", "distribución por género")
-5. SPECIFIC_VECTOR - Búsqueda de persona específica por nombre o documento (ej: "buscar Juan Pérez", "documento 123456")
-6. DEMOGRAPHIC_VECTOR - Análisis demográfico complejo (ej: "rango de edades por género", "grupos etarios")
+Analiza la siguiente consulta y clasifica su intención:
 
-IMPORTANTE: Todas las consultas se resolverán usando búsqueda vectorial en Qdrant.
-No se usará SQL ni PostgreSQL para consultas, solo para sincronización de datos.
+**Consulta del usuario**: "${query}"
 
-Responde SOLO con el nombre de la categoría (una palabra) seguido de un nivel de confianza (0-1).
-Formato: CATEGORIA_VECTOR|0.95
+**Categorías disponibles**:
+1. **SEARCH_VECTOR** - Búsqueda general semántica (ej: "buscar personas", "mostrar todos", "listar personas")
+2. **FILTER_VECTOR** - Filtrado con parámetros específicos (ej: "personas mayores de 30", "hombres", "con cédula")
+3. **COUNT_VECTOR** - Contar registros con filtros (ej: "cuántas personas hay", "número de mujeres mayores de edad")
+4. **AGGREGATE_VECTOR** - Agregaciones y estadísticas (ej: "edad promedio", "distribución por género")
+5. **SPECIFIC_VECTOR** - Búsqueda de persona específica por nombre o documento (ej: "buscar Juan Pérez", "documento 123456")
+6. **DEMOGRAPHIC_VECTOR** - Análisis demográfico complejo (ej: "rango de edades por género", "grupos etarios")
+7. **INVALID_QUERY** - Consulta fuera de alcance o inapropiada (información sensible, temas no relacionados)
+
+**IMPORTANTE**:
+- Si la consulta pide información sensible masiva (ej: "dame todos los correos"), usa INVALID_QUERY
+- Si la consulta no está relacionada con gestión de personas, usa INVALID_QUERY
+- Todas las consultas válidas se resolverán usando búsqueda vectorial en pgvector
+
+**Formato de respuesta**:
+Responde SOLO con: CATEGORIA_VECTOR|0.95
 
 No agregues explicaciones adicionales.`;
 
@@ -336,32 +450,41 @@ No agregues explicaciones adicionales.`;
    * 🧩 Extraer parámetros de consulta usando Gemini
    */
   async extractQueryParameters(query, intent) {
-    const prompt = `Analiza la siguiente consulta en lenguaje natural y extrae los parámetros de filtrado.
+    const prompt = `${this.SYSTEM_PROMPT}
 
-Consulta: "${query}"
-Intención: ${intent}
+## TAREA ACTUAL: Extracción de Parámetros de Consulta
 
-Extrae estos parámetros si están presentes:
-- edad_min: edad mínima (número entero o null)
-- edad_max: edad máxima (número entero o null)
-- genero: género específico (valores posibles: "Masculino", "Femenino", "No binario", "Prefiero no reportar", o null)
-- tipo_documento: tipo de documento (valores: "Cédula", "Tarjeta de identidad", o null)
-- numero_documento: número específico de documento (string o null)
-- nombre: nombre o parte del nombre a buscar (string o null)
-- limit: cantidad máxima de resultados a devolver (número entre 10-100, por defecto 50)
+Analiza la siguiente consulta y extrae los parámetros de filtrado para búsqueda en la base de datos.
 
-Reglas:
-- Si menciona "mayor de X años" → edad_min = X
-- Si menciona "menor de X años" → edad_max = X
-- Si menciona "entre X y Y años" → edad_min = X, edad_max = Y
-- Si menciona "adultos" → edad_min = 18
-- Si menciona "menores" o "niños" → edad_max = 17
-- Si menciona "adultos mayores" → edad_min = 60
-- Género debe ser exacto: "Masculino", "Femenino", etc.
+**Consulta del usuario**: "${query}"
+**Intención detectada**: ${intent}
+
+**Parámetros a extraer**:
+- **edad_min**: edad mínima (número entero o null)
+- **edad_max**: edad máxima (número entero o null)
+- **genero**: género específico (valores EXACTOS: "Masculino", "Femenino", "No binario", "Prefiero no reportar", o null)
+- **tipo_documento**: tipo de documento (valores EXACTOS: "Cédula", "Tarjeta de identidad", o null)
+- **numero_documento**: número específico de documento (string o null)
+- **nombre**: nombre o parte del nombre a buscar (string o null)
+- **limit**: cantidad máxima de resultados (número entre 10-100, por defecto 50)
+
+**Reglas de interpretación**:
+- "mayor de X años" → edad_min = X
+- "menor de X años" → edad_max = X
+- "entre X y Y años" → edad_min = X, edad_max = Y
+- "adultos" → edad_min = 18
+- "menores" o "niños" → edad_max = 17
+- "adultos mayores" o "tercera edad" → edad_min = 60
+- "jóvenes" → edad_min = 18, edad_max = 35
+- Género debe ser EXACTO como aparece en la base de datos
+- Tipo de documento debe ser EXACTO: "Cédula" o "Tarjeta de identidad"
 - Si no se especifica un parámetro, devuelve null
+- Para consultas masivas sospechosas (ej: "todos los correos"), limita a 10
 
-Responde SOLO con un objeto JSON válido. No agregues explicaciones.
-Formato:
+**Formato de respuesta**:
+Responde SOLO con un objeto JSON válido. NO agregues explicaciones, markdown ni bloques de código.
+
+Ejemplo:
 {
   "edad_min": 18,
   "edad_max": null,
@@ -370,7 +493,9 @@ Formato:
   "numero_documento": null,
   "nombre": null,
   "limit": 50
-}`;
+}
+
+Responde ahora:`;
 
     try {
       const result = await this.geminiModel.generateContent(prompt);
@@ -382,7 +507,20 @@ Formato:
       const parameters = JSON.parse(response);
       console.log('📋 Parámetros extraídos:', parameters);
       
-      return parameters;
+      // Validar y sanitizar parámetros
+      const sanitized = {
+        edad_min: parameters.edad_min && !isNaN(parameters.edad_min) ? parseInt(parameters.edad_min) : null,
+        edad_max: parameters.edad_max && !isNaN(parameters.edad_max) ? parseInt(parameters.edad_max) : null,
+        genero: ['Masculino', 'Femenino', 'No binario', 'Prefiero no reportar'].includes(parameters.genero) ? parameters.genero : null,
+        tipo_documento: ['Cédula', 'Tarjeta de identidad'].includes(parameters.tipo_documento) ? parameters.tipo_documento : null,
+        numero_documento: parameters.numero_documento || null,
+        nombre: parameters.nombre || null,
+        limit: parameters.limit && !isNaN(parameters.limit) ? Math.min(Math.max(parseInt(parameters.limit), 10), 100) : 50
+      };
+      
+      console.log('✅ Parámetros sanitizados:', sanitized);
+      return sanitized;
+      
     } catch (error) {
       console.error('❌ Error extrayendo parámetros:', error);
       return {
@@ -398,46 +536,16 @@ Formato:
   }
 
   /**
-   * 🔍 Búsqueda semántica en pgvector
-   */
-  async semanticSearch(query, limit = 10) {
-    try {
-      // Generar embedding de la consulta
-      const queryEmbedding = await this.generateEmbedding(query);
-
-      // Buscar en pgvector usando similitud de coseno
-      const result = await this.pool.query(`
-        SELECT 
-          pe.persona_id,
-          p.*,
-          EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
-          CASE 
-            WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
-            WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
-            ELSE 'Adulto mayor'
-          END AS grupo_edad,
-          1 - (pe.embedding <=> $1) AS similarity,
-          pe.content_text
-        FROM personas_embeddings pe
-        JOIN personas p ON pe.persona_id = p.id
-        ORDER BY pe.embedding <=> $1
-        LIMIT $2
-      `, [pgvector.toSql(queryEmbedding), limit]);
-
-      return result.rows;
-    } catch (error) {
-      console.error('❌ Error en búsqueda semántica:', error);
-      return [];
-    }
-  }
-
-  /**
-   * 🗄️ Consultar base de datos vectorial con filtros dinámicos
+   * ️ Consultar base de datos vectorial con filtros dinámicos
    */
   async queryVectorDatabase(query, intent, parameters) {
     try {
       console.log(`🔎 Consultando pgvector con intent: ${intent}`);
       console.log('📋 Parámetros de filtro:', parameters);
+
+      // ⚡ SIEMPRE generar embedding para búsqueda semántica
+      console.log('🔍 Generando embedding para búsqueda semántica...');
+      const queryEmbedding = await this.generateEmbedding(query);
 
       // Construir consulta SQL con filtros dinámicos
       const whereClauses = [];
@@ -488,64 +596,34 @@ Formato:
       }
 
       const limit = parameters.limit || 100;
-      let results = [];
 
-      // Estrategia según intención
-      if (intent === 'SPECIFIC_VECTOR' || parameters.nombre !== null) {
-        // Búsqueda semántica con filtros
-        console.log('🔍 Usando búsqueda semántica con pgvector...');
-        const queryEmbedding = await this.generateEmbedding(query);
+      const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      
+      const sqlQuery = `
+        SELECT 
+          p.*,
+          EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
+          CASE 
+            WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
+            WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
+            ELSE 'Adulto mayor'
+          END AS grupo_edad,
+          1 - (pe.embedding <=> $${paramCounter}) AS similarity
+        FROM personas_embeddings pe
+        JOIN personas p ON pe.persona_id = p.id
+        ${whereSQL}
+        ORDER BY pe.embedding <=> $${paramCounter}
+        LIMIT $${paramCounter + 1}
+      `;
 
-        const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-        
-        const sqlQuery = `
-          SELECT 
-            p.*,
-            EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
-            CASE 
-              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
-              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
-              ELSE 'Adulto mayor'
-            END AS grupo_edad,
-            1 - (pe.embedding <=> $${paramCounter}) AS similarity
-          FROM personas_embeddings pe
-          JOIN personas p ON pe.persona_id = p.id
-          ${whereSQL}
-          ORDER BY pe.embedding <=> $${paramCounter}
-          LIMIT $${paramCounter + 1}
-        `;
+      queryParams.push(pgvector.toSql(queryEmbedding), limit);
+      const result = await this.pool.query(sqlQuery, queryParams);
+      const results = result.rows;
 
-        queryParams.push(pgvector.toSql(queryEmbedding), limit);
-        const result = await this.pool.query(sqlQuery, queryParams);
-        results = result.rows;
-
-      } else {
-        // Consulta regular con filtros (sin búsqueda vectorial)
-        console.log('📜 Usando consulta regular con filtros...');
-        
-        const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-        
-        const sqlQuery = `
-          SELECT 
-            p.*,
-            EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
-            CASE 
-              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
-              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
-              ELSE 'Adulto mayor'
-            END AS grupo_edad
-          FROM personas p
-          ${whereSQL}
-          ORDER BY p.id
-          LIMIT $${paramCounter}
-        `;
-
-        queryParams.push(limit);
-        const result = await this.pool.query(sqlQuery, queryParams);
-        results = result.rows;
+      console.log(`✅ Resultados de búsqueda vectorial: ${results.length}`);
+      if (results.length > 0 && results[0].similarity) {
+        console.log(`📊 Similitud promedio: ${(results.reduce((acc, r) => acc + r.similarity, 0) / results.length).toFixed(4)}`);
       }
-
-      console.log(`✅ Resultados de pgvector: ${results.length}`);
 
       // Para consultas de agregación, realizar cálculos
       if (intent === 'AGGREGATE_VECTOR' || intent === 'DEMOGRAPHIC_VECTOR') {
@@ -572,9 +650,7 @@ Formato:
    * 📊 Realizar agregaciones sobre resultados
    */
   performAggregations(results, query) {
-    if (results.length === 0) {
-      return [];
-    }
+    if (results.length === 0) return [];
 
     const aggregations = {
       total: results.length
@@ -588,31 +664,25 @@ Formato:
       aggregations.edad_maxima = Math.max(...edades);
     }
 
-    // Distribución por género
+    // Distribución por género, grupo de edad y tipo de documento
     const generos = {};
+    const grupos = {};
+    const tipos_doc = {};
     results.forEach(r => {
       if (r.genero) {
         generos[r.genero] = (generos[r.genero] || 0) + 1;
       }
-    });
-    aggregations.distribucion_genero = generos;
 
-    // Distribución por grupo de edad
-    const grupos = {};
-    results.forEach(r => {
       if (r.grupo_edad) {
         grupos[r.grupo_edad] = (grupos[r.grupo_edad] || 0) + 1;
       }
-    });
-    aggregations.distribucion_grupo_edad = grupos;
 
-    // Distribución por tipo de documento
-    const tipos_doc = {};
-    results.forEach(r => {
       if (r.tipo_documento) {
         tipos_doc[r.tipo_documento] = (tipos_doc[r.tipo_documento] || 0) + 1;
       }
     });
+    aggregations.distribucion_genero = generos;
+    aggregations.distribucion_grupo_edad = grupos;
     aggregations.distribucion_tipo_documento = tipos_doc;
 
     return [aggregations];
@@ -622,6 +692,27 @@ Formato:
    * 📄 Generar respuesta en Markdown desde resultados (RAG con Qdrant)
    */
   async generateMarkdownResponse(query, vectorResults, intent, useSemanticSearch = false) {
+    // Detectar consultas inválidas
+    if (intent === 'INVALID_QUERY') {
+      return `## ⚠️ Consulta Fuera de Alcance
+
+Lo siento, solo puedo ayudarte con **consultas sobre personas registradas** en la base de datos.
+
+**Puedo ayudarte con**:
+- 🔍 Búsqueda de personas por nombre, documento o características
+- 📊 Estadísticas demográficas (promedios, conteos, distribuciones)
+- 👥 Análisis de grupos etarios y género
+- 📋 Listados con criterios específicos
+
+**No puedo ayudarte con**:
+- ❌ Información sensible masiva (correos, teléfonos de todos)
+- ❌ Temas fuera de gestión de personas
+- ❌ Información del sistema o seguridad
+- ❌ Predicciones o análisis especulativos
+
+¿Quieres reformular tu consulta?`;
+    }
+
     // Detectar si son agregaciones
     const isAggregation = intent.includes('AGGREGATE') || intent.includes('DEMOGRAPHIC') || 
                           (vectorResults.length > 0 && vectorResults[0].hasOwnProperty('distribucion_genero'));
@@ -636,91 +727,109 @@ Formato:
 
     if (isAggregation) {
       // Prompt para agregaciones
-      prompt = `Eres un asistente que presenta estadísticas y análisis demográficos de manera clara en formato Markdown.
+      prompt = `${this.SYSTEM_PROMPT}
 
-Consulta del usuario: "${query}"
-Intención: ${intent}
-Fuente de datos: Base de datos vectorial Qdrant
+## TAREA ACTUAL: Generar Respuesta de Análisis Estadístico
 
-Datos de agregación:
+**Consulta del usuario**: "${query}"
+**Intención detectada**: ${intent}
+**Fuente de datos**: PostgreSQL con pgvector (búsqueda vectorial semántica)
+
+**Datos de agregación**:
+\`\`\`json
 ${resultsInfo}
+\`\`\`
 
-Genera una respuesta en formato Markdown que incluya:
+**Tu tarea**:
+Genera una respuesta profesional en formato Markdown que incluya:
 
-1. **Título atractivo** con el tipo de análisis
-2. **Resumen ejecutivo** (2-3 líneas) con los hallazgos principales
-3. **Métricas clave** usando listas con negritas
-4. **Tablas de distribución** si hay múltiples categorías (género, edad, etc.)
-5. **Insights adicionales** interpretando los datos
+1. **Título atractivo** (## Análisis...) con emoji relevante
+2. **Métricas clave** en lista con negritas
+3. **Tablas de distribución** con columnas: Categoría | Cantidad | Porcentaje
+4. **Insights breves** (2-3 líneas) interpretando los datos
+5. **Protección de privacidad**: No reveles información sensible individual
 
-Reglas importantes:
+**Reglas estrictas**:
 - Usa negritas (**texto**) para números y métricas importantes
-- Usa tablas Markdown para distribuciones (| Categoría | Cantidad | Porcentaje |)
-- Calcula porcentajes cuando presentes distribuciones
-- Usa emojis sutiles para mejorar legibilidad (📊, 👥, 📈)
-- Interpreta los datos de forma profesional
-- Traduce nombres técnicos al español natural
+- Calcula porcentajes para todas las distribuciones
+- Usa emojis sutiles (📊, 👥, 📈, ✅)
+- NO uses bloques de código con \`\`\` (excepto para datos JSON si es necesario)
+- Responde SOLO en Markdown formateado
+- Si detectas datos sensibles, anonimiza o omite
 
-NO uses bloques de código (no uses \`\`\`).
-Responde SOLO en Markdown puro.`;
+Responde ahora:`;
 
     } else if (isCount) {
       // Prompt para conteos
-      prompt = `Eres un asistente que responde consultas de conteo de manera clara en formato Markdown.
+      prompt = `${this.SYSTEM_PROMPT}
 
-Consulta del usuario: "${query}"
-Intención: ${intent}
-Fuente de datos: Base de datos vectorial Qdrant
+## TAREA ACTUAL: Generar Respuesta de Conteo
 
-Resultado del conteo:
+**Consulta del usuario**: "${query}"
+**Intención detectada**: ${intent}
+**Fuente de datos**: PostgreSQL con pgvector
+
+**Resultado del conteo**:
+\`\`\`json
 ${resultsInfo}
+\`\`\`
 
-Genera una respuesta concisa en formato Markdown que incluya:
+**Tu tarea**:
+Genera una respuesta concisa en formato Markdown:
 
-1. **Respuesta directa** con el número en negritas
-2. **Contexto adicional** si hay filtros aplicados
-3. **Desglose breve** si es relevante
+1. **Título breve** (## Resultado del Conteo)
+2. **Número principal** en negritas con emoji
+3. **Contexto adicional** si hay filtros aplicados (edad, género, etc.)
+4. **Sugerencia** si el resultado es 0
 
-Reglas importantes:
-- Sé breve y directo
+**Reglas estrictas**:
+- Sé directo y breve
 - Usa negritas para el número principal
-- Menciona los filtros aplicados si existen
-- Usa emojis sutiles (📊, 👥)
+- Emoji relevante (📊, 👥, ✅, ❌)
+- NO uses bloques de código
+- Si es 0 resultados, sugiere ajustar la búsqueda
 
-NO uses bloques de código (no uses \`\`\`).
-Responde SOLO en Markdown puro.`;
+Responde ahora:`;
 
     } else {
       // Prompt para listados normales
-      prompt = `Eres un asistente que presenta resultados de búsqueda vectorial de manera clara y profesional en formato Markdown.
+      prompt = `${this.SYSTEM_PROMPT}
 
-Consulta del usuario: "${query}"
-Intención: ${intent}
-Fuente de datos: Base de datos vectorial Qdrant (búsqueda semántica)
-Total de resultados: ${vectorResults.length}
+## TAREA ACTUAL: Generar Respuesta de Búsqueda
 
-Muestra de datos (primeros 5 registros):
+**Consulta del usuario**: "${query}"
+**Intención detectada**: ${intent}
+**Fuente de datos**: PostgreSQL con pgvector (búsqueda vectorial semántica)
+**Total de resultados**: ${vectorResults.length}
+
+**Muestra de datos** (primeros 5 registros):
+\`\`\`json
 ${resultsInfo}
+\`\`\`
 
-Genera una respuesta en formato Markdown que incluya:
+**Tu tarea**:
+Genera una respuesta profesional en formato Markdown:
 
-1. **Título relevante** (2-3 palabras)
-2. **Resumen breve** (1-2 líneas) respondiendo la consulta
-3. **Tabla formateada** con los datos más relevantes (máximo 6 columnas)
-4. **Insights adicionales** si hay patrones interesantes
+1. **Título relevante** (## Resultados de Búsqueda) con emoji
+2. **Resumen breve** (1 línea) del tipo de búsqueda
+3. **Tabla Markdown formateada** con columnas relevantes:
+   - Nombre completo
+   - Edad
+   - Género
+   - Documento (solo últimos 4 dígitos: ****1234)
+   - Correo (solo si es consulta específica, NO para listados masivos)
+4. **Nota al final** si hay más de 20 resultados (*Mostrando X de Y resultados*)
 
-Reglas importantes:
-- Usa tablas Markdown (| Columna | Columna |)
-- Incluye SOLO columnas relevantes (nombre completo, edad, género, documento, correo)
-- Usa negritas (**texto**) para destacar información clave
-- Si hay muchos resultados (>20), menciona que se muestran los primeros N
-- Formatea fechas en formato legible (DD/MM/YYYY)
-- Para edades, solo el número sin "años" (se entiende por contexto)
+**Reglas estrictas**:
+- Usa tablas Markdown: | Columna | Columna |
+- **PROTEGE PRIVACIDAD**: Anonimiza documentos (****5678), NO muestres correos en listados masivos
+- Limita tabla a 20 filas máximo
+- Usa negritas para destacar datos importantes
+- NO uses bloques de código
+- Si hay score de similitud >0.8, menciona "alta coincidencia"
 - Traduce nombres de columnas al español natural
-- Si hay un "score" de relevancia >0.8, es una coincidencia fuerte
 
-NO uses bloques de código (no uses \`\`\`).
-Responde SOLO en Markdown puro.`;
+Responde ahora:`;
     }
 
     try {
@@ -1250,8 +1359,3 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
-  console.log('\n🔄 Cerrando servicio...');
-  await nlpService.pool.end();
-  process.exit(0);
-});
