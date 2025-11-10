@@ -13,6 +13,7 @@ const session = require("express-session");
 const Joi = require("joi");
 const helmet = require("helmet");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 const {
   createServiceRegistryClient,
 } = require("./shared/service-registry-client");
@@ -20,6 +21,129 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// ============================================================================
+// RATE LIMITING CONFIGURATION
+// ============================================================================
+
+/**
+ * Rate Limiter para Login
+ * Previene ataques de fuerza bruta limitando intentos de login
+ * - 5 intentos por 15 minutos por IP
+ * - Resetea después del período de ventana
+ */
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // Límite de 5 intentos
+  message: {
+    error:
+      "Demasiados intentos de inicio de sesión. Por favor, intenta de nuevo en 15 minutos.",
+    retryAfter: "15 minutos",
+  },
+  standardHeaders: true, // Retorna info de rate limit en headers `RateLimit-*`
+  legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
+  skipSuccessfulRequests: false, // Cuenta todos los requests (exitosos y fallidos)
+  skipFailedRequests: false,
+  handler: (req, res) => {
+    console.log(`Rate limit exceeded for IP: ${req.ip} on login endpoint`);
+    res.status(429).json({
+      error: "Demasiados intentos de inicio de sesión",
+      message:
+        "Has excedido el número máximo de intentos. Por favor, espera 15 minutos antes de intentar nuevamente.",
+      retryAfter: "15 minutos",
+    });
+  },
+});
+
+/**
+ * Rate Limiter para Registro
+ * Previene creación masiva de cuentas falsas
+ * - 3 intentos por hora por IP
+ */
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 3, // Límite de 3 intentos
+  message: {
+    error:
+      "Demasiados intentos de registro. Por favor, intenta de nuevo en 1 hora.",
+    retryAfter: "1 hora",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // No cuenta registros exitosos (solo los fallidos)
+  skipFailedRequests: false,
+  handler: (req, res) => {
+    console.log(`Rate limit exceeded for IP: ${req.ip} on register endpoint`);
+    res.status(429).json({
+      error: "Demasiados intentos de registro",
+      message:
+        "Has excedido el número máximo de intentos de registro. Por favor, espera 1 hora antes de intentar nuevamente.",
+      retryAfter: "1 hora",
+    });
+  },
+});
+
+/**
+ * Rate Limiter General para Auth API
+ * Protección contra abuso general de la API de autenticación
+ * - 100 requests por 15 minutos por IP
+ */
+const authApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // Límite de 100 requests
+  message: {
+    error: "Demasiadas peticiones. Por favor, intenta de nuevo más tarde.",
+    retryAfter: "15 minutos",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.log(`Rate limit exceeded for IP: ${req.ip} on auth API`);
+    res.status(429).json({
+      error: "Demasiadas peticiones",
+      message:
+        "Has excedido el límite de peticiones. Por favor, espera antes de intentar nuevamente.",
+      retryAfter: "15 minutos",
+    });
+  },
+});
+
+/**
+ * Rate Limiter para cambio de contraseña
+ * Previene intentos repetidos de cambio de contraseña
+ * - 3 intentos por hora por usuario
+ */
+const passwordChangeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 3, // Límite de 3 intentos
+  message: {
+    error:
+      "Demasiados intentos de cambio de contraseña. Por favor, intenta de nuevo en 1 hora.",
+    retryAfter: "1 hora",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Limitar por user_id en lugar de IP
+    return req.headers["x-user-id"] || req.ip;
+  },
+  handler: (req, res) => {
+    console.log(`Rate limit exceeded for user on password change endpoint`);
+    res.status(429).json({
+      error: "Demasiados intentos de cambio de contraseña",
+      message:
+        "Has excedido el número máximo de intentos. Por favor, espera 1 hora antes de intentar nuevamente.",
+      retryAfter: "1 hora",
+    });
+  },
+});
+
+// ============================================================================
+// MIDDLEWARE
+// ============================================================================
+
+// Aplicar rate limiter general a todas las rutas
+app.use(authApiLimiter);
 
 // Middleware
 app.use(helmet());
@@ -659,92 +783,103 @@ app.post("/cambiar-email", flexibleAuth, async (req, res) => {
 });
 
 // Cambiar contraseña
-app.post("/cambiar-password", flexibleAuth, async (req, res) => {
-  try {
-    const { password_actual, password_nueva, user_id } = req.body;
+// ============================================================================
+// ENDPOINT: POST /cambiar-password
+// Rate Limiting: 3 intentos por hora por usuario
+// ============================================================================
+app.post(
+  "/cambiar-password",
+  passwordChangeLimiter,
+  flexibleAuth,
+  async (req, res) => {
+    try {
+      const { password_actual, password_nueva, user_id } = req.body;
 
-    // Validar datos
-    if (!password_actual || !password_nueva) {
-      return res.status(400).json({
-        message: "Contraseña actual y nueva contraseña son requeridas",
+      // Validar datos
+      if (!password_actual || !password_nueva) {
+        return res.status(400).json({
+          message: "Contraseña actual y nueva contraseña son requeridas",
+        });
+      }
+
+      // Verificar que el user_id coincida con el usuario autenticado
+      if (req.user.id !== user_id) {
+        return res.status(403).json({
+          message: "No autorizado para cambiar esta contraseña",
+        });
+      }
+
+      // Validar fortaleza de la nueva contraseña
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!passwordRegex.test(password_nueva)) {
+        return res.status(400).json({
+          message:
+            "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número",
+        });
+      }
+
+      // Obtener usuario actual de la base de datos
+      const userQuery = await pool.query("SELECT * FROM users WHERE id = $1", [
+        user_id,
+      ]);
+
+      if (userQuery.rows.length === 0) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      const user = userQuery.rows[0];
+
+      // Verificar contraseña actual
+      const validPassword = await bcrypt.compare(
+        password_actual,
+        user.password_hash
+      );
+      if (!validPassword) {
+        // Log failed attempt
+        logTransaction(user_id, "CHANGE_PASSWORD_FAILED", "FAILED", req, {
+          reason: "Invalid current password",
+        });
+
+        return res
+          .status(401)
+          .json({ message: "Contraseña actual incorrecta" });
+      }
+
+      // Verificar que la nueva contraseña sea diferente
+      const samePassword = await bcrypt.compare(
+        password_nueva,
+        user.password_hash
+      );
+      if (samePassword) {
+        return res.status(400).json({
+          message: "La nueva contraseña debe ser diferente a la actual",
+        });
+      }
+
+      // Hash de la nueva contraseña
+      const hashedPassword = await bcrypt.hash(password_nueva, 10);
+
+      // Actualizar la contraseña
+      await pool.query(
+        "UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+        [hashedPassword, user_id]
+      );
+
+      // Invalidar todos los tokens existentes del usuario
+      // (Opcional: podrías agregar lógica más sofisticada aquí)
+
+      // Log successful change
+      logTransaction(user_id, "CHANGE_PASSWORD", "SUCCESS", req);
+
+      res.json({
+        message: "Contraseña actualizada correctamente",
       });
+    } catch (error) {
+      console.error("Error al cambiar contraseña:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
     }
-
-    // Verificar que el user_id coincida con el usuario autenticado
-    if (req.user.id !== user_id) {
-      return res.status(403).json({
-        message: "No autorizado para cambiar esta contraseña",
-      });
-    }
-
-    // Validar fortaleza de la nueva contraseña
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(password_nueva)) {
-      return res.status(400).json({
-        message:
-          "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número",
-      });
-    }
-
-    // Obtener usuario actual de la base de datos
-    const userQuery = await pool.query("SELECT * FROM users WHERE id = $1", [
-      user_id,
-    ]);
-
-    if (userQuery.rows.length === 0) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
-    }
-
-    const user = userQuery.rows[0];
-
-    // Verificar contraseña actual
-    const validPassword = await bcrypt.compare(
-      password_actual,
-      user.password_hash
-    );
-    if (!validPassword) {
-      // Log failed attempt
-      logTransaction(user_id, "CHANGE_PASSWORD_FAILED", "FAILED", req, {
-        reason: "Invalid current password",
-      });
-
-      return res.status(401).json({ message: "Contraseña actual incorrecta" });
-    }
-
-    // Verificar que la nueva contraseña sea diferente
-    const samePassword = await bcrypt.compare(
-      password_nueva,
-      user.password_hash
-    );
-    if (samePassword) {
-      return res.status(400).json({
-        message: "La nueva contraseña debe ser diferente a la actual",
-      });
-    }
-
-    // Hash de la nueva contraseña
-    const hashedPassword = await bcrypt.hash(password_nueva, 10);
-
-    // Actualizar la contraseña
-    await pool.query(
-      "UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
-      [hashedPassword, user_id]
-    );
-
-    // Invalidar todos los tokens existentes del usuario
-    // (Opcional: podrías agregar lógica más sofisticada aquí)
-
-    // Log successful change
-    logTransaction(user_id, "CHANGE_PASSWORD", "SUCCESS", req);
-
-    res.json({
-      message: "Contraseña actualizada correctamente",
-    });
-  } catch (error) {
-    console.error("Error al cambiar contraseña:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
   }
-});
+);
 
 // Passport serialization
 passport.serializeUser((user, done) => {
@@ -902,7 +1037,11 @@ app.get("/health", (req, res) => {
 });
 
 // Local login
-app.post("/login", async (req, res, next) => {
+// ============================================================================
+// ENDPOINT: POST /login
+// Rate Limiting: 5 intentos por 15 minutos por IP
+// ============================================================================
+app.post("/login", loginLimiter, async (req, res, next) => {
   try {
     // =========================================================================
     // VALIDACIÓN Y NORMALIZACIÓN EN LOGIN (1.C)
@@ -963,7 +1102,11 @@ app.post("/login", async (req, res, next) => {
 });
 
 // Register
-app.post("/register", async (req, res) => {
+// ============================================================================
+// ENDPOINT: POST /register
+// Rate Limiting: 3 intentos por hora por IP
+// ============================================================================
+app.post("/register", registerLimiter, async (req, res) => {
   try {
     // =========================================================================
     // VALIDACIÓN Y NORMALIZACIÓN (1.A, 1.B, 1.C)

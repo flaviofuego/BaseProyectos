@@ -188,6 +188,21 @@ def login():
                                 flash(error_message, 'error')
                             except:
                                 flash('Error de validación. Verifica que los datos sean correctos.', 'error')
+                        elif response.status_code == 429:
+                            # Rate Limit excedido
+                            try:
+                                error_data = response.json()
+                                retry_after = error_data.get('retryAfter', '15 minutos')
+                                # Guardar en sesión para mostrar contador
+                                session['rate_limit_login'] = {
+                                    'blocked_until': datetime.now().timestamp() + (15 * 60),  # 15 minutos desde ahora
+                                    'retry_after': retry_after,
+                                    'message': error_data.get('message', 'Demasiados intentos de inicio de sesión')
+                                }
+                                flash(f'⏱️ {error_data.get("message", "Demasiados intentos de inicio de sesión")}', 'warning')
+                            except Exception as e:
+                                app.logger.error(f"Error processing rate limit response: {e}")
+                                flash('⏱️ Demasiados intentos de inicio de sesión. Por favor, espera antes de intentar nuevamente.', 'warning')
                         elif response.status_code == 401:
                             # Error de autenticación (credenciales incorrectas)
                             try:
@@ -270,6 +285,21 @@ def register():
                     flash(error_message, 'error')
                 except:
                     flash('Error de validación. Verifica que los datos sean correctos.', 'error')
+            elif response is not None and response.status_code == 429:
+                # Rate Limit excedido en registro
+                try:
+                    error_data = response.json()
+                    retry_after = error_data.get('retryAfter', '1 hora')
+                    # Guardar en sesión para mostrar contador (1 hora = 60 minutos)
+                    session['rate_limit_register'] = {
+                        'blocked_until': datetime.now().timestamp() + (60 * 60),  # 1 hora desde ahora
+                        'retry_after': retry_after,
+                        'message': error_data.get('message', 'Demasiados intentos de registro')
+                    }
+                    flash(f'⏱️ {error_data.get("message", "Demasiados intentos de registro")}', 'warning')
+                except Exception as e:
+                    app.logger.error(f"Error processing rate limit response: {e}")
+                    flash('⏱️ Demasiados intentos de registro. Por favor, espera antes de intentar nuevamente.', 'warning')
             elif response is not None and response.status_code == 409:
                 flash('Usuario o email ya existe', 'error')
             elif response is None:
@@ -1573,6 +1603,59 @@ def auth0_logout():
     """Logout from Auth0"""
     # Render cleanup page first, then redirect to Auth0 logout
     return render_template('logout_cleanup.html', auth0_logout=True)
+
+# ============================================================================
+# API ENDPOINT: Rate Limit Status
+# ============================================================================
+@app.route('/api/rate-limit-status')
+def rate_limit_status():
+    """
+    Endpoint para verificar el estado del rate limit
+    Retorna información sobre si hay un bloqueo activo y cuánto tiempo queda
+    """
+    current_time = datetime.now().timestamp()
+    status = {
+        'login': {
+            'blocked': False,
+            'seconds_remaining': 0,
+            'message': None
+        },
+        'register': {
+            'blocked': False,
+            'seconds_remaining': 0,
+            'message': None
+        }
+    }
+    
+    # Verificar rate limit de login
+    if 'rate_limit_login' in session:
+        rate_limit = session['rate_limit_login']
+        blocked_until = rate_limit.get('blocked_until', 0)
+        
+        if current_time < blocked_until:
+            status['login']['blocked'] = True
+            status['login']['seconds_remaining'] = int(blocked_until - current_time)
+            status['login']['message'] = rate_limit.get('message', 'Bloqueado por intentos excesivos')
+            status['login']['retry_after'] = rate_limit.get('retry_after', '15 minutos')
+        else:
+            # Expiró el bloqueo, limpiar sesión
+            session.pop('rate_limit_login', None)
+    
+    # Verificar rate limit de registro
+    if 'rate_limit_register' in session:
+        rate_limit = session['rate_limit_register']
+        blocked_until = rate_limit.get('blocked_until', 0)
+        
+        if current_time < blocked_until:
+            status['register']['blocked'] = True
+            status['register']['seconds_remaining'] = int(blocked_until - current_time)
+            status['register']['message'] = rate_limit.get('message', 'Bloqueado por intentos excesivos')
+            status['register']['retry_after'] = rate_limit.get('retry_after', '1 hora')
+        else:
+            # Expiró el bloqueo, limpiar sesión
+            session.pop('rate_limit_register', None)
+    
+    return jsonify(status)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True) 

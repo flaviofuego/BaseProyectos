@@ -162,9 +162,35 @@ Personas{% endblock %} {% block content %}
                   </a>
                 </div>
                 <div class="col-6">
-                  <button type="submit" class="btn btn-primary w-100">
+                  <button
+                    type="submit"
+                    class="btn btn-primary w-100"
+                    id="registerButton"
+                  >
                     <i class="fas fa-user-plus"></i> Registrarse
                   </button>
+                </div>
+              </div>
+
+              <!-- Rate Limit Warning for Register -->
+              <div
+                id="rateLimitWarning"
+                class="mt-3 alert alert-warning"
+                style="display: none"
+              >
+                <div class="d-flex align-items-center">
+                  <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                  <div class="flex-grow-1">
+                    <strong>⏱️ Demasiados intentos de registro</strong>
+                    <div id="rateLimitMessage" class="small mt-1"></div>
+                    <div class="mt-2">
+                      <strong>Tiempo restante:</strong>
+                      <span
+                        id="rateLimitCountdown"
+                        class="badge bg-danger fs-6"
+                      ></span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </form>
@@ -217,7 +243,105 @@ Personas{% endblock %} {% block content %}
     const emailField = document.getElementById("email");
     const passwordField = document.getElementById("password");
     const confirmPasswordField = document.getElementById("confirm_password");
-    const submitButton = document.querySelector('button[type="submit"]');
+    const submitButton = document.getElementById("registerButton");
+    const rateLimitWarning = document.getElementById("rateLimitWarning");
+    const rateLimitMessage = document.getElementById("rateLimitMessage");
+    const rateLimitCountdown = document.getElementById("rateLimitCountdown");
+
+    let countdownInterval = null;
+
+    // ===========================================================================
+    // RATE LIMIT COUNTDOWN
+    // ===========================================================================
+
+    function formatTime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m ${secs}s`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+      } else {
+        return `${secs}s`;
+      }
+    }
+
+    function updateCountdown(secondsRemaining) {
+      if (secondsRemaining <= 0) {
+        // Bloqueo expirado
+        rateLimitWarning.style.display = "none";
+        submitButton.disabled = false;
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+        return;
+      }
+
+      rateLimitCountdown.textContent = formatTime(secondsRemaining);
+    }
+
+    function checkRateLimitStatus() {
+      fetch("/api/rate-limit-status")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.register.blocked) {
+            // Mostrar warning y deshabilitar botón
+            rateLimitWarning.style.display = "block";
+            rateLimitMessage.textContent = data.register.message;
+            submitButton.disabled = true;
+
+            // Iniciar contador regresivo
+            let secondsRemaining = data.register.seconds_remaining;
+            updateCountdown(secondsRemaining);
+
+            // Limpiar intervalo previo si existe
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
+            }
+
+            // Actualizar cada segundo
+            countdownInterval = setInterval(() => {
+              secondsRemaining--;
+              updateCountdown(secondsRemaining);
+
+              if (secondsRemaining <= 0) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+                // Verificar de nuevo el estado
+                setTimeout(checkRateLimitStatus, 1000);
+              }
+            }, 1000);
+          } else {
+            // No hay bloqueo
+            rateLimitWarning.style.display = "none";
+            submitButton.disabled = false;
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
+              countdownInterval = null;
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking rate limit status:", error);
+        });
+    }
+
+    // Verificar estado al cargar la página
+    checkRateLimitStatus();
+
+    // Verificar periódicamente cada 5 segundos (solo si no hay countdown activo)
+    setInterval(() => {
+      if (!countdownInterval) {
+        checkRateLimitStatus();
+      }
+    }, 5000);
+
+    // ===========================================================================
+    // VALIDACIONES EN TIEMPO REAL (código existente)
+    // ===========================================================================
 
     // Mostrar/ocultar requisitos cuando el campo tiene foco
     usernameField.addEventListener("focus", function () {
