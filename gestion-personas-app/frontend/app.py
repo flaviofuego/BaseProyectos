@@ -252,6 +252,9 @@ def quick_login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    # Determinar si la petición viene del formulario integrado en login
+    from_login_page = request.args.get('from_login') == 'true' or request.referrer and '/login' in request.referrer
+    
     if request.method == 'POST':
         username = request.form.get('username')
         email = request.form.get('email')
@@ -259,11 +262,13 @@ def register():
         confirm_password = request.form.get('confirm_password')
         
         if password != confirm_password:
-            flash('Las contraseÃ±as no coinciden', 'error')
+            flash('Las contraseñas no coinciden', 'error')
+            if from_login_page:
+                return redirect(url_for('login', mode='register', error='passwords_mismatch'))
             return render_template('register.html')
         
         if username and email and password:
-            # Intentar registrar con el backend de autenticaciÃ³n
+            # Intentar registrar con el backend de autenticación
             response = make_request('POST', '/api/auth/register', {
                 'username': username,
                 'email': email,
@@ -283,8 +288,12 @@ def register():
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error de validación en los datos proporcionados')
                     flash(error_message, 'error')
+                    if from_login_page:
+                        return redirect(url_for('login', mode='register', error='validation_error'))
                 except:
                     flash('Error de validación. Verifica que los datos sean correctos.', 'error')
+                    if from_login_page:
+                        return redirect(url_for('login', mode='register', error='validation_error'))
             elif response is not None and response.status_code == 429:
                 # Rate Limit excedido en registro
                 try:
@@ -297,24 +306,42 @@ def register():
                         'message': error_data.get('message', 'Demasiados intentos de registro')
                     }
                     flash(f'⏱️ {error_data.get("message", "Demasiados intentos de registro")}', 'warning')
+                    if from_login_page:
+                        return redirect(url_for('login', mode='register', error='rate_limit'))
                 except Exception as e:
                     app.logger.error(f"Error processing rate limit response: {e}")
                     flash('⏱️ Demasiados intentos de registro. Por favor, espera antes de intentar nuevamente.', 'warning')
+                    if from_login_page:
+                        return redirect(url_for('login', mode='register', error='rate_limit'))
             elif response is not None and response.status_code == 409:
                 flash('Usuario o email ya existe', 'error')
+                if from_login_page:
+                    return redirect(url_for('login', mode='register', error='user_exists'))
             elif response is None:
                 # No hay conexión con el servidor
                 flash('No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente.', 'error')
+                if from_login_page:
+                    return redirect(url_for('login', mode='register', error='connection_error'))
             else:
                 # Otro error del servidor (500, etc)
                 try:
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error del servidor')
                     flash(f'Error: {error_message}', 'error')
+                    if from_login_page:
+                        return redirect(url_for('login', mode='register', error='server_error'))
                 except:
                     flash(f'Error del servidor (código {response.status_code})', 'error')
+                    if from_login_page:
+                        return redirect(url_for('login', mode='register', error='server_error'))
         else:
             flash('Por favor, completa todos los campos', 'warning')
+            if from_login_page:
+                return redirect(url_for('login', mode='register', error='incomplete_fields'))
+    
+    # Si es GET y viene desde login, redirigir a login con modo registro
+    if from_login_page:
+        return redirect(url_for('login', mode='register'))
     
     return render_template('register.html')
 

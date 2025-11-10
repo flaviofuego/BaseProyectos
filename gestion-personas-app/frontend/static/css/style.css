@@ -664,7 +664,6 @@ a.card:hover {
 }
 
 .alert-danger::before {
-  content: "⚠️";
   position: absolute;
   left: 1rem;
   top: 50%;
@@ -678,7 +677,7 @@ a.card:hover {
 }
 
 .alert-success::before {
-  content: "✅";
+
   position: absolute;
   left: 1rem;
   top: 50%;
