@@ -1,8 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
+const pgvector = require('pgvector/pg');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { QdrantClient } = require('@qdrant/js-client-rest');
 const axios = require('axios');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -39,12 +39,8 @@ class NLPService {
       model: 'embedding-001'
     });
 
-    // Configuración de Qdrant (Vector Database)
-    this.qdrantClient = new QdrantClient({ 
-      url: process.env.QDRANT_URL || 'http://qdrant:6333'
-    });
-    this.COLLECTION_NAME = 'personas_embeddings';
-    this.VECTOR_SIZE = 768; // Dimensión de embeddings de Gemini
+        // Configuración de pgvector
+    this.VECTOR_SIZE = 1536; // Dimensión de embeddings de Gemini
 
     // Estado del servicio
     this.serviceState = {
@@ -85,21 +81,28 @@ class NLPService {
    */
   async initializeService() {
     try {
-      console.log('🚀 Iniciando NLP Service v2.0...');
+      console.log('🚀 Iniciando NLP Service v2.0 (con pgvector)...');
       
-      // Verificar conexión a PostgreSQL
-      await this.pool.query('SELECT NOW()');
-      console.log('✅ Conexión a PostgreSQL establecida');
+      // Verificar conexión a PostgreSQL y registrar tipo pgvector
+      const client = await this.pool.connect();
+      try {
+        await client.query('SELECT NOW()');
+        await pgvector.registerType(client);
+        console.log('✅ Conexión a PostgreSQL establecida');
+        console.log('✅ Tipo pgvector registrado');
+      } finally {
+        client.release();
+      }
 
-      // Inicializar colección de Qdrant
-      await this.initializeQdrantCollection();
-      console.log('✅ Colección de Qdrant inicializada');
+      // Verificar extensión pgvector
+      await this.verifyPgvectorExtension();
+      console.log('✅ Extensión pgvector verificada');
 
       // Obtener estadísticas iniciales
       await this.updateServiceStats();
 
       // Sincronizar embeddings automáticamente al iniciar
-      console.log('🔄 Sincronizando embeddings con Qdrant...');
+      console.log('🔄 Sincronizando embeddings con pgvector...');
       await this.autoSyncEmbeddings();
 
       this.serviceState.ready = true;
@@ -115,26 +118,35 @@ class NLPService {
   }
 
   /**
-   * 🗄️ Inicializar colección de Qdrant
+   * 🗄️ Verificar extensión pgvector
    */
-  async initializeQdrantCollection() {
+  async verifyPgvectorExtension() {
     try {
-      const collections = await this.qdrantClient.getCollections();
-      const exists = collections.collections.some(c => c.name === this.COLLECTION_NAME);
-
-      if (!exists) {
-        await this.qdrantClient.createCollection(this.COLLECTION_NAME, {
-          vectors: {
-            size: this.VECTOR_SIZE,
-            distance: 'Cosine'
-          }
-        });
-        console.log(`✅ Colección '${this.COLLECTION_NAME}' creada`);
-      } else {
-        console.log(`ℹ️ Colección '${this.COLLECTION_NAME}' ya existe`);
+      const result = await this.pool.query(`
+        SELECT EXISTS(
+          SELECT 1 FROM pg_extension WHERE extname = 'vector'
+        ) as exists
+      `);
+      
+      if (!result.rows[0].exists) {
+        throw new Error('La extensión pgvector no está instalada. Ejecute: CREATE EXTENSION vector;');
       }
+
+      // Verificar que la tabla personas_embeddings existe
+      const tableCheck = await this.pool.query(`
+        SELECT EXISTS(
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_name = 'personas_embeddings'
+        ) as exists
+      `);
+
+      if (!tableCheck.rows[0].exists) {
+        console.log('⚠️ Tabla personas_embeddings no existe. Se creará automáticamente.');
+      }
+      
+      console.log('✅ pgvector está instalado y configurado correctamente');
     } catch (error) {
-      console.error('❌ Error inicializando Qdrant:', error);
+      console.error('❌ Error verificando pgvector:', error);
       throw error;
     }
   }
@@ -144,8 +156,8 @@ class NLPService {
    */
   async updateServiceStats() {
     try {
-      const collectionInfo = await this.qdrantClient.getCollection(this.COLLECTION_NAME);
-      this.serviceState.totalEmbeddings = collectionInfo.points_count || 0;
+      const result = await this.pool.query('SELECT COUNT(*) as total FROM personas_embeddings');
+      this.serviceState.totalEmbeddings = parseInt(result.rows[0].total) || 0;
     } catch (error) {
       console.error('⚠️ Error actualizando estadísticas:', error);
     }
@@ -162,18 +174,23 @@ class NLPService {
       const dbResult = await this.pool.query('SELECT COUNT(*) as total FROM personas_con_edad');
       const totalPersonasDB = parseInt(dbResult.rows[0].total);
 
-      // Obtener total de embeddings en Qdrant
-      const collectionInfo = await this.qdrantClient.getCollection(this.COLLECTION_NAME);
-      const totalEmbeddings = collectionInfo.points_count || 0;
+      // Obtener total de embeddings en pgvector
+      const embeddingsResult = await this.pool.query('SELECT COUNT(*) as total FROM personas_embeddings');
+      const totalEmbeddings = parseInt(embeddingsResult.rows[0].total) || 0;
 
-      console.log(`📊 PostgreSQL: ${totalPersonasDB} personas | Qdrant: ${totalEmbeddings} embeddings`);
+      console.log(`📊 PostgreSQL: ${totalPersonasDB} personas | pgvector: ${totalEmbeddings} embeddings`);
 
       // Si hay diferencia, sincronizar
       if (totalPersonasDB !== totalEmbeddings) {
         console.log(`🔄 Diferencia detectada. Iniciando sincronización automática...`);
         
-        // Obtener todas las personas
-        const result = await this.pool.query('SELECT * FROM personas_con_edad ORDER BY id');
+        // Obtener todas las personas que no tienen embedding
+        const result = await this.pool.query(`
+          SELECT p.* FROM personas_con_edad p
+          LEFT JOIN personas_embeddings pe ON p.id = pe.persona_id
+          WHERE pe.id IS NULL
+          ORDER BY p.id
+        `);
         const personas = result.rows;
 
         let successCount = 0;
@@ -184,7 +201,7 @@ class NLPService {
         for (let i = 0; i < personas.length; i += batchSize) {
           const batch = personas.slice(i, i + batchSize);
           
-          const points = await Promise.all(batch.map(async (persona) => {
+          await Promise.all(batch.map(async (persona) => {
             try {
               // Texto enriquecido para embedding
               const embeddingText = `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos} 
@@ -195,45 +212,22 @@ class NLPService {
 
               const embedding = await this.generateEmbedding(embeddingText);
 
+              // Insertar en pgvector
+              await this.pool.query(`
+                INSERT INTO personas_embeddings (persona_id, embedding, content_text)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (persona_id) DO UPDATE
+                SET embedding = EXCLUDED.embedding,
+                    content_text = EXCLUDED.content_text,
+                    updated_at = CURRENT_TIMESTAMP
+              `, [persona.id, pgvector.toSql(embedding), embeddingText]);
+
               successCount++;
-              return {
-                id: persona.id,
-                vector: embedding,
-                payload: {
-                  persona_id: persona.id,
-                  primer_nombre: persona.primer_nombre,
-                  segundo_nombre: persona.segundo_nombre || null,
-                  apellidos: persona.apellidos,
-                  nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
-                  numero_documento: persona.numero_documento,
-                  tipo_documento: persona.tipo_documento,
-                  genero: persona.genero,
-                  edad: persona.edad,
-                  grupo_edad: persona.grupo_edad || null,
-                  fecha_nacimiento: persona.fecha_nacimiento ? persona.fecha_nacimiento.toISOString().split('T')[0] : null,
-                  correo: persona.correo_electronico,
-                  correo_electronico: persona.correo_electronico,
-                  celular: persona.celular,
-                  created_at: persona.created_at ? persona.created_at.toISOString() : null,
-                  updated_at: new Date().toISOString(),
-                  synced_at: new Date().toISOString()
-                }
-              };
             } catch (error) {
               console.error(`❌ Error procesando persona ${persona.id}:`, error.message);
               errorCount++;
-              return null;
             }
           }));
-
-          // Filtrar nulos y hacer upsert
-          const validPoints = points.filter(p => p !== null);
-          if (validPoints.length > 0) {
-            await this.qdrantClient.upsert(this.COLLECTION_NAME, {
-              wait: true,
-              points: validPoints
-            });
-          }
 
           console.log(`✅ Lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(personas.length / batchSize)} sincronizado`);
           
@@ -404,21 +398,33 @@ Formato:
   }
 
   /**
-   * 🔍 Búsqueda semántica en Qdrant
+   * 🔍 Búsqueda semántica en pgvector
    */
   async semanticSearch(query, limit = 10) {
     try {
       // Generar embedding de la consulta
       const queryEmbedding = await this.generateEmbedding(query);
 
-      // Buscar en Qdrant
-      const searchResult = await this.qdrantClient.search(this.COLLECTION_NAME, {
-        vector: queryEmbedding,
-        limit: limit,
-        with_payload: true
-      });
+      // Buscar en pgvector usando similitud de coseno
+      const result = await this.pool.query(`
+        SELECT 
+          pe.persona_id,
+          p.*,
+          EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
+          CASE 
+            WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
+            WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
+            ELSE 'Adulto mayor'
+          END AS grupo_edad,
+          1 - (pe.embedding <=> $1) AS similarity,
+          pe.content_text
+        FROM personas_embeddings pe
+        JOIN personas p ON pe.persona_id = p.id
+        ORDER BY pe.embedding <=> $1
+        LIMIT $2
+      `, [pgvector.toSql(queryEmbedding), limit]);
 
-      return searchResult;
+      return result.rows;
     } catch (error) {
       console.error('❌ Error en búsqueda semántica:', error);
       return [];
@@ -430,114 +436,116 @@ Formato:
    */
   async queryVectorDatabase(query, intent, parameters) {
     try {
-      console.log(`🔎 Consultando Qdrant con intent: ${intent}`);
+      console.log(`🔎 Consultando pgvector con intent: ${intent}`);
       console.log('📋 Parámetros de filtro:', parameters);
 
-      // Construir filtros de Qdrant
-      const filters = { must: [] };
+      // Construir consulta SQL con filtros dinámicos
+      const whereClauses = [];
+      const queryParams = [];
+      let paramCounter = 1;
 
       // Filtro por edad
-      if (parameters.edad_min !== null || parameters.edad_max !== null) {
-        if (parameters.edad_min !== null && parameters.edad_max !== null) {
-          // Rango de edad
-          filters.must.push({
-            key: 'edad',
-            range: {
-              gte: parameters.edad_min,
-              lte: parameters.edad_max
-            }
-          });
-        } else if (parameters.edad_min !== null) {
-          // Solo edad mínima
-          filters.must.push({
-            key: 'edad',
-            range: {
-              gte: parameters.edad_min
-            }
-          });
-        } else if (parameters.edad_max !== null) {
-          // Solo edad máxima
-          filters.must.push({
-            key: 'edad',
-            range: {
-              lte: parameters.edad_max
-            }
-          });
-        }
+      if (parameters.edad_min !== null && parameters.edad_max !== null) {
+        whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN $${paramCounter} AND $${paramCounter + 1}`);
+        queryParams.push(parameters.edad_min, parameters.edad_max);
+        paramCounter += 2;
+      } else if (parameters.edad_min !== null) {
+        whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) >= $${paramCounter}`);
+        queryParams.push(parameters.edad_min);
+        paramCounter++;
+      } else if (parameters.edad_max !== null) {
+        whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) <= $${paramCounter}`);
+        queryParams.push(parameters.edad_max);
+        paramCounter++;
       }
 
       // Filtro por género
       if (parameters.genero !== null) {
-        filters.must.push({
-          key: 'genero',
-          match: { value: parameters.genero }
-        });
+        whereClauses.push(`p.genero = $${paramCounter}`);
+        queryParams.push(parameters.genero);
+        paramCounter++;
       }
 
       // Filtro por tipo de documento
       if (parameters.tipo_documento !== null) {
-        filters.must.push({
-          key: 'tipo_documento',
-          match: { value: parameters.tipo_documento }
-        });
+        whereClauses.push(`p.tipo_documento = $${paramCounter}`);
+        queryParams.push(parameters.tipo_documento);
+        paramCounter++;
       }
 
       // Filtro por número de documento específico
       if (parameters.numero_documento !== null) {
-        filters.must.push({
-          key: 'numero_documento',
-          match: { value: parameters.numero_documento }
-        });
+        whereClauses.push(`p.numero_documento = $${paramCounter}`);
+        queryParams.push(parameters.numero_documento);
+        paramCounter++;
+      }
+
+      // Filtro por nombre
+      if (parameters.nombre !== null) {
+        whereClauses.push(`(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`);
+        queryParams.push(`%${parameters.nombre}%`);
+        paramCounter++;
       }
 
       const limit = parameters.limit || 100;
-
       let results = [];
 
       // Estrategia según intención
       if (intent === 'SPECIFIC_VECTOR' || parameters.nombre !== null) {
         // Búsqueda semántica con filtros
-        console.log('🔍 Usando búsqueda semántica...');
+        console.log('🔍 Usando búsqueda semántica con pgvector...');
         const queryEmbedding = await this.generateEmbedding(query);
 
-        const searchParams = {
-          vector: queryEmbedding,
-          limit: limit,
-          with_payload: true
-        };
-
-        // Agregar filtros solo si hay condiciones
-        if (filters.must.length > 0) {
-          searchParams.filter = filters;
-        }
-
-        const searchResults = await this.qdrantClient.search(this.COLLECTION_NAME, searchParams);
+        const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
         
-        results = searchResults.map(r => ({
-          ...r.payload,
-          score: r.score
-        }));
+        const sqlQuery = `
+          SELECT 
+            p.*,
+            EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
+            CASE 
+              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
+              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
+              ELSE 'Adulto mayor'
+            END AS grupo_edad,
+            1 - (pe.embedding <=> $${paramCounter}) AS similarity
+          FROM personas_embeddings pe
+          JOIN personas p ON pe.persona_id = p.id
+          ${whereSQL}
+          ORDER BY pe.embedding <=> $${paramCounter}
+          LIMIT $${paramCounter + 1}
+        `;
+
+        queryParams.push(pgvector.toSql(queryEmbedding), limit);
+        const result = await this.pool.query(sqlQuery, queryParams);
+        results = result.rows;
 
       } else {
-        // Scroll para obtener todos los registros con filtros
-        console.log('📜 Usando scroll con filtros...');
+        // Consulta regular con filtros (sin búsqueda vectorial)
+        console.log('📜 Usando consulta regular con filtros...');
         
-        const scrollParams = {
-          limit: limit,
-          with_payload: true
-        };
-
-        // Agregar filtros solo si hay condiciones
-        if (filters.must.length > 0) {
-          scrollParams.filter = filters;
-        }
-
-        const scrollResults = await this.qdrantClient.scroll(this.COLLECTION_NAME, scrollParams);
+        const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
         
-        results = scrollResults.points.map(p => p.payload);
+        const sqlQuery = `
+          SELECT 
+            p.*,
+            EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
+            CASE 
+              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
+              WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
+              ELSE 'Adulto mayor'
+            END AS grupo_edad
+          FROM personas p
+          ${whereSQL}
+          ORDER BY p.id
+          LIMIT $${paramCounter}
+        `;
+
+        queryParams.push(limit);
+        const result = await this.pool.query(sqlQuery, queryParams);
+        results = result.rows;
       }
 
-      console.log(`✅ Resultados de Qdrant: ${results.length}`);
+      console.log(`✅ Resultados de pgvector: ${results.length}`);
 
       // Para consultas de agregación, realizar cálculos
       if (intent === 'AGGREGATE_VECTOR' || intent === 'DEMOGRAPHIC_VECTOR') {
@@ -555,7 +563,7 @@ Formato:
       return results;
 
     } catch (error) {
-      console.error('❌ Error consultando Qdrant:', error);
+      console.error('❌ Error consultando pgvector:', error);
       throw error;
     }
   }
@@ -797,7 +805,7 @@ Responde SOLO en Markdown puro.`;
           timestamp: new Date().toISOString(),
           dependencies: {
             postgresql: false,
-            qdrant: false,
+            pgvector: false,
             gemini: false
           },
           capabilities: {
@@ -820,12 +828,14 @@ Responde SOLO en Markdown puro.`;
           console.error('PostgreSQL health check failed:', error);
         }
 
-        // Verificar Qdrant
+        // Verificar pgvector
         try {
-          await this.qdrantClient.getCollections();
-          health.dependencies.qdrant = true;
+          const result = await this.pool.query(`
+            SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') as exists
+          `);
+          health.dependencies.pgvector = result.rows[0].exists;
         } catch (error) {
-          console.error('Qdrant health check failed:', error);
+          console.error('pgvector health check failed:', error);
         }
 
         // Verificar Gemini (asumimos true si llegamos aquí)
@@ -844,7 +854,7 @@ Responde SOLO en Markdown puro.`;
     });
 
     // ============================================================
-    // POST /query - Consulta NLP Principal ⭐ (RAG con Qdrant)
+    // POST /query - Consulta NLP Principal ⭐ (RAG con pgvector)
     // ============================================================
     this.app.post('/query', async (req, res) => {
       const startTime = Date.now();
@@ -974,46 +984,15 @@ Responde SOLO en Markdown puro.`;
         // Generar embedding
         const embedding = await this.generateEmbedding(embeddingText);
 
-        // Almacenar en Qdrant con payload enriquecido
-        await this.qdrantClient.upsert(this.COLLECTION_NAME, {
-          wait: true,
-          points: [
-            {
-              id: persona.id,
-              vector: embedding,
-              payload: {
-                // IDs y referencias
-                persona_id: persona.id,
-                
-                // Información personal completa
-                primer_nombre: persona.primer_nombre,
-                segundo_nombre: persona.segundo_nombre || null,
-                apellidos: persona.apellidos,
-                nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
-                
-                // Documento
-                numero_documento: persona.numero_documento,
-                tipo_documento: persona.tipo_documento,
-                
-                // Demografía
-                genero: persona.genero,
-                edad: persona.edad,
-                grupo_edad: persona.grupo_edad || null,
-                fecha_nacimiento: persona.fecha_nacimiento ? persona.fecha_nacimiento.toISOString().split('T')[0] : null,
-                
-                // Contacto
-                correo: persona.correo_electronico,
-                correo_electronico: persona.correo_electronico, // Alias
-                celular: persona.celular,
-                
-                // Metadatos
-                created_at: persona.created_at ? persona.created_at.toISOString() : null,
-                updated_at: new Date().toISOString(),
-                synced_at: new Date().toISOString()
-              }
-            }
-          ]
-        });
+        // Almacenar en pgvector
+        await this.pool.query(`
+          INSERT INTO personas_embeddings (persona_id, embedding, content_text)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (persona_id) DO UPDATE
+          SET embedding = EXCLUDED.embedding,
+              content_text = EXCLUDED.content_text,
+              updated_at = CURRENT_TIMESTAMP
+        `, [persona.id, pgvector.toSql(embedding), embeddingText]);
 
         await this.updateServiceStats();
 
@@ -1060,7 +1039,7 @@ Responde SOLO en Markdown puro.`;
         for (let i = 0; i < personas.length; i += batchSize) {
           const batch = personas.slice(i, i + batchSize);
           
-          const points = await Promise.all(batch.map(async (persona) => {
+          await Promise.all(batch.map(async (persona) => {
             try {
               // Texto enriquecido para embedding
               const embeddingText = `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos} 
@@ -1071,56 +1050,22 @@ Responde SOLO en Markdown puro.`;
 
               const embedding = await this.generateEmbedding(embeddingText);
 
+              // Insertar en pgvector
+              await this.pool.query(`
+                INSERT INTO personas_embeddings (persona_id, embedding, content_text)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (persona_id) DO UPDATE
+                SET embedding = EXCLUDED.embedding,
+                    content_text = EXCLUDED.content_text,
+                    updated_at = CURRENT_TIMESTAMP
+              `, [persona.id, pgvector.toSql(embedding), embeddingText]);
+
               successCount++;
-              return {
-                id: persona.id,
-                vector: embedding,
-                payload: {
-                  // IDs y referencias
-                  persona_id: persona.id,
-                  
-                  // Información personal completa
-                  primer_nombre: persona.primer_nombre,
-                  segundo_nombre: persona.segundo_nombre || null,
-                  apellidos: persona.apellidos,
-                  nombre_completo: `${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.apellidos}`.trim(),
-                  
-                  // Documento
-                  numero_documento: persona.numero_documento,
-                  tipo_documento: persona.tipo_documento,
-                  
-                  // Demografía
-                  genero: persona.genero,
-                  edad: persona.edad,
-                  grupo_edad: persona.grupo_edad || null,
-                  fecha_nacimiento: persona.fecha_nacimiento ? persona.fecha_nacimiento.toISOString().split('T')[0] : null,
-                  
-                  // Contacto
-                  correo: persona.correo_electronico,
-                  correo_electronico: persona.correo_electronico, // Alias
-                  celular: persona.celular,
-                  
-                  // Metadatos
-                  created_at: persona.created_at ? persona.created_at.toISOString() : null,
-                  updated_at: new Date().toISOString(),
-                  synced_at: new Date().toISOString()
-                }
-              };
             } catch (error) {
               console.error(`❌ Error procesando persona ${persona.id}:`, error);
               errorCount++;
-              return null;
             }
           }));
-
-          // Filtrar nulos y hacer upsert
-          const validPoints = points.filter(p => p !== null);
-          if (validPoints.length > 0) {
-            await this.qdrantClient.upsert(this.COLLECTION_NAME, {
-              wait: true,
-              points: validPoints
-            });
-          }
 
           console.log(`✅ Lote ${Math.floor(i / batchSize) + 1} procesado`);
         }
@@ -1159,49 +1104,6 @@ Responde SOLO en Markdown puro.`;
     });
 
     // ============================================================
-    // DELETE /embedding/:personaId - Eliminar Embedding
-    // ============================================================
-    this.app.delete('/embedding/:personaId', async (req, res) => {
-      try {
-        const { personaId } = req.params;
-
-        if (!personaId || isNaN(personaId)) {
-          return res.status(400).json({
-            success: false,
-            error: 'ID de persona inválido'
-          });
-        }
-
-        await this.qdrantClient.delete(this.COLLECTION_NAME, {
-          wait: true,
-          points: [parseInt(personaId)]
-        });
-
-        await this.updateServiceStats();
-
-        console.log(`🗑️ Embedding eliminado para persona ${personaId}`);
-
-        await this.logTransaction('DELETE_EMBEDDING', `persona_id: ${personaId}`, 'SUCCESS', req);
-
-        res.json({
-          success: true,
-          message: 'Embedding eliminado correctamente',
-          persona_id: personaId
-        });
-
-      } catch (error) {
-        console.error('❌ Error eliminando embedding:', error);
-        await this.logTransaction('DELETE_EMBEDDING', req.params.personaId, 'ERROR', req, null, error.message);
-        
-        res.status(500).json({
-          success: false,
-          error: 'Error eliminando embedding',
-          details: error.message
-        });
-      }
-    });
-
-    // ============================================================
     // GET /stats - Estadísticas del Servicio
     // ============================================================
     this.app.get('/stats', async (req, res) => {
@@ -1216,8 +1118,10 @@ Responde SOLO en Markdown puro.`;
           FROM personas
         `);
 
-        // Estadísticas de Qdrant
-        const collectionInfo = await this.qdrantClient.getCollection(this.COLLECTION_NAME);
+        // Estadísticas de pgvector
+        const embeddingsStats = await this.pool.query(`
+          SELECT COUNT(*) as total_embeddings FROM personas_embeddings
+        `);
 
         res.json({
           success: true,
@@ -1229,9 +1133,9 @@ Responde SOLO en Markdown puro.`;
               ultima_persona: dbStats.rows[0].ultima_persona_creada
             },
             embeddings: {
-              total_embeddings: collectionInfo.points_count,
-              vector_size: collectionInfo.config.params.vectors.size,
-              distance_metric: collectionInfo.config.params.vectors.distance
+              total_embeddings: parseInt(embeddingsStats.rows[0].total_embeddings),
+              vector_size: 1536,
+              distance_metric: 'cosine'
             },
             service: {
               version: '2.0.0',
@@ -1269,7 +1173,6 @@ Responde SOLO en Markdown puro.`;
           'POST /query',
           'POST /update-embedding',
           'POST /sync-embeddings',
-          'DELETE /embedding/:personaId',
           'GET /stats',
           'POST /test'
         ]
@@ -1299,10 +1202,10 @@ Responde SOLO en Markdown puro.`;
       protocol: 'http',
       metadata: {
         version: '2.0.0',
-        description: 'Advanced Natural Language Processing service with RAG capabilities using Google Gemini and Qdrant vector search',
+        description: 'Advanced Natural Language Processing service with RAG capabilities using Google Gemini and PostgreSQL pgvector',
         maintainer: 'nlp-team',
         healthEndpoint: '/health',
-        tags: ['nlp', 'ai', 'gemini', 'vector-search', 'embeddings', 'qdrant', 'rag', 'semantic-search'],
+        tags: ['nlp', 'ai', 'gemini', 'vector-search', 'embeddings', 'pgvector', 'postgresql', 'rag', 'semantic-search'],
         capabilities: [
           'natural-language-query',
           'vector-search',
@@ -1326,11 +1229,12 @@ Responde SOLO en Markdown puro.`;
    */
   start() {
     this.app.listen(this.PORT, () => {
-      console.log('🧠 NLP Service v2.0 con RAG');
+      console.log('🧠 NLP Service v2.0 con RAG (pgvector)');
       console.log(`✅ Servidor escuchando en puerto ${this.PORT}`);
       console.log(`🔗 URL: http://localhost:${this.PORT}`);
       console.log(`📊 Health Check: http://localhost:${this.PORT}/health`);
       console.log(`📈 Estadísticas: http://localhost:${this.PORT}/stats`);
+      console.log(`🗄️ Vector Database: PostgreSQL con pgvector`);
     });
   }
 }
