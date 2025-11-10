@@ -65,7 +65,6 @@ Puedes responder preguntas sobre:
 4. Proporcionar información de seguridad del sistema, contraseñas, o detalles técnicos internos
 5. Responder consultas sobre otros sistemas, servicios o información externa
 6. Hacer análisis predictivos o especulativos sobre personas
-7. Compartir datos que puedan comprometer la privacidad (ej: "dame todos los correos")
 
 ## 📝 FORMATO DE RESPUESTAS
 Siempre responde en **Markdown formateado profesionalmente**:
@@ -135,13 +134,13 @@ Si el usuario pregunta algo fuera de alcance:
 - **Conciso**: Evita explicaciones innecesarias
 - **Estructurado**: Organiza la información con títulos y secciones
 - **Preciso**: Reporta números exactos, no aproximaciones
+- **Emojis**: evita el uso de emojis en las respuestas para mantener un tono profesional.
 
 ## 🔐 PRIVACIDAD Y SEGURIDAD
 - Si detectas una consulta sospechosa, responde con precaución
 
 ## ⚡ EFICIENCIA
 - Prioriza búsquedas vectoriales semánticas para mejor precisión
-- Limita resultados a cantidades manejables (10-50 registros)
 - Calcula porcentajes y métricas derivadas cuando sea útil
 
 Recuerda: Eres un asistente de consulta de base de datos, no un sistema de análisis predictivo ni un chatbot general. Mantente dentro de tu ámbito de gestión de personas y protege la privacidad de los datos.`;
@@ -538,7 +537,6 @@ Analiza la siguiente consulta y extrae los parámetros de filtrado para búsqued
 - Género debe ser EXACTO como aparece en la base de datos
 - Tipo de documento debe ser EXACTO: "Cédula" o "Tarjeta de identidad"
 - Si no se especifica un parámetro, devuelve null
-- Para consultas masivas sospechosas (ej: "todos los correos"), limita a 10
 
 **Formato de respuesta**:
 Responde SOLO con un objeto JSON válido. NO agregues explicaciones, markdown ni bloques de código.
@@ -550,8 +548,7 @@ Ejemplo:
   "genero": "Masculino",
   "tipo_documento": null,
   "numero_documento": null,
-  "nombre": null,
-  "limit": 50
+  "nombre": null
 }
 
 Responde ahora:`;
@@ -568,7 +565,6 @@ Responde ahora:`;
       text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim() || '{}';
       
       const parameters = JSON.parse(text);
-      console.log('📋 Parámetros extraídos:', parameters);
       
       // Validar y sanitizar parámetros
       const sanitized = {
@@ -581,7 +577,6 @@ Responde ahora:`;
         limit: parameters.limit && !isNaN(parameters.limit) ? Math.min(Math.max(parseInt(parameters.limit), 10), 100) : 50
       };
       
-      console.log('✅ Parámetros sanitizados:', sanitized);
       return sanitized;
       
     } catch (error) {
@@ -804,7 +799,7 @@ ${resultsInfo}
 **Tu tarea**:
 Genera una respuesta profesional en formato Markdown que incluya:
 
-1. **Título atractivo** (## Análisis...) con emoji relevante
+1. **Título atractivo** (## Análisis...)
 2. **Métricas clave** en lista con negritas
 3. **Tablas de distribución** con columnas: Categoría | Cantidad | Porcentaje
 4. **Insights breves** (2-3 líneas) interpretando los datos
@@ -813,10 +808,8 @@ Genera una respuesta profesional en formato Markdown que incluya:
 **Reglas estrictas**:
 - Usa negritas (**texto**) para números y métricas importantes
 - Calcula porcentajes para todas las distribuciones
-- Usa emojis sutiles (📊, 👥, 📈, ✅)
 - NO uses bloques de código con \`\`\` (excepto para datos JSON si es necesario)
 - Responde SOLO en Markdown formateado
-- Si detectas datos sensibles, anonimiza o omite
 
 Responde ahora:`;
 
@@ -839,14 +832,13 @@ ${resultsInfo}
 Genera una respuesta concisa en formato Markdown:
 
 1. **Título breve** (## Resultado del Conteo)
-2. **Número principal** en negritas con emoji
+2. **Número principal** en negritas
 3. **Contexto adicional** si hay filtros aplicados (edad, género, etc.)
 4. **Sugerencia** si el resultado es 0
 
 **Reglas estrictas**:
 - Sé directo y breve
 - Usa negritas para el número principal
-- Emoji relevante (📊, 👥, ✅, ❌)
 - NO uses bloques de código
 - Si es 0 resultados, sugiere ajustar la búsqueda
 
@@ -871,20 +863,13 @@ ${resultsInfo}
 **Tu tarea**:
 Genera una respuesta profesional en formato Markdown:
 
-1. **Título relevante** (## Resultados de Búsqueda) con emoji
+1. **Título relevante** (## Resultados de Búsqueda)
 2. **Resumen breve** (1 línea) del tipo de búsqueda
-3. **Tabla Markdown formateada** con columnas relevantes:
-   - Nombre completo
-   - Edad
-   - Género
-   - Documento (solo últimos 4 dígitos: ****1234)
-   - Correo (solo si es consulta específica, NO para listados masivos)
+3. **Tabla Markdown formateada** con las columnas que la query o que tu indiques como relevantes
 4. **Nota al final** si hay más de 20 resultados (*Mostrando X de Y resultados*)
 
 **Reglas estrictas**:
 - Usa tablas Markdown: | Columna | Columna |
-- **PROTEGE PRIVACIDAD**: Anonimiza documentos (****5678), NO muestres correos en listados masivos
-- Limita tabla a 20 filas máximo
 - Usa negritas para destacar datos importantes
 - NO uses bloques de código
 - Si hay score de similitud >0.8, menciona "alta coincidencia"
@@ -895,7 +880,7 @@ Responde ahora:`;
 
     try {
       const text = await this.callAzureAI({
-        systemMessage: 'Eres un asistente experto en análisis de datos y generación de respuestas en Markdown.',
+        systemMessage: this.SYSTEM_PROMPT,
         userMessage: prompt,
         temperature: this.chatConfig.temperature,
         maxTokens: this.chatConfig.max_tokens
