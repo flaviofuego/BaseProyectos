@@ -1,4 +1,8 @@
 services:
+  # PostgreSQL con pgvector - Development Override
+  postgres:
+    image: pgvector/pgvector:pg15
+
   # Service Registry - Development Override
   service-registry:
     build:
@@ -94,7 +98,7 @@ services:
     networks:
       - app-network
 
-  # Servicio de NLP - Development Override
+  # Servicio de NLP - Development Override (con pgvector)
   nlp-service:
     build:
       context: ./services/nlp
@@ -107,7 +111,6 @@ services:
     environment:
       - NODE_ENV=development
       - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
-      - QDRANT_URL=${QDRANT_URL}
       - LOG_SERVICE_URL=${LOG_SERVICE_URL}
     networks:
       - app-network
