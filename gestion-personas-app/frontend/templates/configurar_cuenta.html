@@ -537,14 +537,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 </p>
                 <div class="alert alert-success mb-0">
                     <i class="fas fa-info-circle"></i>
-                    <strong>✅ ATENCIÓN - Esta acción afecta a TODOS los usuarios:</strong>
-                    <ul class="mb-2 mt-2">
-                        <li><strong>Se activará el servicio para TODOS los usuarios conectados</strong></li>
-                        <li>Se iniciará el contenedor Docker del servicio de consulta</li>
-                        <li>Todos podrán consultar datos de personas desde "Personas" → "Consultar Datos"</li>
-                        <li>El servicio se registrará automáticamente en el service registry</li>
-                    </ul>
-                    <strong>Nota:</strong> Cualquier usuario puede desactivar el servicio desde su configuración.
+                    <strong>:</strong>
+                    <p class="mb-2">Se activará el servicio para TODOS los usuarios conectados.</p>
+                    
+                    <div class="accordion accordion-flush" id="accordionActivar">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-success bg-opacity-10" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActivar" aria-expanded="false">
+                                    <i class="fas fa-info-circle me-2"></i> Ver detalles de la acción
+                                </button>
+                            </h2>
+                            <div id="collapseActivar" class="accordion-collapse collapse">
+                                <div class="accordion-body">
+                                    <ul class="mb-2">
+                                        <li>Se iniciará el contenedor Docker del servicio de consulta</li>
+                                        <li>Todos podrán consultar datos de personas desde "Personas" → "Consultar Datos"</li>
+                                        <li>El servicio se registrará automáticamente en el service registry</li>
+                                        <li>Cualquier usuario puede desactivar el servicio desde su configuración</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
             confirmActionBtn.className = 'btn btn-success';
@@ -557,16 +571,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 </p>
                 <div class="alert alert-danger mb-0">
                     <i class="fas fa-exclamation-circle"></i>
-                    <strong>⚠️ ATENCIÓN - Esta acción afecta a TODOS los usuarios:</strong>
-                    <ul class="mb-2 mt-2">
-                        <li><strong>Se desactivará el servicio para TODOS los usuarios conectados</strong></li>
-                        <li>Se detendrá el contenedor Docker del servicio de consulta</li>
-                        <li>La opción "Consultar Datos" se deshabilitará para todos</li>
-                        <li>El servicio se desregistrará del service registry</li>
-                    </ul>
-                    <strong>Nota:</strong> La función "Consulta IA" permanecerá activa ya que usa un servicio independiente.
-                    <br><br>
-                    Cualquier usuario puede reactivar el servicio desde su configuración.
+                    <strong>:</strong>
+                    <p class="mb-2">Se desactivará el servicio para TODOS los usuarios conectados.</p>
+                    
+                    <div class="accordion accordion-flush" id="accordionDesactivar">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-danger bg-opacity-10" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDesactivar" aria-expanded="false">
+                                    <i class="fas fa-exclamation-triangle me-2"></i> Ver detalles de la acción
+                                </button>
+                            </h2>
+                            <div id="collapseDesactivar" class="accordion-collapse collapse">
+                                <div class="accordion-body">
+                                    <ul class="mb-2">
+                                        <li>Se detendrá el contenedor Docker del servicio de consulta</li>
+                                        <li>La opción "Consultar Datos" se deshabilitará para todos</li>
+                                        <li>El servicio se desregistrará del service registry</li>
+                                        <li>La función "Consulta IA" permanecerá activa (servicio independiente)</li>
+                                        <li>Cualquier usuario puede reactivar el servicio desde su configuración</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
             confirmActionBtn.className = 'btn btn-danger';
