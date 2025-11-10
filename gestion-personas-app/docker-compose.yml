@@ -147,7 +147,10 @@ services:
     build: ./services/nlp
     container_name: nlp_service
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AZURE_FOUNDRY_ENDPOINT=${AZURE_FOUNDRY_ENDPOINT}
+      - AZURE_EMBEDDING_MODEL=${AZURE_EMBEDDING_MODEL}
+      - AZURE_CHAT_MODEL=${AZURE_CHAT_MODEL}
+      - AZURE_API_KEY=${AZURE_API_KEY}
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
       - SERVICE_REGISTRY_URL=http://service-registry:3010
       - SERVICE_NAME=nlp-service

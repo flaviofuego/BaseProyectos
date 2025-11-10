@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const pgvector = require('pgvector/pg');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -22,25 +21,21 @@ class NLPService {
       connectionTimeoutMillis: 2000,
     });
 
-    // Configuración de Google Gemini AI
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.geminiModel = this.genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-pro',
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 2048,
-      }
-    });
+    // Configuración de Azure AI Foundry
+    this.AZURE_FOUNDRY_ENDPOINT = process.env.AZURE_FOUNDRY_ENDPOINT;
+    this.AZURE_EMBEDDING_MODEL = process.env.AZURE_EMBEDDING_MODEL;
+    this.AZURE_CHAT_MODEL = process.env.AZURE_CHAT_MODEL;
+    this.AZURE_API_KEY = process.env.AZURE_API_KEY;
 
-    // Modelo para embeddings (más eficiente)
-    this.embeddingModel = this.genAI.getGenerativeModel({ 
-      model: 'embedding-001'
-    });
+    // Configuración de generación para el modelo de chat
+    this.chatConfig = {
+      temperature: 0.7,
+      top_p: 0.95,
+      max_tokens: 2048,
+    };
 
-        // Configuración de pgvector
-    this.VECTOR_SIZE = 1536; // Dimensión de embeddings de Gemini
+    // Configuración de pgvector
+    this.VECTOR_SIZE = 1536; // Dimensión de embeddings de Azure
 
     // 🎯 System Prompt Principal para el Asistente NLP
     this.SYSTEM_PROMPT = `Eres un asistente inteligente especializado en consultas de gestión de personas para una base de datos empresarial.
@@ -388,12 +383,72 @@ Recuerda: Eres un asistente de consulta de base de datos, no un sistema de anál
   }
 
   /**
-   * 🤖 Generar embedding usando Gemini
+   * 🤖 Método centralizado para llamadas a Azure AI Chat Completions
+   * @param {Object} options - Opciones para la llamada a la API
+   * @param {string} options.systemMessage - Mensaje del sistema
+   * @param {string} options.userMessage - Mensaje del usuario
+   * @param {number} options.temperature - Temperatura (por defecto usa this.chatConfig.temperature)
+   * @param {number} options.maxTokens - Máximo de tokens (por defecto usa this.chatConfig.max_tokens)
+   * @param {number} options.topP - Top P (por defecto usa this.chatConfig.top_p)
+   * @param {number} options.timeout - Timeout en ms (por defecto 30000)
+   * @returns {Promise<string>} - Respuesta de la IA
+   */
+  async callAzureAI({
+    systemMessage,
+    userMessage,
+    temperature = this.chatConfig.temperature,
+    maxTokens = this.chatConfig.max_tokens,
+    topP = this.chatConfig.top_p,
+    timeout = 30000
+  }) {
+    try {
+      const response = await axios.post(
+        `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_CHAT_MODEL}/chat/completions?api-version=2025-01-01-preview`,
+        {
+          messages: [
+            { role: 'system', content: systemMessage },
+            { role: 'user', content: userMessage },
+          ],
+          temperature,
+          top_p: topP,
+          max_tokens: maxTokens,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': this.AZURE_API_KEY,
+          },
+          timeout,
+        }
+      );
+
+      return response.data.choices?.[0]?.message?.content?.trim() || '';
+    } catch (error) {
+      console.error('❌ Error en llamada a Azure AI:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 🤖 Generar embedding usando Azure AI Foundry
    */
   async generateEmbedding(text) {
     try {
-      const result = await this.embeddingModel.embedContent(text);
-      return result.embedding.values;
+      const response = await axios.post(
+        `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_EMBEDDING_MODEL}/embeddings?api-version=2023-05-15`,
+        {
+          model: this.AZURE_EMBEDDING_MODEL,
+          input: text,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': this.AZURE_API_KEY,
+          },
+          timeout: 30000,
+        }
+      );
+      return response.data.data[0].embedding;
     } catch (error) {
       console.error('❌ Error generando embedding:', error);
       throw error;
@@ -401,7 +456,7 @@ Recuerda: Eres un asistente de consulta de base de datos, no un sistema de anál
   }
 
   /**
-   * 🔍 Clasificar intención de consulta usando Gemini (RAG con Qdrant)
+   * 🔍 Clasificar intención de consulta usando Azure AI Foundry (RAG con pgvector)
    */
   async classifyIntent(query) {
     const prompt = `${this.SYSTEM_PROMPT}
@@ -422,7 +477,6 @@ Analiza la siguiente consulta y clasifica su intención:
 7. **INVALID_QUERY** - Consulta fuera de alcance o inapropiada (información sensible, temas no relacionados)
 
 **IMPORTANTE**:
-- Si la consulta pide información sensible masiva (ej: "dame todos los correos"), usa INVALID_QUERY
 - Si la consulta no está relacionada con gestión de personas, usa INVALID_QUERY
 - Todas las consultas válidas se resolverán usando búsqueda vectorial en pgvector
 
@@ -432,9 +486,14 @@ Responde SOLO con: CATEGORIA_VECTOR|0.95
 No agregues explicaciones adicionales.`;
 
     try {
-      const result = await this.geminiModel.generateContent(prompt);
-      const response = result.response.text().trim();
-      const [intent, confidence] = response.split('|');
+      const text = await this.callAzureAI({
+        systemMessage: 'Eres un asistente experto en clasificación de intenciones.',
+        userMessage: prompt,
+        temperature: this.chatConfig.temperature,
+        maxTokens: 100
+      });
+
+      const [intent, confidence] = (text || 'SEARCH_VECTOR|0.5').split('|');
       
       return {
         intent: intent.trim(),
@@ -447,7 +506,7 @@ No agregues explicaciones adicionales.`;
   }
 
   /**
-   * 🧩 Extraer parámetros de consulta usando Gemini
+   * 🧩 Extraer parámetros de consulta usando Azure AI Foundry
    */
   async extractQueryParameters(query, intent) {
     const prompt = `${this.SYSTEM_PROMPT}
@@ -498,13 +557,17 @@ Ejemplo:
 Responde ahora:`;
 
     try {
-      const result = await this.geminiModel.generateContent(prompt);
-      let response = result.response.text().trim();
+      let text = await this.callAzureAI({
+        systemMessage: 'Eres un asistente experto en extracción de parámetros de consultas.',
+        userMessage: prompt,
+        temperature: 0.3, // Temperatura baja para respuestas más precisas
+        maxTokens: 500
+      });
       
       // Limpiar markdown si existe
-      response = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim() || '{}';
       
-      const parameters = JSON.parse(response);
+      const parameters = JSON.parse(text);
       console.log('📋 Parámetros extraídos:', parameters);
       
       // Validar y sanitizar parámetros
@@ -543,8 +606,6 @@ Responde ahora:`;
       console.log(`🔎 Consultando pgvector con intent: ${intent}`);
       console.log('📋 Parámetros de filtro:', parameters);
 
-      // ⚡ SIEMPRE generar embedding para búsqueda semántica
-      console.log('🔍 Generando embedding para búsqueda semántica...');
       const queryEmbedding = await this.generateEmbedding(query);
 
       // Construir consulta SQL con filtros dinámicos
@@ -833,8 +894,14 @@ Responde ahora:`;
     }
 
     try {
-      const result = await this.geminiModel.generateContent(prompt);
-      return result.response.text().trim();
+      const text = await this.callAzureAI({
+        systemMessage: 'Eres un asistente experto en análisis de datos y generación de respuestas en Markdown.',
+        userMessage: prompt,
+        temperature: this.chatConfig.temperature,
+        maxTokens: this.chatConfig.max_tokens
+      });
+
+      return text || 'Sin respuesta disponible.';
     } catch (error) {
       console.error('❌ Error generando respuesta Markdown:', error);
       
@@ -915,7 +982,7 @@ Responde ahora:`;
           dependencies: {
             postgresql: false,
             pgvector: false,
-            gemini: false
+            azure_ai_foundry: false
           },
           capabilities: {
             natural_language_processing: true,
@@ -947,8 +1014,8 @@ Responde ahora:`;
           console.error('pgvector health check failed:', error);
         }
 
-        // Verificar Gemini (asumimos true si llegamos aquí)
-        health.dependencies.gemini = !!process.env.GEMINI_API_KEY;
+        // Verificar Azure AI Foundry
+        health.dependencies.azure_ai_foundry = !!(process.env.AZURE_FOUNDRY_ENDPOINT && process.env.AZURE_API_KEY);
 
         const allHealthy = Object.values(health.dependencies).every(v => v === true);
         health.status = allHealthy && this.serviceState.ready ? 'healthy' : 'degraded';
@@ -1311,16 +1378,16 @@ Responde ahora:`;
       protocol: 'http',
       metadata: {
         version: '2.0.0',
-        description: 'Advanced Natural Language Processing service with RAG capabilities using Google Gemini and PostgreSQL pgvector',
+        description: 'Advanced Natural Language Processing service with RAG capabilities using Azure AI Foundry and PostgreSQL pgvector',
         maintainer: 'nlp-team',
         healthEndpoint: '/health',
-        tags: ['nlp', 'ai', 'gemini', 'vector-search', 'embeddings', 'pgvector', 'postgresql', 'rag', 'semantic-search'],
+        tags: ['nlp', 'ai', 'azure', 'azure-ai-foundry', 'vector-search', 'embeddings', 'pgvector', 'postgresql', 'rag', 'semantic-search'],
         capabilities: [
           'natural-language-query',
           'vector-search',
           'embeddings-generation',
           'semantic-search',
-          'gemini-ai',
+          'azure-ai-foundry',
           'advanced-intent-classification',
           'complex-query-processing',
           'demographic-analysis',
@@ -1338,12 +1405,13 @@ Responde ahora:`;
    */
   start() {
     this.app.listen(this.PORT, () => {
-      console.log('🧠 NLP Service v2.0 con RAG (pgvector)');
+      console.log('🧠 NLP Service v2.0 con RAG (pgvector + Azure AI Foundry)');
       console.log(`✅ Servidor escuchando en puerto ${this.PORT}`);
       console.log(`🔗 URL: http://localhost:${this.PORT}`);
       console.log(`📊 Health Check: http://localhost:${this.PORT}/health`);
       console.log(`📈 Estadísticas: http://localhost:${this.PORT}/stats`);
       console.log(`🗄️ Vector Database: PostgreSQL con pgvector`);
+      console.log(`☁️ AI Provider: Azure AI Foundry`);
     });
   }
 }
