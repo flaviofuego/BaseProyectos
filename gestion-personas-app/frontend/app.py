@@ -13,46 +13,35 @@ import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Load environment variables - look in parent directory for .env
 load_dotenv(dotenv_path='../.env')
-load_dotenv()  # Also load from current directory if exists
+load_dotenv() 
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Debug: Ensure environment variables are loaded correctly
 if os.getenv('API_GATEWAY_URL'):
     print(f"INFO: Using API_GATEWAY_URL: {os.getenv('API_GATEWAY_URL')}")
 else:
     print("INFO: Using default API_GATEWAY_URL: http://localhost:8001")
 
-# API Configuration
-# For browser redirects (Auth0), always use localhost regardless of Docker internal URLs
 BROWSER_API_BASE_URL = 'http://localhost:8001'
-# For server-side API calls, use environment variable or default to localhost
 API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://localhost:8001')
 
 def get_browser_api_url():
-    """Get API URL for browser redirects (always localhost for external access)"""
     return BROWSER_API_BASE_URL
 
 def build_image_url(foto_url):
-    """Build complete image URL using the gateway"""
     if foto_url and foto_url.startswith('/uploads/'):
-        # Use BROWSER_API_BASE_URL for images that will be loaded by the browser
         return f"{BROWSER_API_BASE_URL}{foto_url}"
     return foto_url
 
 def invalidate_stats_cache():
-    """Invalidate stats cache to force refresh of dashboard"""
     try:
         make_request('POST', '/api/consulta/cache/invalidate-stats', timeout_seconds=2.0)
         print("Stats cache invalidated successfully")
     except Exception as e:
         print(f"Failed to invalidate stats cache: {e}")
-        # No bloquear la operación principal si falla la invalidación del cache
 
-# Jinja context: expose date/datetime to templates
 @app.context_processor
 def inject_datetime_tools():
     return {
@@ -61,14 +50,11 @@ def inject_datetime_tools():
         'build_image_url': build_image_url
     }
 
-# Also register as Jinja globals to ensure availability in all render paths
 app.jinja_env.globals.update(date=date, datetime=datetime)
 
 DEFAULT_HTTP_TIMEOUT_SECONDS = float(os.getenv('HTTP_TIMEOUT_SECONDS', '6'))
 
-# Helper functions
 def make_request(method, endpoint, data=None, files=None, params=None, timeout_seconds: float = DEFAULT_HTTP_TIMEOUT_SECONDS):
-    """Make authenticated API request with sane timeouts and graceful failures"""
     headers = {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache'
@@ -124,15 +110,12 @@ def make_request(method, endpoint, data=None, files=None, params=None, timeout_s
         return None
 
 def login_required(f):
-    """Decorator to require login"""
     def decorated_function(*args, **kwargs):
         if not session.get('authenticated'):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     decorated_function.__name__ = f.__name__
     return decorated_function
-
-# Routes
 
 @app.route('/')
 def index():
@@ -156,7 +139,6 @@ def login():
             flash(f'DEBUG: Intentando login con usuario: {username}', 'info')
             
             if username and password:
-                # Intentar con el backend de autenticación
                 response = make_request('POST', '/api/auth/login', {
                     'username': username,
                     'password': password
@@ -181,7 +163,6 @@ def login():
                     app.logger.info(f"DEBUG: Login failed - status: {response.status_code if response is not None else 'None'}")
                     if response is not None:
                         if response.status_code == 400:
-                            # Error de validación en los datos enviados
                             try:
                                 error_data = response.json()
                                 error_message = error_data.get('error', 'Error de validación en los datos proporcionados')
@@ -189,13 +170,11 @@ def login():
                             except:
                                 flash('Error de validación. Verifica que los datos sean correctos.', 'error')
                         elif response.status_code == 429:
-                            # Rate Limit excedido
                             try:
                                 error_data = response.json()
                                 retry_after = error_data.get('retryAfter', '15 minutos')
-                                # Guardar en sesión para mostrar contador
                                 session['rate_limit_login'] = {
-                                    'blocked_until': datetime.now().timestamp() + (15 * 60),  # 15 minutos desde ahora
+                                    'blocked_until': datetime.now().timestamp() + (15 * 60),
                                     'retry_after': retry_after,
                                     'message': error_data.get('message', 'Demasiados intentos de inicio de sesión')
                                 }
@@ -204,7 +183,6 @@ def login():
                                 app.logger.error(f"Error processing rate limit response: {e}")
                                 flash('⏱️ Demasiados intentos de inicio de sesión. Por favor, espera antes de intentar nuevamente.', 'warning')
                         elif response.status_code == 401:
-                            # Error de autenticación (credenciales incorrectas)
                             try:
                                 error_data = response.json()
                                 error_msg = error_data.get('error', error_data.get('message', ''))
@@ -230,20 +208,16 @@ def login():
                 flash('Por favor, completa todos los campos', 'warning')
         
         elif login_method == 'microsoft':
-            # Redirect to Microsoft login (use browser URL)
             return redirect(f'{get_browser_api_url()}/api/auth/login/microsoft')
         
         elif login_method == 'auth0':
-            # Redirect to Auth0 login
             return redirect(url_for('auth0_login'))
     
     return render_template('login.html')
 
 @app.route('/quick-login')
 def quick_login():
-    """Login rápido para desarrollo"""
-    # Use admin user (id=1) for development testing
-    dev_user_id = 1  # Admin user
+    dev_user_id = 1 
     session['authenticated'] = True
     session['token'] = 'temp-dev-user-token'
     session['user'] = {'id': dev_user_id, 'username': 'admin', 'role': 'admin'}
@@ -252,7 +226,6 @@ def quick_login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # Determinar si la petición viene del formulario integrado en login
     from_login_page = request.args.get('from_login') == 'true' or request.referrer and '/login' in request.referrer
     
     if request.method == 'POST':
@@ -268,7 +241,6 @@ def register():
             return render_template('register.html')
         
         if username and email and password:
-            # Intentar registrar con el backend de autenticación
             response = make_request('POST', '/api/auth/register', {
                 'username': username,
                 'email': email,
@@ -283,7 +255,6 @@ def register():
                 flash('Registro exitoso', 'success')
                 return redirect(url_for('dashboard'))
             elif response is not None and response.status_code == 400:
-                # Error de validación - mostrar mensaje específico del backend
                 try:
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error de validación en los datos proporcionados')
@@ -295,13 +266,11 @@ def register():
                     if from_login_page:
                         return redirect(url_for('login', mode='register', error='validation_error'))
             elif response is not None and response.status_code == 429:
-                # Rate Limit excedido en registro
                 try:
                     error_data = response.json()
                     retry_after = error_data.get('retryAfter', '1 hora')
-                    # Guardar en sesión para mostrar contador (1 hora = 60 minutos)
                     session['rate_limit_register'] = {
-                        'blocked_until': datetime.now().timestamp() + (60 * 60),  # 1 hora desde ahora
+                        'blocked_until': datetime.now().timestamp() + (60 * 60),  
                         'retry_after': retry_after,
                         'message': error_data.get('message', 'Demasiados intentos de registro')
                     }
@@ -318,12 +287,10 @@ def register():
                 if from_login_page:
                     return redirect(url_for('login', mode='register', error='user_exists'))
             elif response is None:
-                # No hay conexión con el servidor
                 flash('No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente.', 'error')
                 if from_login_page:
                     return redirect(url_for('login', mode='register', error='connection_error'))
             else:
-                # Otro error del servidor (500, etc)
                 try:
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error del servidor')
@@ -339,7 +306,6 @@ def register():
             if from_login_page:
                 return redirect(url_for('login', mode='register', error='incomplete_fields'))
     
-    # Si es GET y viene desde login, redirigir a login con modo registro
     if from_login_page:
         return redirect(url_for('login', mode='register'))
     
@@ -348,24 +314,19 @@ def register():
 @app.route('/logout')
 @login_required
 def logout():
-    # Antes de cerrar sesión, reactivar el servicio de consulta
     try:
         make_request('PUT', '/api/auth/preferences/consulta-service', {
             'enabled': True
         })
     except Exception as e:
-        # No bloquear el logout si falla la reactivación
         print(f"Error al reactivar servicio de consulta en logout: {e}")
     
-    # Call logout endpoint
     make_request('POST', '/api/auth/logout')
     
-    # Render cleanup page before clearing session
     return render_template('logout_cleanup.html')
 
 @app.route('/logout/complete')
 def logout_complete():
-    """Complete logout process after cleanup"""
     session.clear()
     flash('Sesión cerrada exitosamente', 'success')
     return redirect(url_for('login'))
@@ -373,24 +334,19 @@ def logout_complete():
 @app.route('/configurar-cuenta')
 @login_required
 def configurar_cuenta():
-    """Página para configurar cuenta de usuario"""
     return render_template('configurar_cuenta.html', user=session.get('user'))
 
 @app.route('/api/auth/cambiar-email', methods=['POST'])
 @login_required
 def cambiar_email():
-    """Endpoint para cambiar correo electrónico"""
     try:
         data = request.get_json()
         
-        # Agregar el user_id del usuario actual
         data['user_id'] = session.get('user', {}).get('id')
         
-        # Llamar al servicio de autenticación
         response = make_request('POST', '/api/auth/cambiar-email', data=data)
         
         if response is not None and response.status_code == 200:
-            # Actualizar el email en la sesión
             if 'user' in session:
                 session['user']['email'] = data['nuevo_email']
                 session.modified = True
@@ -406,14 +362,11 @@ def cambiar_email():
 @app.route('/api/auth/cambiar-password', methods=['POST'])
 @login_required
 def cambiar_password():
-    """Endpoint para cambiar contraseña"""
     try:
         data = request.get_json()
         
-        # Agregar el user_id del usuario actual
         data['user_id'] = session.get('user', {}).get('id')
         
-        # Llamar al servicio de autenticación
         response = make_request('POST', '/api/auth/cambiar-password', data=data)
         
         if response is not None and response.status_code == 200:
@@ -429,16 +382,13 @@ def cambiar_password():
 @app.route('/api/auth/preferences/consulta-service', methods=['GET', 'PUT'])
 @login_required
 def consulta_service_preferences():
-    """Endpoint para obtener o actualizar preferencias del servicio de consulta"""
     try:
         if request.method == 'GET':
-            # Obtener preferencias actuales
             response = make_request('GET', '/api/auth/preferences')
             
             if response is not None and response.status_code == 200:
                 return jsonify(response.json()), 200
             else:
-                # Si hay error, retornar estado por defecto (habilitado)
                 return jsonify({
                     'success': True,
                     'preferences': {
@@ -447,7 +397,6 @@ def consulta_service_preferences():
                 }), 200
         
         elif request.method == 'PUT':
-            # Actualizar preferencia
             data = request.get_json()
             
             response = make_request('PUT', '/api/auth/preferences/consulta-service', data=data)
@@ -472,14 +421,12 @@ def consulta_service_preferences():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Get statistics
     response = make_request('GET', '/api/consulta/stats')
 
     stats = {}
     if response is not None and response.status_code == 200:
         stats = response.json()
     else:
-        # No bloquear: renderizar sin datos y mostrar aviso suave en la UI
         if response is None:
             flash('El servicio de estadisticas esta lento o no disponible. Mostrando el panel sin datos.', 'info')
     
@@ -488,18 +435,14 @@ def dashboard():
 @app.route('/api/dashboard/stats')
 @login_required
 def dashboard_stats_api():
-    """API endpoint for dashboard statistics (for auto-refresh)"""
     try:
-        # Llamar directamente al endpoint específico del dashboard
         response = make_request('GET', '/api/consulta/dashboard/stats', timeout_seconds=3.0)
         
         if response is not None and response.status_code == 200:
             stats_data = response.json()
-            # Agregar timestamp para debugging
             stats_data['_frontend_timestamp'] = datetime.now().isoformat()
             return jsonify(stats_data)
         else:
-            # Responder con error más específico
             error_msg = f"Backend error: {response.status_code if response is not None else 'No response'}"
             return jsonify({
                 'error': error_msg,
@@ -514,12 +457,9 @@ def dashboard_stats_api():
 @app.route('/api/dashboard/refresh', methods=['POST'])
 @login_required
 def force_dashboard_refresh():
-    """Force refresh dashboard stats by invalidating cache"""
     try:
-        # Invalidar cache
         invalidate_stats_cache()
         
-        # Obtener nuevas estadísticas
         response = make_request('GET', '/api/consulta/dashboard/stats', timeout_seconds=3.0)
         
         if response is not None and response.status_code == 200:
@@ -545,10 +485,8 @@ def crear_persona():
         return date.today().isoformat()
     
     if request.method == 'POST':
-        # Detectar si es una petición AJAX
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
-        # Validate required fields
         required_fields = ['numero_documento', 'tipo_documento', 'primer_nombre', 
                           'apellidos', 'fecha_nacimiento', 'genero', 
                           'correo_electronico', 'celular']
@@ -564,25 +502,21 @@ def crear_persona():
                 return render_template('crear_persona.html', today_iso=today_iso())
             data[field] = value
         
-        # Optional fields
         data['segundo_nombre'] = request.form.get('segundo_nombre') or None
         
-        # Handle file upload
         files = None
         if 'foto' in request.files:
             foto = request.files['foto']
             if foto.filename and foto.filename != '':
-                # Check file size (2MB)
                 if len(foto.read()) > 2 * 1024 * 1024:
                     error_msg = 'La foto no puede superar los 2MB'
                     if is_ajax:
                         return jsonify({'error': error_msg}), 400
                     flash(error_msg, 'error')
                     return render_template('crear_persona.html', today_iso=today_iso())
-                foto.seek(0)  # Reset file pointer
+                foto.seek(0)  
                 files = {'foto': (foto.filename, foto, foto.content_type)}
         
-        # Make request
         print(f"DEBUG: About to make request to create persona with doc: {data.get('numero_documento')}")
         response = make_request('POST', '/api/personas', data=data, files=files)
         print(f"DEBUG: Received response object: {response}")
@@ -596,7 +530,6 @@ def crear_persona():
                 print("DEBUG: Could not read response text")
                 
             if response.status_code == 201:
-                # Invalidar cache de estadísticas después de crear
                 invalidate_stats_cache()
                 success_msg = '✅ Persona creada exitosamente'
                 if is_ajax:
@@ -608,7 +541,6 @@ def crear_persona():
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error de validación desconocido')
                     print(f"DEBUG: 400 error response: {error_data}")
-                    # Mostrar detalles específicos si están disponibles
                     if 'details' in error_data:
                         details = error_data['details']
                         if isinstance(details, dict):
@@ -622,10 +554,10 @@ def crear_persona():
                     
                     if is_ajax:
                         return jsonify(error_data), 400
-                    flash(f'❌ Error de validación: {error_message}', 'error')
+                    flash(f'Error de validación: {error_message}', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing 400 response: {e}")
-                    error_msg = '❌ Error de validación: Datos inválidos'
+                    error_msg = 'Error de validación: Datos inválidos'
                     if is_ajax:
                         return jsonify({'error': 'Error de validación: Datos inválidos'}), 400
                     flash(error_msg, 'error')
@@ -638,7 +570,7 @@ def crear_persona():
                     if is_ajax:
                         print(f"DEBUG: Returning 409 JSON response for AJAX")
                         return jsonify(error_data), 409
-                    flash(f'❌ {error_message}. Por favor, verifique el número ingresado.', 'error')
+                    flash(f'{error_message}. Por favor, verifique el número ingresado.', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing 409 response: {e}")
                     print(f"DEBUG: Raw response text: {response.text}")
@@ -646,7 +578,7 @@ def crear_persona():
                     if is_ajax:
                         print(f"DEBUG: Returning fallback 409 JSON response for AJAX")
                         return jsonify(error_data), 409
-                    flash('❌ Ya existe una persona con ese número de documento. Por favor, verifique el número ingresado.', 'error')
+                    flash('Ya existe una persona con ese número de documento. Por favor, verifique el número ingresado.', 'error')
             elif response.status_code == 422:
                 try:
                     error_data = response.json()
@@ -655,13 +587,13 @@ def crear_persona():
                     
                     if is_ajax:
                         return jsonify(error_data), 422
-                    flash(f'❌ Error de procesamiento: {error_message}', 'error')
+                    flash(f'Error de procesamiento: {error_message}', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing 422 response: {e}")
                     error_data = {'error': 'Error de procesamiento: Los datos no pudieron ser procesados'}
                     if is_ajax:
                         return jsonify(error_data), 422
-                    flash('❌ Error de procesamiento: Los datos no pudieron ser procesados', 'error')
+                    flash('Error de procesamiento: Los datos no pudieron ser procesados', 'error')
             elif response.status_code == 500:
                 try:
                     error_data = response.json()
@@ -670,13 +602,13 @@ def crear_persona():
                     
                     if is_ajax:
                         return jsonify(error_data), 500
-                    flash(f'❌ Error interno del servidor: {error_message}. Por favor, intente nuevamente más tarde.', 'error')
+                    flash(f'Error interno del servidor: {error_message}. Por favor, intente nuevamente más tarde.', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing 500 response: {e}")
                     error_data = {'error': 'Error interno del servidor'}
                     if is_ajax:
                         return jsonify(error_data), 500
-                    flash('❌ Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
+                    flash('Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
             else:
                 try:
                     error_data = response.json()
@@ -685,16 +617,16 @@ def crear_persona():
                     
                     if is_ajax:
                         return jsonify(error_data), response.status_code
-                    flash(f'❌ {error_message}', 'error')
+                    flash(f'{error_message}', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing {response.status_code} response: {e}")
                     error_data = {'error': f'Error al crear la persona (Código: {response.status_code})'}
                     if is_ajax:
                         return jsonify(error_data), response.status_code
-                    flash(f'❌ Error al crear la persona (Código: {response.status_code})', 'error')
+                    flash(f'Error al crear la persona (Código: {response.status_code})', 'error')
         else:
             print("DEBUG: Response is None - connection/timeout error occurred")
-            error_msg = '❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión y que los servicios estén ejecutándose.'
+            error_msg = 'Error de conexión: No se pudo contactar con el servidor. Verifique su conexión y que los servicios estén ejecutándose.'
             if is_ajax:
                 return jsonify({'error': 'Error de conexión: No se pudo contactar con el servidor. Verifique su conexión y que los servicios estén ejecutándose.'}), 503
             flash(error_msg, 'error')
@@ -704,45 +636,36 @@ def crear_persona():
 @app.route('/personas/bulk-upload', methods=['GET', 'POST'])
 @login_required
 def bulk_upload_personas():
-    """Bulk upload personas from CSV file"""
     
     if request.method == 'GET':
-        # Render the upload form
         return render_template('bulk_upload.html')
     
-    # POST: Process CSV upload
     try:
-        # Check if file was uploaded
         if 'csv_file' not in request.files:
-            flash('❌ No se seleccionó ningún archivo', 'error')
+            flash('No se seleccionó ningún archivo', 'error')
             return render_template('bulk_upload.html')
         
         csv_file = request.files['csv_file']
         
         if csv_file.filename == '':
-            flash('❌ No se seleccionó ningún archivo', 'error')
+            flash('No se seleccionó ningún archivo', 'error')
             return render_template('bulk_upload.html')
         
-        # Validate file extension
         if not csv_file.filename.endswith('.csv'):
-            flash('❌ El archivo debe ser un CSV (.csv)', 'error')
+            flash('El archivo debe ser un CSV (.csv)', 'error')
             return render_template('bulk_upload.html')
         
-        # Prepare multipart form data
         files = {'csv_file': (csv_file.filename, csv_file.stream, csv_file.content_type)}
         
-        # Make request to backend
         print(f"DEBUG: Uploading CSV file: {csv_file.filename}")
         response = make_request('POST', '/api/personas/bulk-upload', files=files)
         
         if response is not None:
             if response.status_code == 200:
-                # Success - display results
                 try:
                     response_data = response.json()
                     print(f"DEBUG: Bulk upload response: {response_data}")
                     
-                    # Extract results from response
                     results = response_data.get('results', {})
                     print(f"DEBUG: Extracted results: {results}")
                     
@@ -754,14 +677,12 @@ def bulk_upload_personas():
                     
                     print(f"DEBUG: Stats - total:{total}, created:{created}, errors:{len(validation_errors)}, dups:{len(duplicates)}, failed:{len(failed)}")
                     
-                    # Show success message
                     if created > 0:
                         flash(f'✅ Se crearon {created} de {total} personas exitosamente', 'success')
                     
-                    # Show warnings for errors
                     total_errors = len(validation_errors) + len(duplicates) + len(failed)
                     if total_errors > 0:
-                        flash(f'⚠️ No se pudieron procesar {total_errors} registros. Ver detalles abajo.', 'warning')
+                        flash(f'No se pudieron procesar {total_errors} registros. Ver detalles abajo.', 'warning')
                     
                     print(f"DEBUG: Rendering template with results: {results}")
                     return render_template('bulk_upload.html', 
@@ -770,7 +691,7 @@ def bulk_upload_personas():
                 
                 except Exception as e:
                     print(f"DEBUG: Error parsing 200 response: {e}")
-                    flash('❌ Error al procesar la respuesta del servidor', 'error')
+                    flash('Error al procesar la respuesta del servidor', 'error')
                     return render_template('bulk_upload.html')
             
             elif response.status_code == 400:
@@ -779,21 +700,20 @@ def bulk_upload_personas():
                     error_data = response.json()
                     error_message = error_data.get('error', 'Datos inválidos')
                     print(f"DEBUG: 400 error response: {error_data}")
-                    flash(f'❌ {error_message}', 'error')
+                    flash(f'{error_message}', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing 400 response: {e}")
-                    flash('❌ Error de validación en el archivo CSV', 'error')
+                    flash('Error de validación en el archivo CSV', 'error')
             
             elif response.status_code == 500:
-                # Server error
                 try:
                     error_data = response.json()
                     error_message = error_data.get('error', 'Error interno del servidor')
                     print(f"DEBUG: 500 error response: {error_data}")
-                    flash(f'❌ Error interno del servidor: {error_message}', 'error')
+                    flash(f'Error interno del servidor: {error_message}', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing 500 response: {e}")
-                    flash('❌ Error interno del servidor', 'error')
+                    flash('Error interno del servidor', 'error')
             
             else:
                 # Other error
@@ -801,40 +721,35 @@ def bulk_upload_personas():
                     error_data = response.json()
                     error_message = error_data.get('error', f'Error desconocido (Código: {response.status_code})')
                     print(f"DEBUG: {response.status_code} error response: {error_data}")
-                    flash(f'❌ {error_message}', 'error')
+                    flash(f'{error_message}', 'error')
                 except Exception as e:
                     print(f"DEBUG: Error parsing {response.status_code} response: {e}")
-                    flash(f'❌ Error al procesar el archivo (Código: {response.status_code})', 'error')
+                    flash(f'Error al procesar el archivo (Código: {response.status_code})', 'error')
         
         else:
             # Connection error
             print("DEBUG: Response is None - connection/timeout error occurred")
-            flash('❌ Error de conexión: No se pudo contactar con el servidor', 'error')
+            flash('Error de conexión: No se pudo contactar con el servidor', 'error')
     
     except Exception as e:
         print(f"DEBUG: Exception in bulk_upload_personas: {e}")
-        flash('❌ Error al procesar el archivo CSV', 'error')
+        flash('Error al procesar el archivo CSV', 'error')
     
     return render_template('bulk_upload.html')
 
 @app.route('/personas/check/<numero_documento>', methods=['GET'])
 @login_required
 def check_persona_exists(numero_documento):
-    """Check if a persona with the given document number exists"""
     try:
         response = make_request('GET', f'/api/personas/{numero_documento}')
         if response is not None:
             if response.status_code == 200:
-                # Persona exists
                 return jsonify({'exists': True, 'message': 'Persona encontrada'}), 200
             elif response.status_code == 404:
-                # Persona does not exist
                 return jsonify({'exists': False, 'message': 'Documento disponible'}), 404
             else:
-                # Other error
                 return jsonify({'error': 'Error verificando documento'}), 500
         else:
-            # Connection error
             return jsonify({'error': 'Error de conexión'}), 503
     except Exception as e:
         print(f"DEBUG: Error checking persona: {e}")
@@ -847,9 +762,7 @@ def modificar_persona():
     def today_iso():
         return date.today().isoformat()
     
-    # Handle GET request with numero_documento parameter
     if request.method == 'GET':
-        # Check if we want to force a clean state (after limpiar_busqueda)
         force_clean = request.args.get('clean') == 'true'
         numero_documento = request.args.get('numero_documento')
         app.logger.info(f"DEBUG: GET request - force_clean: {force_clean}, numero_documento: {numero_documento}")
@@ -861,11 +774,11 @@ def modificar_persona():
                 persona = response.json()
                 session['persona_to_modify'] = persona
             elif response is not None and response.status_code == 404:
-                flash(f'❌ No se encontró una persona con el documento: {numero_documento}', 'error')
+                flash(f'No se encontró una persona con el documento: {numero_documento}', 'error')
             elif response is not None:
-                flash(f'❌ Error al buscar la persona (Código: {response.status_code})', 'error')
+                flash(f'Error al buscar la persona (Código: {response.status_code})', 'error')
             else:
-                flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
+                flash('Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
         elif 'persona_to_modify' in session and not force_clean:
             persona = session['persona_to_modify']
     
@@ -874,7 +787,6 @@ def modificar_persona():
         app.logger.info(f"DEBUG: POST action received: {action}")
         
         if action == 'limpiar_busqueda':
-            # Clear session and redirect to clean state
             app.logger.info("DEBUG: Limpiando bÃºsqueda y redirigiendo")
             session.pop('persona_to_modify', None)
             flash('BÃºsqueda reiniciada', 'info')
@@ -888,19 +800,19 @@ def modificar_persona():
                 if response is not None and response.status_code == 200:
                     persona = response.json()
                     session['persona_to_modify'] = persona
-                    flash(f'✅ Persona encontrada: {persona.get("primer_nombre", "")} {persona.get("apellidos", "")}', 'success')
+                    flash(f'Persona encontrada: {persona.get("primer_nombre", "")} {persona.get("apellidos", "")}', 'success')
                 elif response is not None and response.status_code == 404:
-                    flash(f'❌ No se encontró una persona con el documento: {numero_documento}', 'error')
+                    flash(f'No se encontró una persona con el documento: {numero_documento}', 'error')
                 elif response is not None and response.status_code == 400:
-                    flash('❌ Número de documento inválido. Verifique el formato.', 'error')
+                    flash('Número de documento inválido. Verifique el formato.', 'error')
                 elif response is not None and response.status_code == 500:
-                    flash('❌ Error interno del servidor. Intente nuevamente más tarde.', 'error')
+                    flash('Error interno del servidor. Intente nuevamente más tarde.', 'error')
                 elif response is not None:
-                    flash(f'❌ Error al buscar la persona (Código: {response.status_code})', 'error')
+                    flash(f'Error al buscar la persona (Código: {response.status_code})', 'error')
                 else:
-                    flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
+                    flash('Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
             else:
-                flash('❌ Debe ingresar un número de documento para buscar', 'error')
+                flash('Debe ingresar un número de documento para buscar', 'error')
         
         elif action == 'modificar':
             persona = session.get('persona_to_modify')
@@ -908,7 +820,6 @@ def modificar_persona():
                 flash('No hay persona seleccionada para modificar', 'error')
                 return render_template('modificar_persona.html', today_iso=today_iso())
             
-            # Build update data
             data = {}
             updateable_fields = ['tipo_documento', 'primer_nombre', 'segundo_nombre', 
                                'apellidos', 'fecha_nacimiento', 'genero', 
@@ -919,7 +830,6 @@ def modificar_persona():
                 if value:
                     data[field] = value
             
-            # Handle file upload
             files = None
             if 'foto' in request.files:
                 foto = request.files['foto']
@@ -930,19 +840,15 @@ def modificar_persona():
                     foto.seek(0)
                     files = {'foto': (foto.filename, foto, foto.content_type)}
             
-            # Make request
             response = make_request('PUT', f'/api/personas/{persona["numero_documento"]}', 
                                   data=data, files=files)
             
             if response is not None:
                 if response.status_code == 200:
-                    # Invalidar cache de estadísticas después de modificar
                     invalidate_stats_cache()
-                    flash('✅ Persona actualizada exitosamente', 'success')
-                    # Clear the session cache
+                    flash('Persona actualizada exitosamente', 'success')
                     session.pop('persona_to_modify', None)
                     
-                    # Redirect to view the updated person to show fresh data
                     numero_documento = persona.get('numero_documento') if persona else None
                     if numero_documento:
                         return redirect(url_for('consultar_personas', numero_documento=numero_documento))
@@ -952,7 +858,6 @@ def modificar_persona():
                     try:
                         error_data = response.json()
                         error_message = error_data.get('error', 'Error de validación desconocido')
-                        # Mostrar detalles específicos si están disponibles
                         if 'details' in error_data:
                             details = error_data['details']
                             if isinstance(details, dict):
@@ -963,29 +868,28 @@ def modificar_persona():
                                     else:
                                         detail_messages.append(f"{field}: {messages}")
                                 error_message += f" - {'; '.join(detail_messages)}"
-                        flash(f'❌ Error de validación: {error_message}', 'error')
+                        flash(f'Error de validación: {error_message}', 'error')
                     except:
-                        flash('❌ Error de validación: Datos inválidos', 'error')
+                        flash('Error de validación: Datos inválidos', 'error')
                 elif response.status_code == 404:
-                    flash('❌ La persona que intenta modificar no existe o fue eliminada.', 'error')
+                    flash('La persona que intenta modificar no existe o fue eliminada.', 'error')
                     session.pop('persona_to_modify', None)  # Limpiar sesión
                 elif response.status_code == 409:
-                    flash('❌ Conflicto: Los datos ingresados entran en conflicto con otra persona existente.', 'error')
+                    flash('Conflicto: Los datos ingresados entran en conflicto con otra persona existente.', 'error')
                 elif response.status_code == 422:
                     try:
                         error_data = response.json()
                         error_message = error_data.get('error', 'Error de procesamiento')
-                        flash(f'❌ Error de procesamiento: {error_message}', 'error')
+                        flash(f'Error de procesamiento: {error_message}', 'error')
                     except:
-                        flash('❌ Error de procesamiento: Los datos no pudieron ser procesados', 'error')
+                        flash('Error de procesamiento: Los datos no pudieron ser procesados', 'error')
                 elif response.status_code == 500:
-                    flash('❌ Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
+                    flash('Error interno del servidor. Por favor, intente nuevamente más tarde.', 'error')
                 else:
-                    flash(f'❌ Error al actualizar la persona (Código: {response.status_code})', 'error')
+                    flash(f'Error al actualizar la persona (Código: {response.status_code})', 'error')
             else:
-                flash('❌ Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
+                flash('Error de conexión: No se pudo contactar con el servidor. Verifique su conexión.', 'error')
     
-    # Ensure we have the persona data for the template
     if not persona and 'persona_to_modify' in session:
         persona = session['persona_to_modify']
     
@@ -996,7 +900,6 @@ def modificar_persona():
 def consultar_personas():
     personas = []
     
-    # Check if it's a search request
     numero_documento = request.args.get('numero_documento')
     tipo_documento = request.args.get('tipo_documento')
     genero = request.args.get('genero')
@@ -1004,13 +907,11 @@ def consultar_personas():
     edad_max = request.args.get('edad_max')
     
     if numero_documento:
-        # Individual search
         response = make_request('GET', f'/api/consulta/persona/{numero_documento}')
         
         if response is not None and response.status_code == 200:
             personas = [response.json()]
         elif response is not None and response.status_code == 403:
-            # Service is disabled
             try:
                 error_data = response.json()
                 flash(error_data.get('message', 'El servicio de consulta está deshabilitado. Puedes habilitarlo desde la configuración de tu cuenta.'), 'warning')
@@ -1024,7 +925,6 @@ def consultar_personas():
             flash('Error de conexión: No se pudo contactar con el servidor', 'error')
     
     elif any([tipo_documento, genero, edad_min, edad_max]):
-        # Advanced search
         app.logger.info(f"DEBUG: BÃºsqueda avanzada - params: tipo_documento={tipo_documento}, genero={genero}, edad_min={edad_min}, edad_max={edad_max}")
         params = {}
         if tipo_documento and tipo_documento != 'Todos':
@@ -1036,7 +936,6 @@ def consultar_personas():
         if edad_max:
             params['edad_max'] = edad_max
         
-        # Check if this is actually a "show all" query (no real filters, just age range 0-120)
         is_show_all = (
             (not tipo_documento or tipo_documento == '' or tipo_documento == 'Todos') and
             (not genero or genero == '' or genero == 'Todos') and
@@ -1046,12 +945,11 @@ def consultar_personas():
         
         app.logger.info(f"DEBUG: is_show_all check - tipo_documento='{tipo_documento}', genero='{genero}', edad_min='{edad_min}', edad_max='{edad_max}', result={is_show_all}")
         
-        # If it's a "show all" query, use a higher limit
         if is_show_all:
-            params['limit'] = 50  # Show more results when no real filters are applied
+            params['limit'] = 50  
             app.logger.info("DEBUG: Using limit=50 for show all query")
         else:
-            params['limit'] = 20  # Standard limit for filtered searches
+            params['limit'] = 20 
             app.logger.info("DEBUG: Using limit=20 for filtered query")
         
         app.logger.info(f"DEBUG: Enviando solicitud a /api/consulta/search con params: {params}")
@@ -1069,7 +967,6 @@ def consultar_personas():
             else:
                 flash('No se encontraron personas con los criterios especificados', 'info')
         elif response is not None and response.status_code == 403:
-            # Service is disabled
             try:
                 error_data = response.json()
                 flash(error_data.get('message', 'El servicio de consulta está deshabilitado. Puedes habilitarlo desde la configuración de tu cuenta.'), 'warning')
@@ -1081,12 +978,9 @@ def consultar_personas():
 @app.route('/personas/exportar')
 @login_required
 def exportar_personas():
-    """Export personas to CSV or Excel based on current search criteria"""
     
-    # Get export format
     formato = request.args.get('formato', 'csv')  # csv or excel
     
-    # Get search parameters (same as consultar_personas)
     numero_documento = request.args.get('numero_documento')
     tipo_documento = request.args.get('tipo_documento')
     genero = request.args.get('genero')
@@ -1097,14 +991,12 @@ def exportar_personas():
     
     try:
         if numero_documento:
-            # Individual search
             response = make_request('GET', f'/api/consulta/persona/{numero_documento}')
             
             if response is not None and response.status_code == 200:
                 personas = [response.json()]
         
         elif any([tipo_documento, genero, edad_min, edad_max]):
-            # Advanced search
             params = {}
             if tipo_documento and tipo_documento != 'Todos':
                 params['tipo_documento'] = tipo_documento
@@ -1115,7 +1007,7 @@ def exportar_personas():
             if edad_max:
                 params['edad_max'] = edad_max
             
-            params['limit'] = 1000  # Get all results for export
+            params['limit'] = 1000
             
             response = make_request('GET', '/api/consulta/search', params=params)
             
@@ -1127,7 +1019,6 @@ def exportar_personas():
             flash('No hay datos para exportar', 'warning')
             return redirect(url_for('consultar_personas'))
         
-        # Create DataFrame
         df_data = []
         for persona in personas:
             df_data.append({
@@ -1144,18 +1035,15 @@ def exportar_personas():
         
         df = pd.DataFrame(df_data)
         
-        # Generate filename
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
         if formato == 'excel':
-            # Export to Excel
             filename = f'personas_export_{timestamp}.xlsx'
             output = io.BytesIO()
             
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name='Personas')
                 
-                # Auto-adjust column widths
                 worksheet = writer.sheets['Personas']
                 for idx, col in enumerate(df.columns):
                     max_length = max(
@@ -1173,14 +1061,12 @@ def exportar_personas():
                 download_name=filename
             )
         
-        else:  # CSV format
-            # Export to CSV with UTF-8 BOM (compatible with Excel)
+        else:
             filename = f'personas_export_{timestamp}.csv'
             output = io.StringIO()
             
             df.to_csv(output, index=False, encoding='utf-8-sig')
             
-            # Create bytes buffer with UTF-8 BOM
             csv_bytes = io.BytesIO()
             csv_bytes.write(b'\xef\xbb\xbf')  # UTF-8 BOM
             csv_bytes.write(output.getvalue().encode('utf-8'))
@@ -1238,11 +1124,11 @@ def borrar_persona():
                     persona = response.json()
                     session['persona_to_delete'] = persona
                 elif response is not None and response.status_code == 404:
-                    flash('❌ No se encontró una persona con el documento: {numero_documento}', 'error')
+                    flash('No se encontró una persona con el documento: {numero_documento}', 'error')
                 elif response is not None:
-                    flash(f'❌ Error al buscar la persona (Código: {response.status_code})', 'error')
+                    flash(f'Error al buscar la persona (Código: {response.status_code})', 'error')
                 else:
-                    flash('❌ Error de conexión: No se pudo contactar con el servidor', 'error')
+                    flash('Error de conexión: No se pudo contactar con el servidor', 'error')
         
         elif action == 'eliminar':
             persona = session.get('persona_to_delete')
@@ -1250,15 +1136,14 @@ def borrar_persona():
                 response = make_request('DELETE', f'/api/personas/{persona["numero_documento"]}')
                 
                 if response is not None and response.status_code == 200:
-                    # Invalidar cache de estadísticas después de eliminar
                     invalidate_stats_cache()
-                    flash('✅ Persona eliminada exitosamente', 'success')
+                    flash('Persona eliminada exitosamente', 'success')
                     session.pop('persona_to_delete', None)
                     return redirect(url_for('dashboard'))
                 elif response is not None:
-                    flash(f'❌ Error al eliminar la persona (Código: {response.status_code})', 'error')
+                    flash(f'Error al eliminar la persona (Código: {response.status_code})', 'error')
                 else:
-                    flash('❌ Error de conexión: No se pudo contactar con el servidor', 'error')
+                    flash('Error de conexión: No se pudo contactar con el servidor', 'error')
             else:
                 flash('Debe confirmar la eliminaciÃ³n', 'warning')
     
@@ -1269,15 +1154,12 @@ def borrar_persona():
 
 @app.route('/logs-test')
 def consultar_logs_test():
-    """Endpoint temporal para probar logs sin autenticaciÃ³n"""
     logs = []
     stats = {}
     
-    # Simular token de admin para las pruebas
     session['token'] = 'temp-admin-token'
     
     try:
-        # Check for search parameters
         transaction_type = request.args.get('transaction_type')
         entity_type = request.args.get('entity_type')
         numero_documento = request.args.get('numero_documento')
@@ -1288,7 +1170,6 @@ def consultar_logs_test():
         page = request.args.get('page', 1, type=int)
         limit = request.args.get('limit', 20, type=int)
         
-        # Check if we have actual search parameters (not empty strings)
         has_search_params = any([
             transaction_type and transaction_type.strip(),
             entity_type and entity_type.strip(),
@@ -1301,7 +1182,6 @@ def consultar_logs_test():
         app.logger.info(f"Log request - has_search_params: {has_search_params}, show_stats: {show_stats}")
         
         if has_search_params or (not show_stats and any(request.args.keys())):
-            # Search logs
             params = {}
             if transaction_type and transaction_type.strip() and transaction_type != 'Todos':
                 params['transaction_type'] = transaction_type
@@ -1310,7 +1190,6 @@ def consultar_logs_test():
             if numero_documento and numero_documento.strip():
                 params['numero_documento'] = numero_documento
             if status and status.strip() and status != 'Todos':
-                # Map frontend status values to API values
                 status_mapping = {
                     'success': 'SUCCESS',
                     'error': 'ERROR',
@@ -1322,7 +1201,6 @@ def consultar_logs_test():
             if fecha_fin and fecha_fin.strip():
                 params['fecha_fin'] = fecha_fin
             
-            # Add pagination parameters
             params['page'] = page
             params['limit'] = limit
             
@@ -1337,18 +1215,14 @@ def consultar_logs_test():
                 logs = data.get('logs', [])
                 app.logger.info(f"Number of logs retrieved: {len(logs)}")
                 
-                # Process logs to ensure data consistency
                 for log in logs:
-                    # Parse JSON fields that might be strings
                     for field in ['request_data', 'response_data']:
                         if log.get(field) and isinstance(log[field], str):
                             try:
                                 log[field] = json.loads(log[field])
                             except (json.JSONDecodeError, ValueError):
-                                # Keep as string if not valid JSON
                                 pass
                     
-                    # Set details field based on available data
                     if not log.get('details'):
                         if log.get('request_data'):
                             log['details'] = log['request_data']
@@ -1357,10 +1231,8 @@ def consultar_logs_test():
                         elif log.get('error_message'):
                             log['details'] = {'error': log['error_message']}
                             
-                    # Ensure created_at is properly formatted
                     if log.get('created_at') and isinstance(log['created_at'], str):
-                        # Normalize the datetime format if needed
-                        pass  # Keep as is for now, template handles it
+                        pass 
                     
                 if logs:
                     flash(f'Se encontraron {data.get("pagination", {}).get("total", len(logs))} registros', 'success')
@@ -1386,7 +1258,6 @@ def consultar_logs():
     stats = {}
     pagination_info = None
     
-    # Check for search parameters
     transaction_type = request.args.get('transaction_type')
     entity_type = request.args.get('entity_type')
     numero_documento = request.args.get('numero_documento')
@@ -1398,7 +1269,6 @@ def consultar_logs():
     limit = request.args.get('limit', 20, type=int)
     
     try:
-        # Check if we have actual search parameters (not empty strings)
         has_search_params = any([
             transaction_type and transaction_type.strip(),
             entity_type and entity_type.strip(),
@@ -1411,7 +1281,6 @@ def consultar_logs():
         app.logger.info(f"Log request - has_search_params: {has_search_params}, show_stats: {show_stats}")
         
         if has_search_params or (not show_stats and any(request.args.keys())):
-            # Search logs
             params = {}
             if transaction_type and transaction_type.strip() and transaction_type != 'Todos':
                 params['transaction_type'] = transaction_type
@@ -1420,7 +1289,6 @@ def consultar_logs():
             if numero_documento and numero_documento.strip():
                 params['numero_documento'] = numero_documento
             if status and status.strip() and status != 'Todos':
-                # Map frontend status values to API values
                 status_mapping = {
                     'success': 'SUCCESS',
                     'error': 'ERROR',
@@ -1432,7 +1300,6 @@ def consultar_logs():
             if fecha_fin and fecha_fin.strip():
                 params['fecha_fin'] = fecha_fin
             
-            # Add pagination parameters
             params['page'] = page
             params['limit'] = limit
             
@@ -1448,18 +1315,14 @@ def consultar_logs():
                 pagination_info = data.get('pagination', {})
                 app.logger.info(f"Number of logs retrieved: {len(logs)}")
                 
-                # Process logs to ensure data consistency
                 for log in logs:
-                    # Parse JSON fields that might be strings
                     for field in ['request_data', 'response_data']:
                         if log.get(field) and isinstance(log[field], str):
                             try:
                                 log[field] = json.loads(log[field])
                             except (json.JSONDecodeError, ValueError):
-                                # Keep as string if not valid JSON
                                 pass
                     
-                    # Set details field based on available data
                     if not log.get('details'):
                         if log.get('request_data'):
                             log['details'] = log['request_data']
@@ -1468,30 +1331,23 @@ def consultar_logs():
                         elif log.get('error_message'):
                             log['details'] = {'error': log['error_message']}
                             
-                    # Ensure created_at is properly formatted
                     if log.get('created_at') and isinstance(log['created_at'], str):
-                        # Normalize the datetime format if needed
-                        pass  # Keep as is for now, template handles it
+                        pass  
                     
                 if logs:
-                    # Se encontraron registros - no mostrar notificación
                     pass
                 else:
-                    # No se encontraron registros - no mostrar notificación
                     pass
             else:
-                # Error al buscar logs - no mostrar notificación al usuario
                 app.logger.error(f"Error searching logs: {response.status_code if response is not None else 'No response'}")
         
         if show_stats:
-            # Get statistics
             params = {}
             if fecha_inicio:
                 params['fecha_inicio'] = fecha_inicio
             if fecha_fin:
                 params['fecha_fin'] = fecha_fin
             
-            # Add pagination parameters
             params['page'] = page
             params['limit'] = limit
             
@@ -1501,14 +1357,12 @@ def consultar_logs():
             if response is not None and response.status_code == 200:
                 api_stats = response.json()
                 
-                # Map API response to template expected structure
                 stats = {
                     'total_logs': api_stats.get('total_transactions', 0),
                     'por_tipo': api_stats.get('by_transaction_type', {}),
                     'por_estado': {}
                 }
                 
-                # Convert status keys to lowercase for template compatibility
                 api_status = api_stats.get('by_status', {})
                 for status_key, count in api_status.items():
                     if status_key == 'SUCCESS':
@@ -1521,12 +1375,10 @@ def consultar_logs():
                         stats['por_estado'][status_key.lower()] = count
                         
             else:
-                # Error al obtener estadísticas - no mostrar notificación al usuario
                 app.logger.error(f"Error getting stats: {response.status_code if response is not None else 'No response'}")
     
     except Exception as e:
         app.logger.error(f"Error in consultar_logs: {str(e)}")
-        # Error interno - no mostrar notificación al usuario
     
     app.logger.info(f"Final logs count: {len(logs)}, stats: {bool(stats)}")
     return render_template('consultar_logs.html', logs=logs, stats=stats, pagination=pagination_info, current_filters=request.args)
@@ -1534,7 +1386,6 @@ def consultar_logs():
 @app.route('/api/chart/<chart_type>')
 @login_required
 def get_chart_data(chart_type):
-    """API endpoint to generate chart data for dashboard"""
     response = make_request('GET', '/api/consulta/stats')
     
     if response is None or response.status_code != 200:
@@ -1571,7 +1422,6 @@ def get_chart_data(chart_type):
     
     return jsonify({'error': 'Chart type not found'}), 404
 
-# Error handlers
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
@@ -1580,17 +1430,12 @@ def not_found(error):
 def internal_error(error):
     return render_template('500.html'), 500
 
-
-# Agregar estas rutas a tu archivo frontend/app.py existente
-
 @app.route('/auth0/login')
 def auth0_login():
-    """Redirect to Auth0 login"""
     return redirect(f'{get_browser_api_url()}/api/auth/login/auth0')
 
 @app.route('/auth/callback')
 def auth_callback():
-    """Handle Auth0 callback with token"""
     token = request.args.get('token')
     
     if not token:
@@ -1598,12 +1443,9 @@ def auth_callback():
         return redirect(url_for('login'))
     
     try:
-        # Verify token with auth service
-        # Temporarily set the token in session to make the request
         original_token = session.get('token')
         session['token'] = token
         response = make_request('GET', '/api/auth/verify')
-        # Restore original token if verification fails
         if original_token:
             session['token'] = original_token
         else:
@@ -1627,19 +1469,10 @@ def auth_callback():
 
 @app.route('/logout/auth0')
 def auth0_logout():
-    """Logout from Auth0"""
-    # Render cleanup page first, then redirect to Auth0 logout
     return render_template('logout_cleanup.html', auth0_logout=True)
 
-# ============================================================================
-# API ENDPOINT: Rate Limit Status
-# ============================================================================
 @app.route('/api/rate-limit-status')
 def rate_limit_status():
-    """
-    Endpoint para verificar el estado del rate limit
-    Retorna información sobre si hay un bloqueo activo y cuánto tiempo queda
-    """
     current_time = datetime.now().timestamp()
     status = {
         'login': {
@@ -1654,7 +1487,6 @@ def rate_limit_status():
         }
     }
     
-    # Verificar rate limit de login
     if 'rate_limit_login' in session:
         rate_limit = session['rate_limit_login']
         blocked_until = rate_limit.get('blocked_until', 0)
@@ -1665,10 +1497,8 @@ def rate_limit_status():
             status['login']['message'] = rate_limit.get('message', 'Bloqueado por intentos excesivos')
             status['login']['retry_after'] = rate_limit.get('retry_after', '15 minutos')
         else:
-            # Expiró el bloqueo, limpiar sesión
             session.pop('rate_limit_login', None)
     
-    # Verificar rate limit de registro
     if 'rate_limit_register' in session:
         rate_limit = session['rate_limit_register']
         blocked_until = rate_limit.get('blocked_until', 0)
@@ -1679,7 +1509,6 @@ def rate_limit_status():
             status['register']['message'] = rate_limit.get('message', 'Bloqueado por intentos excesivos')
             status['register']['retry_after'] = rate_limit.get('retry_after', '1 hora')
         else:
-            # Expiró el bloqueo, limpiar sesión
             session.pop('rate_limit_register', None)
     
     return jsonify(status)

@@ -249,11 +249,6 @@ Personas{% endblock %} {% block content %}
     const rateLimitCountdown = document.getElementById("rateLimitCountdown");
 
     let countdownInterval = null;
-
-    // ===========================================================================
-    // RATE LIMIT COUNTDOWN
-    // ===========================================================================
-
     function formatTime(seconds) {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
@@ -288,21 +283,17 @@ Personas{% endblock %} {% block content %}
         .then((response) => response.json())
         .then((data) => {
           if (data.register.blocked) {
-            // Mostrar warning y deshabilitar botón
             rateLimitWarning.style.display = "block";
             rateLimitMessage.textContent = data.register.message;
             submitButton.disabled = true;
 
-            // Iniciar contador regresivo
             let secondsRemaining = data.register.seconds_remaining;
             updateCountdown(secondsRemaining);
 
-            // Limpiar intervalo previo si existe
             if (countdownInterval) {
               clearInterval(countdownInterval);
             }
 
-            // Actualizar cada segundo
             countdownInterval = setInterval(() => {
               secondsRemaining--;
               updateCountdown(secondsRemaining);
@@ -310,7 +301,6 @@ Personas{% endblock %} {% block content %}
               if (secondsRemaining <= 0) {
                 clearInterval(countdownInterval);
                 countdownInterval = null;
-                // Verificar de nuevo el estado
                 setTimeout(checkRateLimitStatus, 1000);
               }
             }, 1000);
@@ -329,20 +319,13 @@ Personas{% endblock %} {% block content %}
         });
     }
 
-    // Verificar estado al cargar la página
     checkRateLimitStatus();
 
-    // Verificar periódicamente cada 5 segundos (solo si no hay countdown activo)
     setInterval(() => {
       if (!countdownInterval) {
         checkRateLimitStatus();
       }
     }, 5000);
-
-    // ===========================================================================
-    // VALIDACIONES EN TIEMPO REAL (código existente)
-    // ===========================================================================
-
     // Mostrar/ocultar requisitos cuando el campo tiene foco
     usernameField.addEventListener("focus", function () {
       document.getElementById("username-requirements").style.display = "block";
@@ -509,7 +492,6 @@ Personas{% endblock %} {% block content %}
       if (!usernameValid || !emailValid || !passwordValid || !confirmValid) {
         e.preventDefault();
 
-        // Mostrar mensaje de error
         let errorMsg = "Por favor, corrige los siguientes errores:\n";
         if (!usernameValid) errorMsg += "- Username inválido\n";
         if (!emailValid) errorMsg += "- Email inválido\n";

@@ -6,16 +6,13 @@ de Personas{% endblock %} {% block extra_css %}
 />
 {% endblock %} {% block content %}
 <div class="login-container">
-  <!-- Panel Izquierdo - Formulario -->
   <div class="login-panel-left">
     <div class="login-form-wrapper">
-      <!-- Logo y título -->
       <div class="login-logo">
         <h1><i class="fas fa-users"></i> Sistema de Gestión de Personas</h1>
         <p>Administra tu información de forma segura</p>
       </div>
 
-      <!-- Toggle Iniciar Sesión / Registrarse -->
       <div class="auth-toggle">
         <button
           class="auth-toggle-btn active"
@@ -35,9 +32,7 @@ de Personas{% endblock %} {% block extra_css %}
 
       <h2 class="login-title" id="formTitle">Iniciar Sesión</h2>
 
-      <!-- FORMULARIO DE LOGIN -->
       <form method="POST" id="loginFormContainer" action="/login">
-        <!-- Selector de método de autenticación -->
         <div class="auth-method-selector">
           <label>Método de autenticación</label>
           <div class="method-options">
@@ -65,7 +60,6 @@ de Personas{% endblock %} {% block extra_css %}
           </div>
         </div>
 
-        <!-- Formulario Local -->
         <div id="localForm">
           <div class="form-group">
             <label for="username">Usuario</label>
@@ -99,7 +93,6 @@ de Personas{% endblock %} {% block extra_css %}
             <i class="fas fa-bolt"></i> Login Rápido (Desarrollo)
           </a>
 
-          <!-- Rate Limit Warning -->
           <div
             id="rateLimitWarning"
             class="alert-clean alert-danger mt-3"
@@ -121,7 +114,6 @@ de Personas{% endblock %} {% block extra_css %}
             </div>
           </div>
 
-          <!-- Credenciales por defecto -->
           <div class="info-box" id="defaultCredentials">
             <small>
               <strong>Credenciales por defecto:</strong><br />
@@ -131,7 +123,6 @@ de Personas{% endblock %} {% block extra_css %}
           </div>
         </div>
 
-        <!-- Formulario Auth0 (oculto por defecto) -->
         <div id="auth0Form" style="display: none">
           <button
             type="button"
@@ -151,7 +142,6 @@ de Personas{% endblock %} {% block extra_css %}
         </div>
       </form>
 
-      <!-- FORMULARIO DE REGISTRO -->
       <form
         method="POST"
         id="registerFormContainer"
@@ -168,7 +158,6 @@ de Personas{% endblock %} {% block extra_css %}
             placeholder="Elige un nombre de usuario"
             required
           />
-          <!-- Requisitos del username -->
           <div id="username-requirements" class="mt-2" style="display: none">
             <div id="username-length" class="requirement-item">
               <i class="fas fa-circle-notch"></i>
@@ -191,7 +180,6 @@ de Personas{% endblock %} {% block extra_css %}
             placeholder="tu@email.com"
             required
           />
-          <!-- Requisitos del email -->
           <div id="email-requirements" class="mt-2" style="display: none">
             <div id="email-format" class="requirement-item">
               <i class="fas fa-circle-notch"></i>
@@ -210,7 +198,6 @@ de Personas{% endblock %} {% block extra_css %}
             placeholder="Mínimo 8 caracteres"
             required
           />
-          <!-- Requisitos de la contraseña -->
           <div id="password-requirements" class="mt-2" style="display: none">
             <div id="password-length" class="requirement-item">
               <i class="fas fa-circle-notch"></i>
@@ -245,7 +232,6 @@ de Personas{% endblock %} {% block extra_css %}
             placeholder="Repite la contraseña"
             required
           />
-          <!-- Indicador de coincidencia -->
           <div id="password-match-indicator" class="mt-2" style="display: none">
             <div id="password-match" class="requirement-item">
               <i class="fas fa-circle-notch"></i>
@@ -254,7 +240,6 @@ de Personas{% endblock %} {% block extra_css %}
           </div>
         </div>
 
-        <!-- Rate Limit Warning para registro -->
         <div
           id="registerRateLimitWarning"
           class="alert-clean alert-danger"
@@ -291,7 +276,6 @@ de Personas{% endblock %} {% block extra_css %}
     </div>
   </div>
 
-  <!-- Panel Derecho - Ilustración -->
   <div class="login-panel-right">
     <div class="bg-decoration bg-decoration-1"></div>
     <div class="bg-decoration bg-decoration-2"></div>
@@ -312,9 +296,6 @@ de Personas{% endblock %} {% block extra_css %}
 </div>
 {% endblock %} {% block extra_js %}
 <script>
-  // ===========================================================================
-  // FUNCIONES DE CAMBIO ENTRE FORMULARIOS
-  // ===========================================================================
   function showLoginForm() {
     document.getElementById("loginFormContainer").style.display = "block";
     document.getElementById("registerFormContainer").style.display = "none";
@@ -332,7 +313,6 @@ de Personas{% endblock %} {% block extra_css %}
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    // Verificar si debemos mostrar el formulario de registro
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get("mode");
 
@@ -371,10 +351,6 @@ de Personas{% endblock %} {% block extra_css %}
     localRadio.addEventListener("change", toggleForms);
     auth0Radio.addEventListener("change", toggleForms);
 
-    // ===========================================================================
-    // RATE LIMIT COUNTDOWN (LOGIN)
-    // ===========================================================================
-
     function formatTime(seconds) {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
@@ -409,21 +385,17 @@ de Personas{% endblock %} {% block extra_css %}
         .then((response) => response.json())
         .then((data) => {
           if (data.login.blocked) {
-            // Mostrar warning y deshabilitar botón
             rateLimitWarning.style.display = "block";
             rateLimitMessage.textContent = data.login.message;
             loginButton.disabled = true;
 
-            // Iniciar contador regresivo
             let secondsRemaining = data.login.seconds_remaining;
             updateCountdown(secondsRemaining);
 
-            // Limpiar intervalo previo si existe
             if (countdownInterval) {
               clearInterval(countdownInterval);
             }
 
-            // Actualizar cada segundo
             countdownInterval = setInterval(() => {
               secondsRemaining--;
               updateCountdown(secondsRemaining);
@@ -431,12 +403,10 @@ de Personas{% endblock %} {% block extra_css %}
               if (secondsRemaining <= 0) {
                 clearInterval(countdownInterval);
                 countdownInterval = null;
-                // Verificar de nuevo el estado
                 setTimeout(checkRateLimitStatus, 1000);
               }
             }, 1000);
           } else {
-            // No hay bloqueo
             rateLimitWarning.style.display = "none";
             loginButton.disabled = false;
             if (countdownInterval) {
@@ -450,26 +420,20 @@ de Personas{% endblock %} {% block extra_css %}
         });
     }
 
-    // Verificar estado al cargar la página
     checkRateLimitStatus();
 
-    // Verificar periódicamente cada 5 segundos (solo si no hay countdown activo)
     setInterval(() => {
       if (!countdownInterval) {
         checkRateLimitStatus();
       }
     }, 5000);
 
-    // ===========================================================================
-    // VALIDACIONES DEL FORMULARIO DE REGISTRO
-    // ===========================================================================
     const regUsername = document.getElementById("reg_username");
     const regEmail = document.getElementById("reg_email");
     const regPassword = document.getElementById("reg_password");
     const regConfirmPassword = document.getElementById("reg_confirm_password");
     const registerButton = document.getElementById("registerButton");
 
-    // Validación de Username
     regUsername.addEventListener("input", function () {
       const username = this.value;
       const requirementsDiv = document.getElementById("username-requirements");
@@ -479,7 +443,6 @@ de Personas{% endblock %} {% block extra_css %}
       if (username.length > 0) {
         requirementsDiv.style.display = "block";
 
-        // Validar longitud (mínimo 3 caracteres)
         if (username.length >= 3) {
           lengthItem.classList.remove("invalid");
           lengthItem.classList.add("valid");
@@ -488,7 +451,6 @@ de Personas{% endblock %} {% block extra_css %}
           lengthItem.classList.add("invalid");
         }
 
-        // Validar formato (solo letras minúsculas, números y guión bajo)
         const formatRegex = /^[a-z0-9_]+$/;
         if (formatRegex.test(username)) {
           formatItem.classList.remove("invalid");
@@ -504,7 +466,6 @@ de Personas{% endblock %} {% block extra_css %}
       }
     });
 
-    // Validación de Email
     regEmail.addEventListener("input", function () {
       const email = this.value;
       const requirementsDiv = document.getElementById("email-requirements");
@@ -513,7 +474,6 @@ de Personas{% endblock %} {% block extra_css %}
       if (email.length > 0) {
         requirementsDiv.style.display = "block";
 
-        // Validar formato de email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (emailRegex.test(email)) {
           formatItem.classList.remove("invalid");
@@ -528,7 +488,6 @@ de Personas{% endblock %} {% block extra_css %}
       }
     });
 
-    // Validación de Contraseña
     regPassword.addEventListener("input", function () {
       const password = this.value;
       const requirementsDiv = document.getElementById("password-requirements");
@@ -541,7 +500,6 @@ de Personas{% endblock %} {% block extra_css %}
       if (password.length > 0) {
         requirementsDiv.style.display = "block";
 
-        // Validar longitud
         if (password.length >= 8) {
           lengthItem.classList.remove("invalid");
           lengthItem.classList.add("valid");
@@ -550,7 +508,6 @@ de Personas{% endblock %} {% block extra_css %}
           lengthItem.classList.add("invalid");
         }
 
-        // Validar letra minúscula
         if (/[a-z]/.test(password)) {
           lowercaseItem.classList.remove("invalid");
           lowercaseItem.classList.add("valid");
@@ -559,7 +516,6 @@ de Personas{% endblock %} {% block extra_css %}
           lowercaseItem.classList.add("invalid");
         }
 
-        // Validar letra mayúscula
         if (/[A-Z]/.test(password)) {
           uppercaseItem.classList.remove("invalid");
           uppercaseItem.classList.add("valid");
@@ -568,7 +524,6 @@ de Personas{% endblock %} {% block extra_css %}
           uppercaseItem.classList.add("invalid");
         }
 
-        // Validar número
         if (/[0-9]/.test(password)) {
           numberItem.classList.remove("invalid");
           numberItem.classList.add("valid");
@@ -577,7 +532,6 @@ de Personas{% endblock %} {% block extra_css %}
           numberItem.classList.add("invalid");
         }
 
-        // Validar carácter especial
         if (/[@$!%*?&]/.test(password)) {
           specialItem.classList.remove("invalid");
           specialItem.classList.add("valid");
@@ -594,13 +548,11 @@ de Personas{% endblock %} {% block extra_css %}
         specialItem.classList.remove("valid", "invalid");
       }
 
-      // Validar coincidencia si ya hay algo en confirmar contraseña
       if (regConfirmPassword.value.length > 0) {
         validatePasswordMatch();
       }
     });
 
-    // Validación de Confirmar Contraseña
     regConfirmPassword.addEventListener("input", validatePasswordMatch);
 
     function validatePasswordMatch() {
@@ -625,9 +577,6 @@ de Personas{% endblock %} {% block extra_css %}
       }
     }
 
-    // ===========================================================================
-    // RATE LIMIT COUNTDOWN (REGISTRO)
-    // ===========================================================================
     const registerRateLimitWarning = document.getElementById(
       "registerRateLimitWarning"
     );
@@ -694,7 +643,6 @@ de Personas{% endblock %} {% block extra_css %}
         });
     }
 
-    // Verificar rate limit de registro periódicamente
     setInterval(() => {
       if (
         !registerCountdownInterval &&
@@ -707,13 +655,11 @@ de Personas{% endblock %} {% block extra_css %}
   });
 
   function loginWithAuth0() {
-    // Mostrar indicador de carga
     const button = event.target;
     const originalText = button.innerHTML;
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirigiendo...';
     button.disabled = true;
 
-    // Redirigir a Auth0
     window.location.href = '{{ url_for("auth0_login") }}';
   }
 </script>

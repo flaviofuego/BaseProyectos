@@ -62,19 +62,19 @@ dev:
 
 # Stop all services
 down:
-	@echo "🔄 Creating automatic backup before stopping..."
+	@echo "Creating automatic backup before stopping..."
 	@docker exec personas_db bash /backups/backup.sh 2>/dev/null || true
-	@echo "⬇️  Stopping services..."
+	@echo "Stopping services..."
 	docker-compose down
-	@echo "✅ Services stopped!"
+	@echo "Services stopped!"
 
 # Stop development services
 down-dev:
-	@echo "🔄 Creating automatic backup before stopping..."
+	@echo "Creating automatic backup before stopping..."
 	@docker exec personas_db bash /backups/backup.sh 2>/dev/null || true
-	@echo "⬇️  Stopping development services..."
+	@echo "Stopping development services..."
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
-	@echo "✅ Development services stopped!"
+	@echo "Development services stopped!"
 
 # Show logs
 logs:
@@ -151,42 +151,42 @@ test-nlp:
 
 # Database management commands
 db-backup:
-	@echo "📦 Creating database backup..."
+	@echo "Creating database backup..."
 	@docker exec personas_db bash /backups/backup.sh
-	@echo "✅ Backup created successfully!"
+	@echo "Backup created successfully!"
 
 db-restore:
-	@echo "♻️  Restoring database from backup..."
+	@echo "Restoring database from backup..."
 	@docker exec personas_db bash /backups/restore.sh
-	@echo "✅ Database restored successfully!"
+	@echo "Database restored successfully!"
 
 db-reset:
-	@echo "⚠️  WARNING: This will delete all data and restore from backup!"
+	@echo "WARNING: This will delete all data and restore from backup!"
 	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
 	@sleep 5
-	@echo "🗑️  Dropping all tables..."
+	@echo "Dropping all tables..."
 	@docker exec personas_db psql -U admin -d personas_db -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-	@echo "♻️  Restoring from backup..."
+	@echo "Restoring from backup..."
 	@docker exec personas_db bash /backups/restore.sh
-	@echo "✅ Database reset complete!"
+	@echo "Database reset complete!"
 
 db-migrations:
-	@echo "📋 Applied migrations:"
+	@echo "Applied migrations:"
 	@docker exec personas_db psql -U admin -d personas_db -c "CREATE TABLE IF NOT EXISTS schema_migrations (id SERIAL PRIMARY KEY, migration_name VARCHAR(255) UNIQUE NOT NULL, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);" > /dev/null 2>&1 || true
 	@docker exec personas_db psql -U admin -d personas_db -c "SELECT migration_name, applied_at FROM schema_migrations ORDER BY applied_at;"
 
 db-status:
-	@echo "📊 Database Statistics:"
+	@echo "Database Statistics:"
 	@echo ""
-	@echo "👥 Users:"
+	@echo "Users:"
 	@docker exec personas_db psql -U admin -d personas_db -c "SELECT COUNT(*) as total_users FROM users;"
 	@echo ""
-	@echo "👤 Personas:"
+	@echo "Personas:"
 	@docker exec personas_db psql -U admin -d personas_db -c "SELECT COUNT(*) as total_personas FROM personas;"
 	@echo ""
-	@echo "📋 Tables:"
+	@echo "Tables:"
 	@docker exec personas_db psql -U admin -d personas_db -c "SELECT schemaname, tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;"
 	@echo ""
-	@echo "🔄 Migrations:"
+	@echo "Migrations:"
 	@docker exec personas_db psql -U admin -d personas_db -c "CREATE TABLE IF NOT EXISTS schema_migrations (id SERIAL PRIMARY KEY, migration_name VARCHAR(255) UNIQUE NOT NULL, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);" > /dev/null 2>&1 || true
 	@docker exec personas_db psql -U admin -d personas_db -c "SELECT COUNT(*) as applied_migrations FROM schema_migrations;"
