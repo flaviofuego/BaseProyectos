@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Node.js / JavaScript
+node_modules/
+**/node_modules/
+coverage/
+coverage-integration/
+.nyc_output/
+*.log

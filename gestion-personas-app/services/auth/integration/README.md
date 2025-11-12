@@ -337,25 +337,96 @@ Es normal con contenedores. Asegúrate de:
 ## 🎯 Escenarios Implementados
 
 ### ✅ **Escenario 1: Registro y Login Completo**
+
 - **Archivo**: `auth-flow.integration.test.js`
 - **Tests**: 14 tests
 - **Tiempo**: ~40-60 segundos
 - **Cobertura**: Registro, Login, Validaciones, Redis sessions
 
 ### ✅ **Escenario 2: CRUD de Persona con JWT**
+
 - **Archivo**: `personas-crud.integration.test.js`
 - **Tests**: 15 tests
 - **Tiempo**: ~50-70 segundos
 - **Cobertura**: Auth → JWT → Crear Persona → Consultar → Validaciones
 
-### ⏳ **Próximos Escenarios**
+### ✅ **Escenario 3: Consulta NLP End-to-End**
 
-3. **Consulta NLP end-to-end** (NLP Service → PostgreSQL)
-4. **Service Registry discovery** (Registry → Personas Service)
-5. **Búsqueda con cache** (Consulta Service → PostgreSQL + Redis)
+- **Archivo**: `nlp-query.integration.test.js`
+- **Tests**: 18+ tests
+- **Tiempo**: ~40-60 segundos
+- **Cobertura**: Consultas NL → PostgreSQL → Respuestas → Logs → Estadísticas
+- **Características**:
+  - ✅ Consulta persona más joven/vieja
+  - ✅ Conteo de personas por criterios
+  - ✅ Estadísticas generales
+  - ✅ Validaciones de entrada
+  - ✅ Verificación de consultas SQL
+  - ✅ Múltiples consultas consecutivas
+  - ✅ Mock de Gemini API (usa fallback local)
+
+### ✅ **Escenario 4: Service Registry Discovery**
+
+- **Ubicación**: `services/registry/integration/`
+- **Características**:
+  - ✅ Registro de servicios (Auth, Personas, NLP)
+- **Ubicación**: `services/consulta/integration/`
+  - ✅ Estadísticas del registry
+  - ✅ Ciclo de vida completo
+
+### ✅ **Escenario 5: Búsqueda con Cache**
+
+**Tiempo total**: ~3-4 minutos (todos los escenarios)
+
+- **Archivo**: `cache-search.integration.test.js`
+- **Tests**: 15+ tests
+
+## 📁 Estructura de Tests por Servicio
+
+Los tests de integración están organizados por servicio:
+
+```
+services/
+  auth/integration/          # Tests 1-3
+    ├── auth-flow.integration.test.js
+    ├── personas-crud.integration.test.js
+    └── nlp-query.integration.test.js
+
+  registry/integration/      # Test 4
+    └── service-registry.integration.test.js
+
+  consulta/integration/      # Test 5
+    └── cache-search.integration.test.js
+```
+
+**Ventajas de esta estructura:**
+
+- ✅ Cada servicio tiene sus propias dependencias
+- ✅ Tests ejecutan código del servicio directamente
+- ✅ No hay conflictos de `node_modules`
+- ✅ Fácil mantenimiento y escalabilidad
+
+- **Cobertura**: Consulta Service → PostgreSQL + Redis → Cache TTL
+- **Características**:
+  - ✅ Cache miss (primera llamada desde DB)
+    **Resultado**: Infraestructura completa de pruebas de integración distribuida por servicios
+  - ✅ Verificación de TTL (300s para stats, 30s para dashboard)
+  - ✅ Invalidación de cache selectiva
+  - ✅ Comparación de performance (DB vs Cache)
+  - ✅ Múltiples requests concurrentes
+  - ✅ Consistencia de datos entre DB y Cache
+  - ✅ Manejo de cache miss y errores
+
+---
+
+## 📊 Resumen de Cobertura
+
+**Total de tests**: 80+ integration tests  
+**Tiempo total**: ~3-4 minutos (todos los escenarios)  
+**Tecnologías**: Testcontainers, Jest, Supertest, PostgreSQL, Redis, Express
 
 ---
 
 **Nivel de esfuerzo**: 15% (Medio)  
-**Estado**: ✅ 2 de 5 escenarios completados (40%)  
-**Siguiente**: Escenario 3 - Consulta NLP
+**Estado**: ✅ 5 de 5 escenarios completados (100%)  
+**Resultado**: Infraestructura completa de pruebas de integración

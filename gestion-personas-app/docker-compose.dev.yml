@@ -16,7 +16,7 @@ services:
 
   # API Gateway - Development Override
   gateway:
-    build: 
+    build:
       context: ./gateway
       dockerfile: Dockerfile.dev
     container_name: api_gateway_dev
@@ -39,7 +39,7 @@ services:
       - ./services/auth:/app
       - ./services/shared:/app/shared
       - /app/node_modules
-      - //var/run/docker.sock:/var/run/docker.sock  # Docker socket para control de contenedores (Windows)
+      - //var/run/docker.sock:/var/run/docker.sock # Docker socket para control de contenedores (Windows)
     environment:
       - NODE_ENV=development
       - JWT_SECRET=${JWT_SECRET}
@@ -85,12 +85,13 @@ services:
       - ./services/consulta:/app
       - /app/node_modules
       - ./services/shared:/app/shared
+      - //var/run/docker.sock:/var/run/docker.sock # Docker socket para Testcontainers (Windows)
     environment:
       - NODE_ENV=development
       - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
       - LOG_SERVICE_URL=${LOG_SERVICE_URL}
     deploy:
-      replicas: 1  # Override to 1 replica for development
+      replicas: 1 # Override to 1 replica for development
     networks:
       - app-network
 
