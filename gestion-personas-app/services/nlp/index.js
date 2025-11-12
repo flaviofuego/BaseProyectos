@@ -716,6 +716,10 @@ nlpService.start();
 // Manejo de cierre graceful
 process.on('SIGTERM', async () => {
   console.log('\n🔄 Cerrando servicio...');
+  if (nlpService.syncInterval) {
+    clearInterval(nlpService.syncInterval);
+    console.log('⏰ Sincronización periódica detenida');
+  }
   await nlpService.pool.end();
   process.exit(0);
 });

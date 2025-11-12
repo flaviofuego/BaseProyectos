@@ -76,6 +76,7 @@ services:
       - NODE_ENV=development
       - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
       - LOG_SERVICE_URL=${LOG_SERVICE_URL}
+      - NLP_SERVICE_URL=${NLP_SERVICE_URL}
     networks:
       - app-network
 

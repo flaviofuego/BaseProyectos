@@ -57,6 +57,45 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 
+// NLP Service URL configuration
+const NLP_SERVICE_URL = process.env.NLP_SERVICE_URL || 'http://nlp-service:3004';
+
+/**
+ * Sincroniza el embedding de una persona con el servicio NLP
+ * @param {number} personaId - ID de la persona
+ * @param {string} operation - Operación realizada (CREATE, UPDATE, DELETE)
+ * @returns {Promise<void>}
+ */
+const syncEmbedding = async (personaId, operation = 'UPDATE') => {
+  try {
+    if (operation === 'DELETE') {
+      // Para DELETE, el trigger CASCADE en la DB eliminará el embedding automáticamente
+      console.log(`🗑️ Embedding eliminado automáticamente por CASCADE para persona ${personaId}`);
+      return;
+    }
+
+    console.log(`🔄 Sincronizando embedding para persona ${personaId} (${operation})...`);
+    
+    const response = await axios.post(
+      `${NLP_SERVICE_URL}/update-embedding`,
+      { persona_id: personaId },
+      { 
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    
+    if (response.data.success) {
+      console.log(`✅ Embedding sincronizado exitosamente para persona ${personaId}`);
+    }
+  } catch (error) {
+    // No fallar la operación principal si falla la sincronización de embeddings
+    // El cronjob automático del NLP service lo sincronizará después
+    console.warn(`⚠️ Error sincronizando embedding para persona ${personaId}:`, error.message);
+    console.log('ℹ️ El embedding se sincronizará automáticamente en el próximo ciclo del NLP service');
+  }
+};
+
 // Multer configuration for file uploads (images)
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -274,6 +313,11 @@ app.post('/', upload.single('foto'), async (req, res) => {
     // Log successful creation
     await logTransaction('CREATE', persona.id, numero_documento, null, 'SUCCESS', req, persona);
 
+    // Sincronizar embedding con NLP service (no bloqueante)
+    syncEmbedding(persona.id, 'CREATE').catch(err => 
+      console.error('Error en sincronización async:', err.message)
+    );
+
     res.status(201).json({
       message: 'Persona creada exitosamente',
       persona
@@ -319,7 +363,8 @@ app.post('/bulk-upload', uploadCSV.single('csv_file'), async (req, res) => {
       created: 0,
       failed: [],
       duplicates: [],
-      validation_errors: []
+      validation_errors: [],
+      created_ids: [] // Para sincronizar embeddings
     };
 
     // Process each record
@@ -380,6 +425,7 @@ app.post('/bulk-upload', uploadCSV.single('csv_file'), async (req, res) => {
         );
 
         results.created++;
+        results.created_ids.push(insertResult.rows[0].id); // Guardar ID para sincronizar embedding
         
         // Log successful creation
         await logTransaction('CREATE_BULK', insertResult.rows[0].id, record.numero_documento, null, 'SUCCESS', req);
@@ -395,6 +441,23 @@ app.post('/bulk-upload', uploadCSV.single('csv_file'), async (req, res) => {
 
     // Log bulk upload transaction
     await logTransaction('BULK_UPLOAD', null, null, null, 'SUCCESS', req, results);
+
+    // Sincronizar embeddings para personas creadas exitosamente (en background)
+    if (results.created > 0 && results.created_ids.length > 0) {
+      console.log(`🔄 Iniciando sincronización de ${results.created} embeddings en background...`);
+      // Sincronizar en background sin bloquear la respuesta
+      Promise.all(
+        results.created_ids.map(personaId => 
+          syncEmbedding(personaId, 'CREATE').catch(err => 
+            console.error(`Error sincronizando persona ${personaId}:`, err.message)
+          )
+        )
+      ).then(() => {
+        console.log(`✅ Sincronización de embeddings completada para bulk upload`);
+      }).catch(err => {
+        console.error('Error en sincronización masiva:', err.message);
+      });
+    }
 
     res.status(200).json({
       message: 'Carga masiva completada',
@@ -525,6 +588,11 @@ app.put('/:numero_documento', upload.single('foto'), async (req, res) => {
 
     // Log successful update
     await logTransaction('UPDATE', persona.id, numero_documento, null, 'SUCCESS', req, persona);
+
+    // Sincronizar embedding con NLP service (no bloqueante)
+    syncEmbedding(persona.id, 'UPDATE').catch(err => 
+      console.error('Error en sincronización async:', err.message)
+    );
 
     // Add headers to prevent caching
     res.set({
