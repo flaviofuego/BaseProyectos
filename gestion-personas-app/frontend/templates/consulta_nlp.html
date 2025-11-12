@@ -10,86 +10,107 @@
         background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
         border: 1px solid #e9ecef;
         border-left: 5px solid #198754;
-        border-radius: 10px;
-        padding: 30px;
+        border-radius: 12px;
+        padding: 40px;
         margin: 0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.08);
         min-height: 200px;
     }
     
     .markdown-response h1 {
         color: #198754;
-        font-size: 1.8rem;
+        font-size: 2rem;
         font-weight: 700;
         margin-top: 0;
-        margin-bottom: 20px;
-        padding-bottom: 10px;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
         border-bottom: 3px solid #198754;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
     }
     
     .markdown-response h2 {
         color: #20c997;
-        font-size: 1.5rem;
+        font-size: 1.65rem;
         font-weight: 600;
-        margin-top: 30px;
-        margin-bottom: 15px;
-        padding-bottom: 8px;
+        margin-top: 35px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
         border-bottom: 2px solid #20c997;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
     }
     
     .markdown-response h3 {
         color: #198754;
-        font-size: 1.3rem;
+        font-size: 1.4rem;
         font-weight: 600;
-        margin-top: 25px;
-        margin-bottom: 12px;
+        margin-top: 28px;
+        margin-bottom: 15px;
     }
     
     .markdown-response h4,
     .markdown-response h5,
     .markdown-response h6 {
         color: #495057;
-        margin-top: 20px;
-        margin-bottom: 10px;
+        margin-top: 22px;
+        margin-bottom: 12px;
+        font-weight: 600;
     }
     
     .markdown-response p {
-        line-height: 1.8;
-        margin-bottom: 15px;
+        line-height: 1.9;
+        margin-bottom: 18px;
         color: #212529;
-        font-size: 1.05rem;
+        font-size: 1.08rem;
     }
     
     .markdown-response table {
         width: 100%;
-        margin: 20px 0;
+        margin: 35px auto;
         border-collapse: separate;
         border-spacing: 0;
         background: white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        border-radius: 8px;
-        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        border-radius: 12px;
+        overflow: visible;
+        font-size: 1.05rem;
+        border: 2px solid #dee2e6;
     }
     
     .markdown-response table thead {
         background: linear-gradient(135deg, #198754 0%, #20c997 100%);
         color: white;
+        border-bottom: 3px solid #0d6832;
     }
     
     .markdown-response table th {
-        padding: 15px;
+        padding: 24px 32px;
         text-align: left;
-        font-weight: 600;
-        font-size: 0.95rem;
+        font-weight: 700;
+        font-size: 1.05rem;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border: none;
+        letter-spacing: 1px;
+        border-right: 2px solid rgba(255, 255, 255, 0.2);
+        white-space: nowrap;
+        min-width: 120px;
+    }
+    
+    .markdown-response table th:last-child {
+        border-right: none;
     }
     
     .markdown-response table td {
-        padding: 12px 15px;
-        border-bottom: 1px solid #e9ecef;
+        padding: 22px 32px;
+        border-bottom: 1px solid #dee2e6;
+        border-right: 1px solid #e9ecef;
         color: #495057;
+        font-size: 1.02rem;
+        vertical-align: middle;
+        line-height: 1.6;
+        min-width: 100px;
+    }
+    
+    .markdown-response table td:last-child {
+        border-right: none;
     }
     
     .markdown-response table tbody tr:nth-child(even) {
@@ -98,28 +119,62 @@
     
     .markdown-response table tbody tr:hover {
         background-color: #e7f5ef;
-        transition: background-color 0.2s ease;
+        transition: background-color 0.3s ease;
+        transform: scale(1.002);
+        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.15);
     }
     
     .markdown-response table tbody tr:last-child td {
+        border-bottom: 2px solid #198754;
+    }
+    
+    /* Mejoras adicionales para las tablas */
+    .markdown-response table tbody tr {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .markdown-response table td:first-child {
+        font-weight: 600;
+        color: #212529;
+        background: linear-gradient(90deg, rgba(25, 135, 84, 0.03) 0%, transparent 100%);
+    }
+    
+    /* Estilo especial para la fila de totales */
+    .markdown-response table tbody tr:last-child {
+        background: linear-gradient(135deg, rgba(25, 135, 84, 0.08) 0%, rgba(32, 201, 151, 0.08) 100%);
+        font-weight: 600;
+        border-top: 2px solid #198754;
+    }
+    
+    .markdown-response table tbody tr:last-child td {
+        font-weight: 700;
+        color: #198754;
         border-bottom: none;
     }
     
     .markdown-response ul,
     .markdown-response ol {
-        margin: 15px 0;
-        padding-left: 30px;
-        line-height: 1.8;
+        margin: 20px 0;
+        padding-left: 35px;
+        line-height: 2;
     }
     
     .markdown-response li {
-        margin: 8px 0;
+        margin: 12px 0;
         color: #495057;
+        font-size: 1.05rem;
+    }
+    
+    .markdown-response li::marker {
+        color: #198754;
+        font-weight: bold;
     }
     
     .markdown-response strong {
         color: #198754;
         font-weight: 700;
+        font-size: 1.05em;
     }
     
     .markdown-response em {
@@ -128,23 +183,25 @@
     }
     
     .markdown-response code {
-        background: #f1f3f5;
+        background: linear-gradient(135deg, #f1f3f5 0%, #e9ecef 100%);
         color: #d63384;
-        padding: 3px 8px;
-        border-radius: 4px;
+        padding: 4px 10px;
+        border-radius: 5px;
         font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-        font-size: 0.9em;
-        border: 1px solid #e9ecef;
+        font-size: 0.92em;
+        border: 1px solid #dee2e6;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     
     .markdown-response pre {
-        background: #2d2d2d;
+        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
         color: #f8f8f2;
-        padding: 20px;
-        border-radius: 8px;
+        padding: 25px;
+        border-radius: 10px;
         overflow-x: auto;
-        margin: 20px 0;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        margin: 25px 0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border: 1px solid #404040;
     }
     
     .markdown-response pre code {
@@ -152,47 +209,83 @@
         color: inherit;
         padding: 0;
         border: none;
-        font-size: 0.9rem;
+        font-size: 0.92rem;
+        box-shadow: none;
     }
     
     .markdown-response blockquote {
         border-left: 5px solid #198754;
-        padding-left: 20px;
-        padding-right: 20px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        margin: 20px 0;
-        background: #f8f9fa;
-        color: #6c757d;
+        padding: 20px 25px;
+        margin: 25px 0;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        color: #495057;
         font-style: italic;
-        border-radius: 0 8px 8px 0;
+        border-radius: 0 10px 10px 0;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        font-size: 1.05rem;
+        line-height: 1.8;
     }
     
     .markdown-response hr {
         border: none;
-        border-top: 2px solid #e9ecef;
-        margin: 30px 0;
+        border-top: 2px solid #dee2e6;
+        margin: 40px 0;
+        opacity: 0.5;
     }
     
     .markdown-response a {
         color: #198754;
         text-decoration: none;
-        border-bottom: 1px dotted #198754;
-        transition: all 0.2s ease;
+        border-bottom: 2px dotted #198754;
+        transition: all 0.3s ease;
+        font-weight: 500;
     }
     
     .markdown-response a:hover {
         color: #20c997;
         border-bottom-style: solid;
+        border-bottom-width: 2px;
+    }
+    
+    /* Estilos para elementos de resumen y detalles */
+    .markdown-response .summary-box {
+        background: linear-gradient(135deg, #e7f5ef 0%, #d4edda 100%);
+        border: 2px solid #198754;
+        border-radius: 10px;
+        padding: 25px;
+        margin: 25px 0;
+        box-shadow: 0 4px 10px rgba(25, 135, 84, 0.15);
+    }
+    
+    .markdown-response .summary-box h4 {
+        color: #198754;
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 1.25rem;
+    }
+    
+    /* Estilos para totales y métricas destacadas */
+    .markdown-response p strong {
+        display: inline-block;
+        padding: 2px 6px;
+        background: rgba(25, 135, 84, 0.1);
+        border-radius: 4px;
     }
     
     .metadata-badge {
         display: inline-block;
-        padding: 5px 10px;
+        padding: 8px 16px;
         margin: 5px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
+        border-radius: 25px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .metadata-badge:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
     
     .loading-spinner {
@@ -207,6 +300,137 @@
     
     @keyframes spin {
         to { transform: rotate(360deg); }
+    }
+    
+    /* Contenedor con scroll horizontal para tablas grandes */
+    .table-responsive-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: visible;
+    }
+    
+    .table-responsive-wrapper::-webkit-scrollbar {
+        height: 10px;
+    }
+    
+    .table-responsive-wrapper::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .table-responsive-wrapper::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+        border-radius: 10px;
+    }
+    
+    .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #0d6832 0%, #17a085 100%);
+    }
+    
+    /* Responsive para tablas en móviles */
+    @media (max-width: 768px) {
+        .markdown-response table {
+            font-size: 0.95rem;
+        }
+        
+        .markdown-response table th {
+            padding: 16px 20px;
+            font-size: 0.95rem;
+            min-width: 100px;
+        }
+        
+        .markdown-response table td {
+            padding: 14px 20px;
+            font-size: 0.92rem;
+            min-width: 90px;
+        }
+        
+        .markdown-response {
+            padding: 25px 20px;
+        }
+    }
+    
+    /* Para pantallas extra grandes, aumentar aún más el espaciado */
+    @media (min-width: 1400px) {
+        .markdown-response table th {
+            padding: 26px 40px;
+            font-size: 1.1rem;
+        }
+        
+        .markdown-response table td {
+            padding: 24px 40px;
+            font-size: 1.05rem;
+        }
+    }
+    
+    /* Animación suave de aparición */
+    .markdown-response {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Estilos para consultas estructuradas */
+    .example-query-structured {
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
+        border-left: 4px solid #198754;
+        padding: 15px 20px;
+        margin: 12px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    
+    .example-query-structured:hover {
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(32, 201, 151, 0.15));
+        transform: translateX(5px);
+        box-shadow: 0 4px 10px rgba(25, 135, 84, 0.2);
+    }
+    
+    .example-query-structured strong {
+        color: #198754;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    
+    .example-query-structured i {
+        font-size: 1.1rem;
+        margin-right: 8px;
+    }
+    
+    /* Estilos para la sección de ejemplos */
+    .example-question {
+        transition: all 0.3s ease;
+    }
+    
+    /* Mejoras para el formulario */
+    textarea#pregunta:focus {
+        border-color: #20c997 !important;
+        box-shadow: 0 0 0 0.2rem rgba(32, 201, 151, 0.25) !important;
+    }
+    
+    /* Badge de resultados con animación */
+    .badge.bg-success {
+        animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.85;
+        }
     }
 </style>
 {% endblock %}
@@ -234,29 +458,29 @@
                 <div class="row">
                     <div class="col-md-6">
                         <ul class="list-unstyled">
-                            <li class="mb-2">
+                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
                                 <i class="fas fa-chevron-right text-info"></i>
-                                ¿Cuál es el empleado más joven que se ha registrado?
+                                <span class="ms-2">¿Cuál es el empleado más joven que se ha registrado?</span>
                             </li>
-                            <li class="mb-2">
+                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
                                 <i class="fas fa-chevron-right text-info"></i>
-                                ¿Cuántas personas de género femenino hay en el sistema?
+                                <span class="ms-2">¿Cuántas personas de género femenino hay en el sistema?</span>
                             </li>
-                            <li class="mb-2">
+                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
                                 <i class="fas fa-chevron-right text-info"></i>
-                                Muéstrame las estadísticas generales del sistema
+                                <span class="ms-2">Muéstrame las estadísticas generales del sistema</span>
                             </li>
                         </ul>
                     </div>
                     <div class="col-md-6">
                         <ul class="list-unstyled">
-                            <li class="mb-2">
+                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
                                 <i class="fas fa-chevron-right text-info"></i>
-                                ¿Quién es la persona más vieja registrada?
+                                <span class="ms-2">¿Quién es la persona más vieja registrada?</span>
                             </li>
-                            <li class="mb-2">
+                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
                                 <i class="fas fa-chevron-right text-info"></i>
-                                ¿Cuántas personas hay con cédula?
+                                <span class="ms-2">¿Cuántas personas hay con cédula?</span>
                             </li>
                         </ul>
                         
@@ -301,27 +525,33 @@
 <!-- Formulario de consulta -->
 <div class="row justify-content-center">
     <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Hacer una pregunta</h5>
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #198754 0%, #20c997 100%);">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-comment-dots"></i> Hacer una pregunta
+                </h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <form method="POST">
                     <div class="mb-3">
-                        <label for="pregunta" class="form-label">Escribe tu pregunta:</label>
-                        <textarea class="form-control" id="pregunta" name="pregunta" rows="4" 
+                        <label for="pregunta" class="form-label fw-bold text-success">
+                            <i class="fas fa-pen"></i> Escribe tu pregunta:
+                        </label>
+                        <textarea class="form-control shadow-sm" id="pregunta" name="pregunta" rows="5" 
                                   placeholder="Ejemplo: ¿Cuál es el empleado más joven que se ha registrado?"
+                                  style="font-size: 1.05rem; border: 2px solid #e9ecef; border-radius: 8px; resize: vertical;"
                                   required>{{ request.form.pregunta if request.form.pregunta }}</textarea>
-                        <div class="form-text">
+                        <div class="form-text mt-2">
+                            <i class="fas fa-info-circle text-success"></i>
                             Puedes hacer preguntas en español sobre las personas registradas en el sistema.
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary shadow-sm">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-success shadow-sm px-4" style="font-weight: 600;">
                             <i class="fas fa-paper-plane"></i> Enviar Pregunta
                         </button>
                     </div>
@@ -365,14 +595,21 @@
 
                 <!-- Sección 2: Respuesta HTML generada por la IA (pre-renderizada en el servidor) -->
                 <div class="mb-4">
-                    <div class="d-flex align-items-center mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
                         <h5 class="mb-0">
                             <i class="fas fa-magic text-success"></i> Respuesta de la IA
                         </h5>
+                        {% if resultado.metadata and resultado.metadata.results_count %}
+                        <span class="badge bg-success" style="font-size: 0.9rem; padding: 8px 16px;">
+                            <i class="fas fa-database"></i> {{ resultado.metadata.results_count }} resultados
+                        </span>
+                        {% endif %}
                     </div>
-                    <div class="markdown-response shadow-sm">
-                        <!-- Contenido HTML pre-renderizado y sanitizado desde el servidor -->
-                        {{ resultado.html | safe }}
+                    <div class="table-responsive-wrapper">
+                        <div class="markdown-response shadow">
+                            <!-- Contenido HTML pre-renderizado y sanitizado desde el servidor -->
+                            {{ resultado.html | safe }}
+                        </div>
                     </div>
                 </div>
                 
@@ -411,19 +648,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Example questions click handler (tradicionales)
-    const exampleQuestions = document.querySelectorAll('.card-body ul li');
+    const exampleQuestions = document.querySelectorAll('.example-question');
     exampleQuestions.forEach(function(li) {
-        li.style.cursor = 'pointer';
         li.addEventListener('click', function() {
-            const questionText = this.textContent.trim();
+            const questionText = this.querySelector('span').textContent.trim();
             preguntaField.value = questionText;
             preguntaField.focus();
             
-            // Añadir efecto visual
-            li.style.background = 'rgba(13, 110, 253, 0.1)';
+            // Añadir efecto visual mejorado
+            li.style.background = 'linear-gradient(135deg, rgba(13, 202, 240, 0.2), rgba(13, 110, 253, 0.15))';
+            li.style.transform = 'translateX(5px)';
+            li.style.boxShadow = '0 2px 8px rgba(13, 110, 253, 0.3)';
             setTimeout(() => {
                 li.style.background = '';
-            }, 300);
+                li.style.transform = '';
+                li.style.boxShadow = '';
+            }, 400);
+        });
+        
+        // Hover effect
+        li.addEventListener('mouseenter', function() {
+            this.style.background = 'rgba(13, 110, 253, 0.05)';
+            this.style.transform = 'translateX(3px)';
+        });
+        
+        li.addEventListener('mouseleave', function() {
+            this.style.background = '';
+            this.style.transform = '';
         });
     });
 
@@ -550,6 +801,54 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Indicador de scroll horizontal para tablas
+    const tableWrapper = document.querySelector('.table-responsive-wrapper');
+    if (tableWrapper) {
+        const table = tableWrapper.querySelector('table');
+        
+        function checkTableOverflow() {
+            if (table && table.scrollWidth > tableWrapper.clientWidth) {
+                // Crear indicador de scroll si no existe
+                let scrollIndicator = tableWrapper.querySelector('.scroll-indicator');
+                if (!scrollIndicator) {
+                    scrollIndicator = document.createElement('div');
+                    scrollIndicator.className = 'scroll-indicator';
+                    scrollIndicator.innerHTML = '<i class="fas fa-arrows-alt-h"></i> Desliza para ver más';
+                    scrollIndicator.style.cssText = `
+                        position: absolute;
+                        right: 20px;
+                        top: 10px;
+                        background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 20px;
+                        font-size: 0.85rem;
+                        font-weight: 600;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                        z-index: 10;
+                        animation: pulse 2s ease-in-out infinite;
+                    `;
+                    tableWrapper.style.position = 'relative';
+                    tableWrapper.appendChild(scrollIndicator);
+                    
+                    // Ocultar indicador al hacer scroll
+                    tableWrapper.addEventListener('scroll', function() {
+                        if (scrollIndicator && tableWrapper.scrollLeft > 50) {
+                            scrollIndicator.style.opacity = '0';
+                            scrollIndicator.style.transition = 'opacity 0.3s ease';
+                        } else if (scrollIndicator) {
+                            scrollIndicator.style.opacity = '1';
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Verificar overflow al cargar y al redimensionar
+        checkTableOverflow();
+        window.addEventListener('resize', checkTableOverflow);
+    }
 });    // Quick action buttons para casos sin resultados
     const quickActionButtons = document.querySelectorAll('.quick-action-btn');
     quickActionButtons.forEach(button => {

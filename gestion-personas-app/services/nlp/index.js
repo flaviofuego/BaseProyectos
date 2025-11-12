@@ -71,16 +71,14 @@ Siempre responde en **Markdown formateado profesionalmente**:
 ### Para Listados de Personas:
 - Usa **tablas Markdown** con columnas que consideres relevantes según la consulta
 
-\`\`\`markdown
-## Resultados ejemplo de Búsqueda (15 personas)
+## Resultados de Búsqueda (15 personas)
 
 | Nombre | Edad | Género | Documento |
 |--------|------|--------|-----------|
-| Juan Pérez García | 34 | Masculino | e54655678 |
-| María López Silva | 28 | Femenino | 4543549012 |
+| Juan Pérez García | 34 | Masculino | 12345678 |
+| María López Silva | 28 | Femenino | 45435490 |
 
 *Mostrando 15 de 15 resultados encontrados.*
-\`\`\`
 
 ### Para Estadísticas:
 - Usa **listas con negritas** para métricas clave
@@ -88,7 +86,6 @@ Siempre responde en **Markdown formateado profesionalmente**:
 - Agrega **insights breves** interpretando los datos
 - Ejemplo:
 
-\`\`\`markdown
 ## Análisis Demográfico
 
 **Métricas Generales:**
@@ -103,21 +100,18 @@ Siempre responde en **Markdown formateado profesionalmente**:
 | Masculino | 75 | 50% |
 | Femenino | 70 | 46.7% |
 | No binario | 5 | 3.3% |
-\`\`\`
 
 ### Para Consultas Vacías:
-Si no hay resultados, responde amablemente sugiriendo ajustar la búsqueda:
+Si no hay resultados, responde amablemente:
 
-\`\`\`markdown
 ## Sin Resultados
 
-❌ No se encontraron personas que coincidan con los criterios especificados.
+No se encontraron personas que coincidan con los criterios especificados.
 
 **Sugerencias:**
 - Verifica los filtros aplicados
 - Intenta con criterios más amplios
 - Revisa la ortografía de los nombres
-\`\`\`
 
 ## 🛡️ MANEJO DE CONSULTAS INAPROPIADAS
 Si el usuario pregunta algo fuera de alcance:
@@ -436,7 +430,7 @@ Responde JSON sin markdown:
   performAggregations(results) {
     if (results.length === 0) return [];
 
-    const edades = results.map(r => r.edad).filter(e => e != null);
+    const edades = results.map(r => r.edad).filter(e => e != null).map(e => parseInt(e));
     const aggregations = { total: results.length };
 
     if (edades.length > 0) {
@@ -463,20 +457,25 @@ Responde JSON sin markdown:
     const resultsInfo = JSON.stringify(vectorResults.slice(0, 5), null, 2);
 
     const prompts = {
-      aggregation: `${this.SYSTEM_PROMPT}\n\nTarea: Análisis estadístico de "${query}"\nDatos:\n${resultsInfo}\n\nGenera Markdown con título, métricas en negritas, tablas con porcentajes. Sin código.`,
-      count: `${this.SYSTEM_PROMPT}\n\nTarea: Conteo de "${query}"\nDatos:\n${resultsInfo}\n\nGenera Markdown breve con número en negritas y contexto.`,
-      listing: `${this.SYSTEM_PROMPT}\n\nTarea: Búsqueda "${query}" (${vectorResults.length} resultados)\nMuestra:\n${resultsInfo}\n\nGenera Markdown con tabla, columnas relevantes`
+      aggregation: `${this.SYSTEM_PROMPT}\n\nTarea: Análisis estadístico de "${query}"\nDatos:\n${resultsInfo}\n\n**CRÍTICO**: Genera Markdown PURO (NO uses \`\`\`markdown). Incluye título ##, métricas en negritas, tablas con porcentajes. Responde DIRECTAMENTE en Markdown.`,
+      count: `${this.SYSTEM_PROMPT}\n\nTarea: Conteo de "${query}"\nDatos:\n${resultsInfo}\n\n**CRÍTICO**: Genera Markdown PURO (NO uses \`\`\`). Respuesta breve con número en negritas y contexto.`,
+      listing: `${this.SYSTEM_PROMPT}\n\nTarea: Búsqueda "${query}" (${vectorResults.length} resultados)\nMuestra:\n${resultsInfo}\n\n**CRÍTICO**: Genera Markdown PURO (NO uses \`\`\`markdown). Incluye tabla Markdown con columnas relevantes y total al final.`
     };
 
     const promptType = isAggregation ? 'aggregation' : isCount ? 'count' : 'listing';
 
     try {
-      return await this.callAzureAI({
+      let markdown = await this.callAzureAI({
         systemMessage: this.SYSTEM_PROMPT,
         userMessage: prompts[promptType],
         temperature: this.chatConfig.temperature,
         maxTokens: this.chatConfig.max_tokens
       }) || 'Sin respuesta.';
+      
+      // Limpiar bloques de código markdown si la IA los incluyó
+      markdown = markdown.replace(/```markdown\n?/gi, '').replace(/```\n?$/g, '').trim();
+      
+      return markdown;
     } catch (error) {
       console.error('Error generando markdown:', error.message);
       return this.generateFallbackMarkdown(vectorResults, isCount, isAggregation);
