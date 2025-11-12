@@ -25,9 +25,13 @@ help:
 	@echo "  make db-migrations - List applied migrations"
 	@echo "  make db-status   - Show database statistics"
 	@echo ""
+	@echo "🧪 TESTING COMMANDS:"
+	@echo "  make test-auth   - Run Auth Service tests"
+	@echo "  make test-personas - Run Personas Service tests"
+	@echo "  make test-all    - Run all service tests"
+	@echo ""
 	@echo "🧹 MAINTENANCE COMMANDS:"
 	@echo "  make clean       - Stop services and remove volumes"
-	@echo "  make test        - Run tests"
 	@echo "  make init-db     - Initialize database with sample data"
 	@echo ""
 	@echo "🤖 NLP/AI COMMANDS:"
@@ -89,10 +93,20 @@ clean:
 	docker-compose down -v
 	rm -rf uploads/
 
-# Run tests
-test:
-	@echo "Running tests..."
-	# Add test commands here
+# Run tests for Auth Service
+test-auth:
+	@echo "Running Auth Service tests..."
+	@cd services/auth && bash test.sh
+
+# Run tests for Personas Service
+test-personas:
+	@echo "Running Personas Service tests..."
+	@cd services/personas && bash test.sh
+
+# Run all tests
+test-all:
+	@echo "Running all service tests..."
+	@cd services/auth && bash test.sh && cd ../personas && bash test.sh
 
 # Initialize database with sample data
 init-db:
