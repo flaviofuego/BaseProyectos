@@ -28,6 +28,7 @@ help:
 	@echo "🧪 TESTING COMMANDS:"
 	@echo "  make test-auth   - Run Auth Service tests"
 	@echo "  make test-personas - Run Personas Service tests"
+	@echo "  make test-frontend - Run Frontend tests (Python + JavaScript)"
 	@echo "  make test-all    - Run all service tests"
 	@echo ""
 	@echo "🧹 MAINTENANCE COMMANDS:"
@@ -103,10 +104,15 @@ test-personas:
 	@echo "Running Personas Service tests..."
 	@cd services/personas && bash test.sh
 
+# Run tests for Frontend
+test-frontend:
+	@echo "Running Frontend tests..."
+	@cd frontend && bash test.sh
+
 # Run all tests
 test-all:
 	@echo "Running all service tests..."
-	@cd services/auth && bash test.sh && cd ../personas && bash test.sh
+	@cd services/auth && bash test.sh && cd ../personas && bash test.sh && cd ../../frontend && bash test.sh
 
 # Initialize database with sample data
 init-db:

@@ -9,6 +9,15 @@ gestion-personas-app/
 ├── TESTING-GUIDE.md         📖 Esta guía (único archivo en raíz)
 ├── Makefile                 🔧 Comandos make test-*
 │
+├── frontend/
+│   ├── test.sh              ⭐ Script de tests
+│   ├── TESTS.md             📖 Documentación específica
+│   ├── tests/
+│   │   ├── test_*.py        🐍 Tests Pytest (Flask)
+│   │   └── js/*.test.js     📜 Tests Jest (JavaScript)
+│   ├── .gitignore           🚫 Ignora coverage*/
+│   └── coverage_*/          📊 Reportes (solo si --save-coverage)
+│
 └── services/
     ├── auth/
     │   ├── test.sh          ⭐ Script de tests
@@ -37,7 +46,32 @@ gestion-personas-app/
 
 ## 🚀 Uso Rápido
 
-### **1. Auth Service**
+### **1. Frontend (Flask + JavaScript)**
+
+```bash
+cd frontend
+
+# Todos los tests (Python + JavaScript)
+./test.sh
+
+# Solo Python (Pytest)
+./test.sh --python
+
+# Solo JavaScript (Jest)
+./test.sh --javascript
+
+# Test específico
+./test.sh test_routes.py
+./test.sh theme-manager.test.js
+
+# Con reportes HTML
+./test.sh --save-coverage
+
+# Modo desarrollo (JavaScript)
+./test.sh --watch
+```
+
+### **2. Auth Service**
 
 ```bash
 cd services/auth
@@ -55,7 +89,7 @@ cd services/auth
 ./test.sh --watch
 ```
 
-### **2. Personas Service**
+### **3. Personas Service**
 
 ```bash
 cd services/personas
@@ -82,11 +116,13 @@ cd services/personas
 cd /mnt/c/Users/jhona/Documentos/SoftwareDesignProject/BaseProyectos/gestion-personas-app
 
 # Opción 1: Usando Makefile (recomendado)
+make test-frontend    # Solo Frontend (Python + JavaScript)
 make test-auth        # Solo Auth Service
 make test-personas    # Solo Personas Service
 make test-all         # Todos los servicios
 
 # Opción 2: Directamente en cada servicio
+cd frontend && ./test.sh
 cd services/auth && ./test.sh
 cd services/personas && ./test.sh
 ```
@@ -121,12 +157,14 @@ cd services/personas && ./test.sh
 
 ## 🎨 Opciones de test.sh
 
-| Opción              | Descripción              | Ejemplo                       |
-| ------------------- | ------------------------ | ----------------------------- |
-| _(ninguna)_         | Solo logs, sin archivos  | `./test.sh`                   |
-| `--save-coverage`   | Guarda reportes HTML     | `./test.sh --save-coverage`   |
-| `--watch`           | Modo desarrollo continuo | `./test.sh --watch`           |
-| `<archivo>.test.js` | Test específico          | `./test.sh jwt.token.test.js` |
+| Opción              | Descripción               | Ejemplo                          |
+| ------------------- | ------------------------- | -------------------------------- |
+| _(ninguna)_         | Solo logs, sin archivos   | `./test.sh`                      |
+| `--save-coverage`   | Guarda reportes HTML      | `./test.sh --save-coverage`      |
+| `--watch`           | Modo desarrollo continuo  | `./test.sh --watch`              |
+| `--python`          | Solo tests Python (Flask) | `./test.sh --python` (Frontend)  |
+| `--javascript`      | Solo tests JS (Jest)      | `./test.sh --javascript` (Front) |
+| `<archivo>.test.js` | Test específico           | `./test.sh jwt.token.test.js`    |
 
 ---
 
@@ -135,6 +173,11 @@ cd services/personas && ./test.sh
 Si ejecutaste con `--save-coverage`:
 
 ```bash
+# Frontend
+cd frontend
+wslview coverage_html/index.html      # Python coverage
+wslview coverage_js/lcov-report/index.html  # JavaScript coverage
+
 # Auth Service
 cd services/auth
 wslview coverage/lcov-report/index.html
@@ -150,14 +193,21 @@ wslview coverage/lcov-report/index.html
 
 ```bash
 # Ver logs en tiempo real
+docker logs -f flask_app
 docker logs -f auth_service
 docker logs -f personas_service
 
 # Entrar al contenedor
+docker exec -it flask_app sh
 docker exec -it auth_service sh
 docker exec -it personas_service sh
 
-# Dentro del contenedor:
+# Dentro del contenedor Frontend:
+pytest -v                    # Python tests
+npm test                     # JavaScript tests
+exit
+
+# Dentro de contenedores backend:
 npm test
 npm run test:watch
 exit
@@ -167,6 +217,7 @@ exit
 
 ## 📚 Documentación Completa
 
+- **Frontend**: `frontend/TESTS.md` (Python + JavaScript)
 - **Auth Service**: `services/auth/TESTS.md`
 - **Personas Service**: `services/personas/TESTS.md`
 
@@ -177,13 +228,17 @@ exit
 ### **Desarrollo Activo**
 
 ```bash
-# Abre dos terminales
+# Abre tres terminales
 
-# Terminal 1: Auth Service en modo watch
+# Terminal 1: Frontend en modo watch (JavaScript)
+cd frontend
+./test.sh --watch
+
+# Terminal 2: Auth Service en modo watch
 cd services/auth
 ./test.sh --watch
 
-# Terminal 2: Personas Service en modo watch
+# Terminal 3: Personas Service en modo watch
 cd services/personas
 ./test.sh --watch
 ```
@@ -192,13 +247,17 @@ cd services/personas
 
 ```bash
 # Ejecutar tests rápidos antes de commit
-cd services/auth && ./test.sh && cd ../personas && ./test.sh
+cd frontend && ./test.sh && cd ../services/auth && ./test.sh && cd ../personas && ./test.sh
+
+# O usando Makefile
+make test-all
 ```
 
 ### **Generar Reportes**
 
 ```bash
 # Solo cuando necesites reportes HTML detallados
+cd frontend && ./test.sh --save-coverage
 cd services/auth && ./test.sh --save-coverage
 cd services/personas && ./test.sh --save-coverage
 ```
@@ -209,6 +268,11 @@ cd services/personas && ./test.sh --save-coverage
 # Solo un archivo de tests
 cd services/auth
 ./test.sh auth.middleware.test.js
+
+# Tests específicos en Frontend
+cd frontend
+./test.sh test_routes.py           # Solo Python
+./test.sh theme-manager.test.js    # Solo JavaScript
 ```
 
 ---
@@ -226,6 +290,10 @@ cd services/auth
 
 ```bash
 # Navega a un servicio y ejecuta
+cd frontend
+./test.sh
+
+# O
 cd services/auth
 ./test.sh
 ```
