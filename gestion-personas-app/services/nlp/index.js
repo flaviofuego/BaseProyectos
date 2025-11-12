@@ -454,7 +454,7 @@ Responde JSON sin markdown:
 
     const isAggregation = intent.includes('AGGREGATE') || intent.includes('DEMOGRAPHIC') || (vectorResults[0]?.distribucion_genero);
     const isCount = intent === 'COUNT_VECTOR' || (vectorResults[0]?.total && Object.keys(vectorResults[0]).length <= 3);
-    const resultsInfo = JSON.stringify(vectorResults.slice(0, 5), null, 2);
+    const resultsInfo = JSON.stringify(vectorResults);
 
     const prompts = {
       aggregation: `${this.SYSTEM_PROMPT}\n\nTarea: Análisis estadístico de "${query}"\nDatos:\n${resultsInfo}\n\n**CRÍTICO**: Genera Markdown PURO (NO uses \`\`\`markdown). Incluye título ##, métricas en negritas, tablas con porcentajes. Responde DIRECTAMENTE en Markdown.`,
