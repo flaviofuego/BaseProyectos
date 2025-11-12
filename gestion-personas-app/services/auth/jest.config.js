@@ -5,6 +5,7 @@ module.exports = {
     "**/*.js",
     "!**/node_modules/**",
     "!**/coverage/**",
+    "!**/integration/**",
     "!jest.config.js",
   ],
   coverageThreshold: {
@@ -15,7 +16,11 @@ module.exports = {
       statements: 85,
     },
   },
-  testMatch: ["**/__tests__/**/*.test.js", "**/*.test.js"],
+  testMatch: [
+    "**/__tests__/**/*.test.js",
+    "**/*.test.js",
+    "!**/integration/**/*.test.js", // Excluir tests de integración por defecto
+  ],
   verbose: true,
   testTimeout: 10000,
 };
