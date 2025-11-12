@@ -49,15 +49,22 @@ echo -e "${CYAN}========================================${NC}"
 echo ""
 
 # Verificar que el contenedor esté corriendo
-CONTAINER_NAME="flask_app"
+CONTAINER_NAME="flask_app_dev"
 
+# Try dev container first, fallback to production
 if ! docker ps --format "{{.Names}}" | grep -q "^${CONTAINER_NAME}$"; then
-    echo -e "${RED}❌ El contenedor $CONTAINER_NAME no está corriendo${NC}"
-    echo ""
-    echo "Inicia los servicios con:"
-    echo "  cd ../.. && make dev"
-    exit 1
+    CONTAINER_NAME="flask_app"
+    if ! docker ps --format "{{.Names}}" | grep -q "^${CONTAINER_NAME}$"; then
+        echo -e "${RED}❌ El contenedor flask_app_dev o flask_app no está corriendo${NC}"
+        echo ""
+        echo "Inicia los servicios con:"
+        echo "  cd ../.. && make dev"
+        exit 1
+    fi
 fi
+
+echo -e "${CYAN}📦 Usando contenedor: $CONTAINER_NAME${NC}"
+echo ""
 
 # Variables para tracking de resultados
 python_exit_code=0

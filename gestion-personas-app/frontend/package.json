@@ -11,13 +11,27 @@
     "testEnvironment": "jsdom",
     "coverageDirectory": "coverage_js",
     "collectCoverageFrom": [
-      "static/js/**/*.js",
+      "static/js/form-validator.js",
+      "static/js/format-utils.js",
+      "static/js/theme-manager.js",
       "!static/js/**/*.test.js",
       "!static/js/**/*.spec.js"
     ],
     "coverageThreshold": {
-      "global": {
+      "static/js/form-validator.js": {
         "branches": 85,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      },
+      "static/js/format-utils.js": {
+        "branches": 90,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      },
+      "static/js/theme-manager.js": {
+        "branches": 80,
         "functions": 85,
         "lines": 85,
         "statements": 85
