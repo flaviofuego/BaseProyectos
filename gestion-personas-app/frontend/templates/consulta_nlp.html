@@ -9,7 +9,7 @@
     .markdown-response {
         background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
         border: 1px solid #e9ecef;
-        border-left: 5px solid #198754;
+        border-left: 5px solid #0d47a1;
         border-radius: 12px;
         padding: 40px;
         margin: 0;
@@ -17,34 +17,63 @@
         min-height: 200px;
     }
     
+    @media (prefers-color-scheme: dark) {
+        .markdown-response {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 1px solid #404040;
+            border-left: 5px solid #0d6efd;
+            color: #e9ecef;
+        }
+    }
+    
     .markdown-response h1 {
-        color: #198754;
+        color: #0d47a1;
         font-size: 2rem;
         font-weight: 700;
         margin-top: 0;
         margin-bottom: 25px;
         padding-bottom: 15px;
-        border-bottom: 3px solid #198754;
+        border-bottom: 3px solid #0d47a1;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
     }
     
+    @media (prefers-color-scheme: dark) {
+        .markdown-response h1 {
+            color: #42a5f5;
+            border-bottom: 3px solid #42a5f5;
+        }
+    }
+    
     .markdown-response h2 {
-        color: #20c997;
+        color: #1565c0;
         font-size: 1.65rem;
         font-weight: 600;
         margin-top: 35px;
         margin-bottom: 20px;
         padding-bottom: 10px;
-        border-bottom: 2px solid #20c997;
+        border-bottom: 2px solid #1565c0;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
     }
     
+    @media (prefers-color-scheme: dark) {
+        .markdown-response h2 {
+            color: #64b5f6;
+            border-bottom: 2px solid #64b5f6;
+        }
+    }
+    
     .markdown-response h3 {
-        color: #198754;
+        color: #1976d2;
         font-size: 1.4rem;
         font-weight: 600;
         margin-top: 28px;
         margin-bottom: 15px;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response h3 {
+            color: #90caf9;
+        }
     }
     
     .markdown-response h4,
@@ -73,13 +102,28 @@
         border-radius: 12px;
         overflow: visible;
         font-size: 1.05rem;
-        border: 2px solid #dee2e6;
+        border: 3px solid #000000;
+    }
+    
+    /* Modo oscuro para tablas */
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table {
+            border: 3px solid #0d6efd;
+            background: #1a1a1a;
+        }
     }
     
     .markdown-response table thead {
-        background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+        background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
         color: white;
-        border-bottom: 3px solid #0d6832;
+        border-bottom: 4px solid #000000;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table thead {
+            background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
+            border-bottom: 4px solid #0d6efd;
+        }
     }
     
     .markdown-response table th {
@@ -89,9 +133,15 @@
         font-size: 1.05rem;
         text-transform: uppercase;
         letter-spacing: 1px;
-        border-right: 2px solid rgba(255, 255, 255, 0.2);
+        border-right: 3px solid rgba(0, 0, 0, 0.3);
         white-space: nowrap;
         min-width: 120px;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table th {
+            border-right: 3px solid rgba(13, 110, 253, 0.4);
+        }
     }
     
     .markdown-response table th:last-child {
@@ -100,13 +150,21 @@
     
     .markdown-response table td {
         padding: 22px 32px;
-        border-bottom: 1px solid #dee2e6;
-        border-right: 1px solid #e9ecef;
-        color: #495057;
+        border-bottom: 2px solid #000000;
+        border-right: 2px solid #000000;
+        color: #212529;
         font-size: 1.02rem;
         vertical-align: middle;
         line-height: 1.6;
         min-width: 100px;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table td {
+            border-bottom: 2px solid #0d6efd;
+            border-right: 2px solid #0d6efd;
+            color: #e9ecef;
+        }
     }
     
     .markdown-response table td:last-child {
@@ -117,40 +175,76 @@
         background-color: #f8f9fa;
     }
     
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table tbody tr:nth-child(even) {
+            background-color: #212529;
+        }
+    }
+    
     .markdown-response table tbody tr:hover {
-        background-color: #e7f5ef;
+        background-color: #e3f2fd;
         transition: background-color 0.3s ease;
         transform: scale(1.002);
-        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.15);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table tbody tr:hover {
+            background-color: #1e3a5f;
+        }
     }
     
     .markdown-response table tbody tr:last-child td {
-        border-bottom: 2px solid #198754;
+        border-bottom: 3px solid #000000;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table tbody tr:last-child td {
+            border-bottom: 3px solid #0d6efd;
+        }
     }
     
     /* Mejoras adicionales para las tablas */
     .markdown-response table tbody tr {
         transition: all 0.3s ease;
-        border-bottom: 1px solid #dee2e6;
     }
     
     .markdown-response table td:first-child {
         font-weight: 600;
-        color: #212529;
-        background: linear-gradient(90deg, rgba(25, 135, 84, 0.03) 0%, transparent 100%);
+        color: #000000;
+        background: linear-gradient(90deg, rgba(13, 110, 253, 0.05) 0%, transparent 100%);
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table td:first-child {
+            color: #e9ecef;
+            background: linear-gradient(90deg, rgba(13, 110, 253, 0.15) 0%, transparent 100%);
+        }
     }
     
     /* Estilo especial para la fila de totales */
     .markdown-response table tbody tr:last-child {
-        background: linear-gradient(135deg, rgba(25, 135, 84, 0.08) 0%, rgba(32, 201, 151, 0.08) 100%);
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(25, 118, 210, 0.1) 100%);
         font-weight: 600;
-        border-top: 2px solid #198754;
+        border-top: 3px solid #000000;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table tbody tr:last-child {
+            background: linear-gradient(135deg, rgba(13, 110, 253, 0.2) 0%, rgba(25, 118, 210, 0.2) 100%);
+            border-top: 3px solid #0d6efd;
+        }
     }
     
     .markdown-response table tbody tr:last-child td {
         font-weight: 700;
-        color: #198754;
-        border-bottom: none;
+        color: #0d47a1;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response table tbody tr:last-child td {
+            color: #42a5f5;
+        }
     }
     
     .markdown-response ul,
@@ -172,9 +266,15 @@
     }
     
     .markdown-response strong {
-        color: #198754;
+        color: #0d47a1;
         font-weight: 700;
         font-size: 1.05em;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .markdown-response strong {
+            color: #42a5f5;
+        }
     }
     
     .markdown-response em {
