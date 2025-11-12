@@ -6,8 +6,9 @@ Este proyecto cuenta con una suite completa de tests que cubren:
 
 - **Tests Unitarios** (~230 tests): Funciones individuales y componentes aislados
 - **Tests de Integración** (~85 tests): Interacción entre servicios y bases de datos
+- **Tests E2E** (~61 tests): Flujos completos de usuario en navegador real
 
-**Total: ~315 tests implementados**
+**Total: ~376 tests implementados**
 
 ---
 
@@ -46,6 +47,30 @@ Este proyecto cuenta con una suite completa de tests que cubren:
 3. **NLP Queries**: Consultas en lenguaje natural
 4. **Service Registry**: Registro y descubrimiento de servicios
 5. **Cache Search**: Verificación de cache con Redis
+
+### 3️⃣ Tests E2E (5% del esfuerzo)
+
+**Objetivo**: Validar flujos completos de usuario desde un navegador real.
+
+**Casos de uso implementados**:
+
+**Prioridad Alta**:
+
+- **CU-001**: Registrarse (7 tests)
+- **CU-002**: Iniciar Sesión (8 tests)
+- **CU-006**: Crear Persona con subida de imagen (9 tests)
+
+**Prioridad Media**:
+
+- **CU-007**: Consultar Personas (10 tests)
+- **CU-008**: Actualizar Persona (8 tests)
+- **CU-009**: Eliminar Persona (7 tests)
+
+**Prioridad Baja**:
+
+- **CU-012**: Consulta NLP (12 tests)
+
+**Total: 7 Casos de Uso, ~61 tests**
 
 ---
 
@@ -89,6 +114,35 @@ cd services/consulta
 ./test-integration.sh
 ```
 
+### Tests E2E
+
+**Requisito**: Docker Compose corriendo (`docker compose up -d`)
+
+```bash
+cd tests/e2e
+
+# Instalar dependencias (solo primera vez)
+npm install
+npx playwright install chromium
+
+# Ejecutar todos los tests
+npm test
+
+# Ejecutar un caso de uso específico
+npm test specs/01-registro.spec.js
+npm test specs/02-login.spec.js
+npm test specs/03-crear-persona.spec.js
+
+# Con interfaz visual
+npm run test:ui
+
+# En modo debug
+npm run test:debug
+
+# Ver reporte
+npm run test:report
+```
+
 ---
 
 ## 📊 Estado Actual
@@ -113,6 +167,12 @@ cd services/consulta
 - **Escenario 4**: 14/22 tests (63.6%)
 - **Escenario 5**: 14/16 tests (87.5%)
 
+### Tests E2E
+
+- **Total**: ~61 tests en 7 casos de uso
+- **Estado**: Implementados, pendiente de ejecución inicial
+- **Archivos**: Ver `tests/e2e/specs/`
+
 ---
 
 ## 🔧 Tecnologías Usadas
@@ -121,6 +181,7 @@ cd services/consulta
 - **Supertest**: Testing HTTP para APIs REST
 - **Testcontainers**: Contenedores Docker efímeros para tests
 - **Pytest**: Framework de testing para Python
+- **Playwright**: Automatización de navegadores para tests E2E
 - **Mocks**: `jest.fn()`, `jest.mock()` para aislar dependencias
 
 ---
@@ -142,12 +203,34 @@ cd services/consulta
 - NO requieren `docker compose up` manual
 - Los contenedores se crean y destruyen automáticamente
 
+### Tests E2E
+
+- Se ejecutan **localmente** con Playwright
+- Usan **navegador real** (Chromium, Firefox, Webkit)
+- **Lentos** (30-60 segundos por suite)
+- SÍ requieren `docker compose up` (app debe estar corriendo)
+- Simulan acciones reales de usuario (clicks, tipeo, navegación)
+
 ---
 
 ## 📁 Estructura de Archivos
 
 ```
 gestion-personas-app/
+├── tests/
+│   └── e2e/                       # Tests E2E con Playwright
+│       ├── specs/                 # Tests organizados por CU
+│       │   ├── 01-registro.spec.js
+│       │   ├── 02-login.spec.js
+│       │   ├── 03-crear-persona.spec.js
+│       │   ├── 04-consultar-personas.spec.js
+│       │   ├── 05-actualizar-persona.spec.js
+│       │   ├── 06-eliminar-persona.spec.js
+│       │   └── 07-consulta-nlp.spec.js
+│       ├── helpers/               # Funciones reutilizables
+│       ├── fixtures/              # Imágenes de prueba
+│       └── playwright.config.js
+│
 ├── services/
 │   ├── auth/
 │   │   ├── *.test.js              # Tests unitarios
@@ -207,19 +290,39 @@ npm test -- --coverage
 # Abre: coverage/lcov-report/index.html
 ```
 
+### Error: Tests E2E no encuentran elementos
+
+```bash
+# Los selectores dependen del HTML real de tu app
+# Usa Playwright Inspector para encontrar selectores correctos
+cd tests/e2e
+npm run test:debug
+
+# Ajusta los selectores en los archivos specs/
+```
+
+### Crear fixtures de imágenes para E2E
+
+```powershell
+cd tests/e2e/fixtures
+Invoke-WebRequest -Uri "https://via.placeholder.com/300" -OutFile "test-photo.jpg"
+```
+
 ---
 
 ## 📚 Documentación Adicional
 
-- Para detalles de implementación específicos, ver archivos `TESTS.md` en cada servicio
-- Para configuración de Jest, ver `jest.config.js` o `jest.integration.config.js`
-- Para ver tests específicos, explorar los archivos `*.test.js`
+- **Tests E2E**: Ver `tests/e2e/README.md` para guía completa
+- **Tests por servicio**: Ver archivos `TESTS.md` en cada servicio
+- **Configuración Jest**: Ver `jest.config.js` o `jest.integration.config.js`
+- **Configuración Playwright**: Ver `tests/e2e/playwright.config.js`
 
 ---
 
 ## ✅ Próximos Pasos
 
-1. **Arreglar 10 tests unitarios que fallan** (issues menores)
-2. **Mejorar cobertura** donde sea necesario (objetivo 85%+)
-3. **Completar tests de integración** (Escenarios 4 y 5)
-4. **Implementar CI/CD** con GitHub Actions para ejecutar tests automáticamente
+1. **Ejecutar tests E2E** por primera vez y ajustar selectores según HTML real
+2. **Crear fixtures de imágenes** para tests de subida de archivos
+3. **Arreglar 10 tests unitarios que fallan** (issues menores)
+4. **Completar tests de integración** (Escenarios 4 y 5)
+5. **Implementar CI/CD** con GitHub Actions para ejecutar tests automáticamente
