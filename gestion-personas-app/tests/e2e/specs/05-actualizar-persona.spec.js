@@ -26,7 +26,10 @@ test.describe("CU-008: Actualizar Persona", () => {
   }) => {
     // Ir a consultar personas
     await page.goto("/personas/consultar");
-    await page.waitForSelector('#numero_documento, form button[type="submit"]', { timeout: 15000 });
+    await page.waitForSelector(
+      '#numero_documento, form button[type="submit"]',
+      { timeout: 15000 }
+    );
 
     // Buscar primera persona
     const searchButton = page
@@ -35,8 +38,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator('form').first();
-      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      const firstForm = page.locator("form").first();
+      if ((await firstForm.count()) > 0)
+        await firstForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
@@ -51,7 +55,9 @@ test.describe("CU-008: Actualizar Persona", () => {
       await editButton.click();
 
       // Verificar que cargó el formulario
-      await expect(page).toHaveURL(/personas\/modificar|editar_persona|persona\/\d+\/edit/);
+      await expect(page).toHaveURL(
+        /personas\/modificar|editar_persona|persona\/\d+\/edit/
+      );
 
       // Verificar que los campos tienen valores (primer_nombre/apellidos)
       const nombreInput = page.locator("#primer_nombre");
@@ -64,7 +70,7 @@ test.describe("CU-008: Actualizar Persona", () => {
   test("debe actualizar datos de persona exitosamente", async ({ page }) => {
     // Navegar directamente si conocemos una persona de prueba
     // O buscar y editar
-  await page.goto("/personas/consultar");
+    await page.goto("/personas/consultar");
 
     const searchButton = page
       .locator('button[type="submit"], button:has-text("Buscar")')
@@ -72,8 +78,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator('form').first();
-      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      const firstForm = page.locator("form").first();
+      if ((await firstForm.count()) > 0)
+        await firstForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
@@ -117,8 +124,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator('form').first();
-      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      const firstForm = page.locator("form").first();
+      if ((await firstForm.count()) > 0)
+        await firstForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
@@ -150,8 +158,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator('form').first();
-      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      const firstForm = page.locator("form").first();
+      if ((await firstForm.count()) > 0)
+        await firstForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
@@ -183,8 +192,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator('form').first();
-      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      const firstForm = page.locator("form").first();
+      if ((await firstForm.count()) > 0)
+        await firstForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
@@ -213,8 +223,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator('form').first();
-      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      const firstForm = page.locator("form").first();
+      if ((await firstForm.count()) > 0)
+        await firstForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
@@ -241,8 +252,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator('form').first();
-      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      const firstForm = page.locator("form").first();
+      if ((await firstForm.count()) > 0)
+        await firstForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
@@ -253,7 +265,7 @@ test.describe("CU-008: Actualizar Persona", () => {
       await page.waitForLoadState("networkidle");
 
       // Obtener valor original
-  const nombreInput = page.locator('#primer_nombre');
+      const nombreInput = page.locator("#primer_nombre");
       const nombreOriginal = await nombreInput.inputValue();
 
       // Modificar
@@ -268,7 +280,7 @@ test.describe("CU-008: Actualizar Persona", () => {
         await cancelButton.click();
 
         // Verificar que volvió a la lista
-  await expect(page).toHaveURL(/personas\/consultar/);
+        await expect(page).toHaveURL(/personas\/consultar/);
       }
     }
   });
@@ -306,7 +318,7 @@ test.describe("CU-008: Actualizar Persona", () => {
       await page.waitForTimeout(1000);
 
       // Volver a editar y verificar que nombre y apellido no cambiaron
-  await page.goto("/personas/consultar");
+      await page.goto("/personas/consultar");
       await searchButton.click();
       await page.waitForTimeout(1000);
       await editButton.click();
