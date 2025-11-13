@@ -48,6 +48,7 @@ La base de datos contiene información de personas con estos campos:
 - **Información personal**: primer nombre, segundo nombre, apellidos, fecha de nacimiento, edad (calculada), género (Masculino, Femenino, No binario, Prefiero no reportar)
 - **Contacto**: correo electrónico, celular
 - **Clasificación**: grupo de edad (Menor de edad, Adulto, Adulto mayor)
+- **Auditoría**: fecha de creación (created_at), fecha de última actualización (updated_at)
 
 ## ✅ CAPACIDADES
 Puedes realizar CUALQUIER análisis o consulta sobre los empleados:
@@ -72,7 +73,7 @@ Puedes realizar CUALQUIER análisis o consulta sobre los empleados:
 Siempre responde en **Markdown formateado profesionalmente**:
 
 ### Para Listados de Personas:
-- Usa **tablas Markdown** con columnas que consideres relevantes según la consulta
+- Usa **tablas Markdown** con columnas que consideres relevantes según la consulta del usuario
 
 ## Resultados de Búsqueda (15 personas)
 
@@ -281,37 +282,65 @@ Eres un analista de datos experto. Usa TODO el contexto disponible para proporci
   }
 
   async extractQueryParameters(query) {
-    const prompt = `Analiza la consulta y extrae TODOS los filtros o criterios mencionados: "${query}"
+    const prompt = `Analiza la siguiente consulta y determina si es una CONSULTA ANALÍTICA o CONSULTA DE FILTRADO.
 
-Parámetros disponibles (campos de la tabla personas):
-- numero_documento (string - número exacto de documento)
-- tipo_documento: "Cédula", "Tarjeta de identidad"
-- primer_nombre (string - búsqueda parcial)
-- segundo_nombre (string - búsqueda parcial)
-- apellidos (string - búsqueda parcial)
-- nombre (string - busca en primer_nombre, segundo_nombre y apellidos)
-- fecha_nacimiento_min, fecha_nacimiento_max (formato: YYYY-MM-DD)
-- edad_min, edad_max (números)
+**CONSULTA DEL USUARIO:** "${query}"
+
+## 🎯 TIPOS DE CONSULTA
+
+### CONSULTA ANALÍTICA (NO aplicar filtros restrictivos)
+Son preguntas que requieren analizar TODOS los datos o un gran conjunto:
+- Superlativos: "el más viejo", "el más joven", "el mayor", "el menor"
+- Agregaciones: "promedio de edad", "cuántos empleados", "total de"
+- Comparaciones: "diferencia entre", "comparar"
+- Estadísticas: "distribución", "porcentaje", "media"
+- Rankings: "top 10", "los 5 más", "ranking de"
+- Análisis generales: "empleados", "personas", "todos"
+
+**Para consultas analíticas:** Devuelve todos los parámetros en null y limit alto (150-200)
+
+### CONSULTA DE FILTRADO (aplicar filtros específicos)
+Son preguntas que buscan subconjuntos específicos:
+- Búsquedas exactas: "Juan Pérez", "documento 12345678", "correo@email.com"
+- Rangos específicos: "personas entre 25 y 35 años", "nacidos en 1990"
+- Categorías específicas: "solo hombres mayores de 40", "mujeres adultas"
+- Combinaciones: "empleados masculinos con correo gmail"
+
+**Para consultas de filtrado:** Extrae SOLO los filtros explícitos mencionados
+
+## 📊 PARÁMETROS DISPONIBLES
+- numero_documento, tipo_documento
+- primer_nombre, segundo_nombre, apellidos, nombre (búsqueda general)
+- fecha_nacimiento_min, fecha_nacimiento_max
+- edad_min, edad_max
 - genero: "Masculino", "Femenino", "No binario", "Prefiero no reportar"
-- correo_electronico (string - búsqueda parcial)
-- celular (string - número exacto o parcial)
+- correo_electronico, celular
 - grupo_edad: "Menor de edad", "Adulto", "Adulto mayor"
-- limit (número entre 10-200, default 100)
+- created_at_min, created_at_max (formato: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
+- updated_at_min, updated_at_max (formato: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
+- limit: 10-200 (usa 150-200 para consultas analíticas, 50-100 para filtros)
 
-Interpretaciones especiales:
-- "mayor de X años" → edad_min=X
-- "menor de X años" → edad_max=X
-- "entre X y Y años" → edad_min=X, edad_max=Y
-- "adultos" → edad_min=18, edad_max=65 o grupo_edad="Adulto"
-- "menores" → edad_max=17 o grupo_edad="Menor de edad"
-- "adultos mayores" → edad_min=60 o grupo_edad="Adulto mayor"
-- "hombres/masculino" → genero=Masculino
-- "mujeres/femenino" → genero=Femenino
-- "cédula/cedula XXX" → tipo_documento=Cédula, numero_documento=XXX
-- "correo/email XXX" → correo_electronico=XXX
-- "celular/teléfono XXX" → celular=XXX
+## ⚠️ REGLAS CRÍTICAS
 
-Responde SOLO con JSON válido (sin markdown, sin comentarios):
+1. **NO extraigas filtros implícitos de preguntas analíticas**
+   ❌ "el más viejo" NO debe generar edad_min ni edad_max
+   ❌ "cuántos empleados" NO debe aplicar ningún filtro
+   ❌ "promedio de edad" NO debe restringir edades
+   
+2. **SOLO aplica filtros cuando son EXPLÍCITOS**
+   ✅ "empleados mayores de 30" → edad_min=30
+   ✅ "mujeres entre 25 y 40" → genero=Femenino, edad_min=25, edad_max=40
+   ✅ "Juan Pérez" → nombre=Juan Pérez
+   ✅ "registrados en 2024" → created_at_min=2024-01-01, created_at_max=2024-12-31
+   ✅ "actualizados esta semana" → updated_at_min=FECHA_INICIO_SEMANA
+   ✅ "creados después de enero 2025" → created_at_min=2025-01-01
+
+3. **Usa limit alto para consultas analíticas**
+   - Preguntas con "más", "menos", "promedio", "total": limit=200
+   - Búsquedas específicas: limit=50-100
+
+## 📤 FORMATO DE RESPUESTA
+Responde SOLO con JSON válido (sin markdown):
 {
   "numero_documento":null,
   "tipo_documento":null,
@@ -327,8 +356,14 @@ Responde SOLO con JSON válido (sin markdown, sin comentarios):
   "correo_electronico":null,
   "celular":null,
   "grupo_edad":null,
+  "created_at_min":null,
+  "created_at_max":null,
+  "updated_at_min":null,
+  "updated_at_max":null,
   "limit":100
-}`;
+}
+
+**IMPORTANTE:** Si la consulta pide análisis o superlativos, deja todos los filtros en null y usa limit alto (150-200).`;
 
     try {
       let text = await this.callAzureAI({
@@ -356,6 +391,10 @@ Responde SOLO con JSON válido (sin markdown, sin comentarios):
         correo_electronico: params.correo_electronico || null,
         celular: params.celular || null,
         grupo_edad: ['Menor de edad', 'Adulto', 'Adulto mayor'].includes(params.grupo_edad) ? params.grupo_edad : null,
+        created_at_min: params.created_at_min || null,
+        created_at_max: params.created_at_max || null,
+        updated_at_min: params.updated_at_min || null,
+        updated_at_max: params.updated_at_max || null,
         limit: params.limit && !isNaN(params.limit) ? Math.min(Math.max(parseInt(params.limit), 10), 200) : 100
       };
     } catch (error) {
@@ -375,6 +414,10 @@ Responde SOLO con JSON válido (sin markdown, sin comentarios):
         correo_electronico: null,
         celular: null,
         grupo_edad: null,
+        created_at_min: null,
+        created_at_max: null,
+        updated_at_min: null,
+        updated_at_max: null,
         limit: 100
       };
     }
@@ -505,6 +548,31 @@ Responde SOLO con JSON válido (sin markdown, sin comentarios):
       queryParams.push(`%${params.celular}%`);
     }
 
+    // Filtros de fechas de auditoría
+    if (params.created_at_min && params.created_at_max) {
+      whereClauses.push(`p.created_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`);
+      queryParams.push(params.created_at_min, params.created_at_max);
+      paramCounter += 2;
+    } else if (params.created_at_min) {
+      whereClauses.push(`p.created_at >= $${paramCounter++}`);
+      queryParams.push(params.created_at_min);
+    } else if (params.created_at_max) {
+      whereClauses.push(`p.created_at <= $${paramCounter++}`);
+      queryParams.push(params.created_at_max);
+    }
+
+    if (params.updated_at_min && params.updated_at_max) {
+      whereClauses.push(`p.updated_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`);
+      queryParams.push(params.updated_at_min, params.updated_at_max);
+      paramCounter += 2;
+    } else if (params.updated_at_min) {
+      whereClauses.push(`p.updated_at >= $${paramCounter++}`);
+      queryParams.push(params.updated_at_min);
+    } else if (params.updated_at_max) {
+      whereClauses.push(`p.updated_at <= $${paramCounter++}`);
+      queryParams.push(params.updated_at_max);
+    }
+
     return { whereClauses, queryParams, paramCounter };
   }
 
@@ -525,7 +593,9 @@ Responde SOLO con JSON válido (sin markdown, sin comentarios):
         numero_documento: r.numero_documento,
         correo_electronico: r.correo_electronico,
         celular: r.celular,
-        fecha_nacimiento: r.fecha_nacimiento
+        fecha_nacimiento: r.fecha_nacimiento,
+        created_at: r.created_at,
+        updated_at: r.updated_at
       }))
     };
 
