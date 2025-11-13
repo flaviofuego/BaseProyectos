@@ -1,5 +1,10 @@
 {% extends "base.html" %} {% block title %}Crear Persona - Sistema de Gestión de
-Personas{% endblock %} {% block content %}
+Personas{% endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/crear_persona.css') }}"
+/>
+{% endblock %} {% block content %}
 <div class="row">
   <div class="col-12">
     <h1 class="mb-4"><i class="fas fa-plus"></i> Crear Nueva Persona</h1>
@@ -164,13 +169,23 @@ Personas{% endblock %} {% block content %}
 
               <div class="mb-3">
                 <label for="foto" class="form-label">Foto</label>
-                <input
-                  type="file"
-                  class="form-control"
-                  id="foto"
-                  name="foto"
-                  accept="image/jpeg,image/jpg,image/png,image/gif"
-                />
+                <div class="file-input-wrapper">
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="foto"
+                    name="foto"
+                    accept="image/jpeg,image/jpg,image/png,image/gif"
+                    onchange="updateFileName(this)"
+                  />
+                  <label for="foto" class="file-input-label">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Seleccionar archivo de imagen</span>
+                  </label>
+                  <span class="file-name" id="file-name"
+                    >Ningún archivo seleccionado</span
+                  >
+                </div>
                 <div class="form-text">
                   Formatos: JPG, JPEG, PNG, GIF. Máximo 2MB
                 </div>
@@ -182,12 +197,20 @@ Personas{% endblock %} {% block content %}
 
           <div class="row">
             <div class="col-12">
-              <div class="d-flex justify-content-between">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
-                  <i class="fas fa-arrow-left"></i> Cancelar
+              <div class="btn-action-container">
+                <a
+                  href="{{ url_for('dashboard') }}"
+                  class="btn btn-secondary btn-secondary-custom"
+                >
+                  <i class="fas fa-arrow-left"></i>
+                  <span>Cancelar</span>
                 </a>
-                <button type="submit" class="btn btn-primary">
-                  <i class="fas fa-save"></i> Crear Persona
+                <button
+                  type="submit"
+                  class="btn btn-primary btn-primary-custom"
+                >
+                  <i class="fas fa-save"></i>
+                  <span>Crear Persona</span>
                 </button>
               </div>
             </div>
@@ -199,6 +222,20 @@ Personas{% endblock %} {% block content %}
 </div>
 {% endblock %} {% block extra_js %}
 <script>
+  // Función para actualizar el nombre del archivo seleccionado
+  function updateFileName(input) {
+    const fileNameSpan = document.getElementById("file-name");
+    if (input.files && input.files.length > 0) {
+      const fileName = input.files[0].name;
+      const fileSize = (input.files[0].size / 1024).toFixed(2);
+      fileNameSpan.textContent = `${fileName} (${fileSize} KB)`;
+      fileNameSpan.style.color = "var(--primary-purple)";
+    } else {
+      fileNameSpan.textContent = "Ningún archivo seleccionado";
+      fileNameSpan.style.color = "";
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     // File size validation
     const fotoInput = document.getElementById("foto");
@@ -206,6 +243,9 @@ Personas{% endblock %} {% block content %}
       if (this.files[0] && this.files[0].size > 2 * 1024 * 1024) {
         alert("La foto no puede superar los 2MB");
         this.value = "";
+        document.getElementById("file-name").textContent =
+          "Ningún archivo seleccionado";
+        document.getElementById("file-name").style.color = "";
       }
     });
 
