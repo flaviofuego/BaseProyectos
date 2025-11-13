@@ -70,7 +70,7 @@ async function crearPersonaPrueba(page, data = {}) {
 
   const personaData = { ...defaults, ...data };
 
-  await page.goto("/crear_persona");
+  await page.goto("/personas/crear");
 
   await page.locator("#primer_nombre").fill(personaData.primer_nombre);
   if (personaData.segundo_nombre !== undefined) {
@@ -99,7 +99,7 @@ async function crearPersonaPrueba(page, data = {}) {
  * Buscar persona por documento
  */
 async function buscarPersonaPorDocumento(page, numeroDocumento) {
-  await page.goto("/consultar_personas");
+  await page.goto("/personas/consultar");
 
   const docInput = page.locator('input[name="numero_documento"]').first();
 

@@ -20,7 +20,7 @@ test.describe("CU-006: Crear Persona", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     // Navegar a crear persona
-    await page.goto("/crear_persona");
+    await page.goto("/personas/crear");
   });
 
   test("debe mostrar formulario de crear persona", async ({ page }) => {

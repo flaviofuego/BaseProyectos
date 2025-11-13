@@ -16,7 +16,7 @@ test.describe("CU-012: Consulta NLP", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     // Navegar a consulta NLP
-    await page.goto("/consulta_nlp");
+    await page.goto("/personas/nlp");
   });
 
   test("debe mostrar interfaz de consulta NLP", async ({ page }) => {

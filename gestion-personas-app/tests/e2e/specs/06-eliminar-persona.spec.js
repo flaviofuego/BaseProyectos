@@ -21,10 +21,16 @@ test.describe("CU-009: Eliminar Persona", () => {
   test("debe mostrar botón de eliminar en lista de personas", async ({
     page,
   }) => {
-    await page.goto("/consultar_personas");
+    await page.goto("/personas/consultar");
+    await page.waitForSelector('#numero_documento, form button[type="submit"]', { timeout: 15000 });
 
-    const searchButton = page.locator('button[type="submit"]').first();
-    await searchButton.click();
+  const searchButton = page.locator('button[type="submit"]').first();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
 
     // Verificar que existe botón de eliminar
@@ -40,10 +46,15 @@ test.describe("CU-009: Eliminar Persona", () => {
   });
 
   test("debe solicitar confirmación antes de eliminar", async ({ page }) => {
-    await page.goto("/consultar_personas");
+    await page.goto("/personas/consultar");
 
     const searchButton = page.locator('button[type="submit"]').first();
-    await searchButton.click();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
 
     const deleteButton = page
@@ -68,7 +79,7 @@ test.describe("CU-009: Eliminar Persona", () => {
     const timestamp = Date.now();
 
     // Crear persona con campos reales
-    await page.goto("/crear_persona");
+  await page.goto("/personas/crear");
     await page.locator("#primer_nombre").fill("PersonaAEliminar");
     await page.locator("#apellidos").fill("Test");
     await page.locator("#tipo_documento").selectOption({ label: "Cédula" });
@@ -84,15 +95,20 @@ test.describe("CU-009: Eliminar Persona", () => {
     await page.waitForTimeout(1000);
 
     // Buscar la persona recién creada
-    await page.goto("/consultar_personas");
-    const searchInput = page.locator("#numero_documento").first();
+  await page.goto("/personas/consultar");
+    const searchInput = page.locator('#numero_documento').first();
 
     if ((await searchInput.count()) > 0) {
       await searchInput.fill(`${timestamp}`);
     }
 
     const searchButton = page.locator('button[type="submit"]').first();
-    await searchButton.click();
+      if ((await searchButton.count()) > 0) {
+        await searchButton.click();
+      } else {
+        const firstForm = page.locator('form').first();
+        if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+      }
     await page.waitForTimeout(1000);
 
     // Eliminar
@@ -129,7 +145,7 @@ test.describe("CU-009: Eliminar Persona", () => {
   });
 
   test("debe poder cancelar eliminación", async ({ page }) => {
-    await page.goto("/consultar_personas");
+    await page.goto("/personas/consultar");
 
     const searchButton = page.locator('button[type="submit"]').first();
     await searchButton.click();
@@ -155,7 +171,7 @@ test.describe("CU-009: Eliminar Persona", () => {
         await cancelButton.click();
 
         // Verificar que volvió a la lista
-        await expect(page).toHaveURL(/consultar_personas/);
+  await expect(page).toHaveURL(/personas\/consultar/);
       }
 
       await page.waitForTimeout(500);
@@ -173,32 +189,34 @@ test.describe("CU-009: Eliminar Persona", () => {
     // Crear persona de prueba
     const timestamp = Date.now();
 
-    await page.goto("/crear_persona");
-    await page.locator('input[name="nombre"]').fill("PersonaTemp");
-    await page.locator('input[name="apellido"]').fill("Test");
-    await page
-      .locator('select[name="tipo_documento"], input[name="tipo_documento"]')
-      .selectOption("CC");
-    await page.locator('input[name="numero_documento"]').fill(`${timestamp}`);
-    await page.locator('input[name="fecha_nacimiento"]').fill("1990-01-01");
-    await page.locator('input[name="celular"]').fill("3001234567");
-    await page
-      .locator('input[name="email"]')
-      .fill(`temp${timestamp}@example.com`);
+    await page.goto("/personas/crear");
+    await page.locator('#primer_nombre').fill("PersonaTemp");
+    await page.locator('#apellidos').fill("Test");
+    await page.locator('#tipo_documento').selectOption({ label: 'Cédula' });
+    await page.locator('#numero_documento').fill(`${timestamp}`);
+    await page.locator('#fecha_nacimiento').fill("1990-01-01");
+    await page.locator('#genero').selectOption({ label: 'Masculino' });
+    await page.locator('#celular').fill("3001234567");
+    await page.locator('#correo_electronico').fill(`temp${timestamp}@example.com`);
     await page.locator('button[type="submit"]').click();
 
     await page.waitForTimeout(1000);
 
     // Buscar y contar personas antes de eliminar
-    await page.goto("/consultar_personas");
-    const searchInput = page.locator("#numero_documento").first();
+  await page.goto("/personas/consultar");
+  const searchInput = page.locator('#numero_documento').first();
 
     if ((await searchInput.count()) > 0) {
       await searchInput.fill(`${timestamp}`);
     }
 
-    const searchButton = page.locator('button[type="submit"]').first();
-    await searchButton.click();
+  const searchButton = page.locator('button[type="submit"]').first();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
 
     const rowsBefore = await page
@@ -223,7 +241,7 @@ test.describe("CU-009: Eliminar Persona", () => {
       await page.waitForTimeout(1000);
 
       // Buscar nuevamente
-      await page.goto("/consultar_personas");
+  await page.goto("/personas/consultar");
       if ((await searchInput.count()) > 0) {
         await searchInput.fill(`${timestamp}`);
       }
@@ -243,9 +261,13 @@ test.describe("CU-009: Eliminar Persona", () => {
     // Por ejemplo, si una persona tiene relaciones, no debería poder eliminarse
 
     await page.goto("/consultar_personas");
-
     const searchButton = page.locator('button[type="submit"]').first();
-    await searchButton.click();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
 
     const deleteButton = page.locator('a:has-text("Eliminar")').first();

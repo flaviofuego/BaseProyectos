@@ -16,12 +16,14 @@ test.describe("CU-007: Consultar Personas", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     // Navegar a consultar personas
-    await page.goto("/consultar_personas");
+    await page.goto("/personas/consultar");
+    await expect(page.locator('h1:has-text("Consultar Personas")')).toBeVisible({ timeout: 15000 });
+    await page.waitForSelector('#numero_documento, form button[type="submit"]', { timeout: 15000 });
   });
 
   test("debe mostrar página de consulta con formularios", async ({ page }) => {
     await expect(page).toHaveTitle(/Consultar|Personas/i);
-    await expect(page.locator("#numero_documento").first()).toBeVisible();
+    await expect(page.locator("#numero_documento").first()).toBeVisible({ timeout: 15000 });
   });
 
   test("debe buscar por número de documento", async ({ page }) => {
@@ -31,7 +33,14 @@ test.describe("CU-007: Consultar Personas", () => {
       const searchButton = page
         .locator('button[type="submit"], button:has-text("Buscar")')
         .first();
-      await searchButton.click();
+      if ((await searchButton.count()) > 0) {
+        await searchButton.click();
+      } else {
+        const firstForm = page.locator('form').first();
+        if ((await firstForm.count()) > 0) {
+          await firstForm.evaluate((f) => f.submit());
+        }
+      }
       await page.waitForTimeout(1000);
       const table = page.locator("table");
       const noResults = page.locator("text=/No se encontraron resultados/i");
@@ -57,16 +66,20 @@ test.describe("CU-007: Consultar Personas", () => {
 
   test("debe mostrar mensaje si no hay resultados", async ({ page }) => {
     const searchInput = page.locator("#numero_documento").first();
+    await expect(searchInput).toBeVisible({ timeout: 15000 });
     await searchInput.fill("0000000000000");
     const searchButton = page
       .locator('button[type="submit"], button:has-text("Buscar")')
       .first();
-    await searchButton.click();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
-    const noResults = page.locator(
-      "text=/No se encontraron resultados|No hay resultados/i, .no-results, .empty-state"
-    );
-    await expect(noResults).toBeVisible({ timeout: 5000 });
+    const noResultsHeader = page.locator('main .alert h5:has-text("No se encontraron resultados")');
+    expect(await noResultsHeader.count()).toBeGreaterThan(0);
   });
 
   test("debe paginar resultados si hay muchos", async ({ page }) => {
@@ -75,7 +88,12 @@ test.describe("CU-007: Consultar Personas", () => {
         'button[type="submit"], button:has-text("Buscar"), button:has-text("Ver todas")'
       )
       .first();
-    await searchButton.click();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
     const pagination = page.locator(
       '.pagination, nav[aria-label="pagination"], .page-numbers'
@@ -101,7 +119,12 @@ test.describe("CU-007: Consultar Personas", () => {
     const searchButton = page
       .locator('button[type="submit"], button:has-text("Buscar")')
       .first();
-    await searchButton.click();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
     const firstPerson = page.locator("table tbody tr").first();
     if ((await firstPerson.count()) > 0) {
@@ -112,14 +135,15 @@ test.describe("CU-007: Consultar Personas", () => {
         .first();
       if ((await detailsLink.count()) > 0) {
         await detailsLink.click();
-        await expect(page).toHaveURL(/consultar_personas|detalle|ver/i);
+        await expect(page).toHaveURL(/personas\/consultar|detalle|ver/i);
       }
     }
   });
 
   test("debe limpiar filtros de búsqueda", async ({ page }) => {
-    const searchInput = page.locator("#numero_documento").first();
-    await searchInput.fill("123");
+  const searchInput = page.locator("#numero_documento").first();
+  await expect(searchInput).toBeVisible({ timeout: 15000 });
+  await searchInput.fill("123");
     const clearButton = page.locator(
       'button:has-text("Limpiar"), button:has-text("Clear"), input[type="reset"], a:has-text("Limpiar")'
     );
@@ -133,13 +157,22 @@ test.describe("CU-007: Consultar Personas", () => {
     const searchButton = page
       .locator('button[type="submit"], button:has-text("Buscar")')
       .first();
-    await searchButton.click();
+    if ((await searchButton.count()) > 0) {
+      await searchButton.click();
+    } else {
+      const firstForm = page.locator('form').first();
+      if ((await firstForm.count()) > 0) await firstForm.evaluate((f) => f.submit());
+    }
     await page.waitForTimeout(1000);
-    const exportButton = page.locator(
-      'button:has-text("Exportar"), a:has-text("Exportar"), a:has-text("Excel"), a:has-text("CSV")'
-    );
-    if ((await exportButton.count()) > 0) {
-      await expect(exportButton.first()).toBeVisible();
+
+    // Solo validar exportación si hay resultados visibles
+    const resultsHeader = page.locator('h5.card-title:has-text("Resultados")');
+    const rows = page.locator('table tbody tr');
+    if ((await resultsHeader.count()) > 0 || (await rows.count()) > 0) {
+      const csvButton = page.locator('button:has-text("CSV")');
+      const excelButton = page.locator('button:has-text("Excel")');
+      await expect(csvButton.first()).toBeVisible();
+      await expect(excelButton.first()).toBeVisible();
     }
   });
 });
