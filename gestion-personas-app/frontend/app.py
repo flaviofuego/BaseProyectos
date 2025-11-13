@@ -432,6 +432,20 @@ def dashboard():
     
     return render_template('dashboard.html', stats=stats, user=session.get('user'))
 
+@app.route('/reportes')
+@login_required
+def reportes():
+    response = make_request('GET', '/api/consulta/stats')
+
+    stats = {}
+    if response is not None and response.status_code == 200:
+        stats = response.json()
+    else:
+        if response is None:
+            flash('El servicio de estadisticas esta lento o no disponible. Mostrando reportes sin datos.', 'info')
+    
+    return render_template('reportes.html', stats=stats, user=session.get('user'))
+
 @app.route('/api/dashboard/stats')
 @login_required
 def dashboard_stats_api():
