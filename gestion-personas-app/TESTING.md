@@ -58,34 +58,41 @@ cd frontend/tests && pytest
 ## Cobertura según guía
 
 ### Módulo 1: Service Registry ✅
+
 - **Integración**: registro, heartbeat, descubrimiento, deregistro, múltiples instancias
 - **Unit**: cleanup job automático (fake timers para simular timeout)
 
 ### Módulo 2: API Gateway ✅
+
 - Rechazo sin autenticación (401)
 - Enrutamiento a servicio saludable
 - Manejo de servicio no disponible (404)
 - Rate limiting (429)
 
 ### Módulo 3: Auth Service ✅
+
 - Login exitoso y fallido (CU-001)
 - Registro con validaciones
 - Actualización de preferencias (CU-010) con mock de Docker
 - Sesiones Redis
 
 ### Módulo 4: Personas Service ✅
+
 - **Unit**: procesamiento de imágenes (Sharp)
 - **Integración vía Gateway**: crear (201), duplicado (409), existe por doc, delete
 
 ### Módulo 5: NLP Service ✅
+
 - Intent: Database Query, Semantic Search, Security Risk
 - Unit + integración vía Gateway
 
 ### Módulo 6: Log Service ✅
+
 - Ingesta (CREATE)
 - Consulta por user_id y numero_documento (paginado)
 
 ### Módulo 7: E2E Full Journey ✅
+
 - `08-full-journey.spec.js`: login → crear persona → consultar → verificar logs (CU-003 + CU-004 + CU-009)
 - CU-001 (Registro), CU-002 (Login), CU-006 (Crear), CU-007 (Consultar), CU-008 (Actualizar), CU-009 (Eliminar)
 

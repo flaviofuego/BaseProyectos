@@ -17,9 +17,23 @@ let dockerModulePath;
 beforeAll(() => {
   dockerModulePath = require.resolve("../docker-controller");
   jest.mock(dockerModulePath, () => ({
-    startConsultaService: jest.fn().mockResolvedValue({ success: true, message: "mock-started", already_running: false }),
-    stopConsultaService: jest.fn().mockResolvedValue({ success: true, message: "mock-stopped", already_stopped: false }),
-    getContainerInfo: jest.fn().mockResolvedValue({ name: "consulta-service", state: "running" }),
+    startConsultaService: jest
+      .fn()
+      .mockResolvedValue({
+        success: true,
+        message: "mock-started",
+        already_running: false,
+      }),
+    stopConsultaService: jest
+      .fn()
+      .mockResolvedValue({
+        success: true,
+        message: "mock-stopped",
+        already_stopped: false,
+      }),
+    getContainerInfo: jest
+      .fn()
+      .mockResolvedValue({ name: "consulta-service", state: "running" }),
   }));
 });
 
@@ -45,7 +59,9 @@ describe("Auth Service - Update Preferences (consulta_service_enabled)", () => {
         POSTGRES_DB: "testdb",
       })
       .withExposedPorts(5432)
-      .withWaitStrategy(Wait.forLogMessage(/database system is ready to accept connections/))
+      .withWaitStrategy(
+        Wait.forLogMessage(/database system is ready to accept connections/)
+      )
       .start();
     pgPort = pgContainer.getMappedPort(5432);
 
@@ -100,7 +116,9 @@ describe("Auth Service - Update Preferences (consulta_service_enabled)", () => {
     );
 
     // Redis client
-    redisClient = redis.createClient({ socket: { host: "localhost", port: redisPort } });
+    redisClient = redis.createClient({
+      socket: { host: "localhost", port: redisPort },
+    });
     await redisClient.connect();
 
     // Env
@@ -121,13 +139,20 @@ describe("Auth Service - Update Preferences (consulta_service_enabled)", () => {
   });
 
   function authHeaderFor(user) {
-    const token = jwt.sign({ id: user.id, username: user.username }, TEST_JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      TEST_JWT_SECRET,
+      { expiresIn: "1h" }
+    );
     return { Authorization: `Bearer ${token}` };
   }
 
   test("debe deshabilitar y habilitar el servicio de consulta (UPDATE user_preferences)", async () => {
     // Fetch user id
-    const u = await pgPool.query("SELECT id, username FROM users WHERE username=$1", ["prefuser"]);
+    const u = await pgPool.query(
+      "SELECT id, username FROM users WHERE username=$1",
+      ["prefuser"]
+    );
     const user = u.rows[0];
 
     // Disable (enabled=false)
@@ -138,7 +163,10 @@ describe("Auth Service - Update Preferences (consulta_service_enabled)", () => {
       .expect(200);
 
     expect(disable.body).toHaveProperty("success", true);
-    expect(disable.body).toHaveProperty("preferences.consulta_service_enabled", false);
+    expect(disable.body).toHaveProperty(
+      "preferences.consulta_service_enabled",
+      false
+    );
 
     const dbAfterDisable = await pgPool.query(
       "SELECT consulta_service_enabled FROM user_preferences WHERE user_id=$1",
@@ -154,7 +182,10 @@ describe("Auth Service - Update Preferences (consulta_service_enabled)", () => {
       .expect(200);
 
     expect(enable.body).toHaveProperty("success", true);
-    expect(enable.body).toHaveProperty("preferences.consulta_service_enabled", true);
+    expect(enable.body).toHaveProperty(
+      "preferences.consulta_service_enabled",
+      true
+    );
 
     const dbAfterEnable = await pgPool.query(
       "SELECT consulta_service_enabled FROM user_preferences WHERE user_id=$1",
