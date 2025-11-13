@@ -305,6 +305,7 @@ Son preguntas que buscan subconjuntos específicos:
 - Rangos específicos: "personas entre 25 y 35 años", "nacidos en 1990"
 - Categorías específicas: "solo hombres mayores de 40", "mujeres adultas"
 - Combinaciones: "empleados masculinos con correo gmail"
+- Patrones de nombre/apellido: "apellido termina en 'ez'", "nombre empieza con 'Mar'", "apellido contiene 'rod'"
 
 **Para consultas de filtrado:** Extrae SOLO los filtros explícitos mencionados
 
@@ -330,14 +331,30 @@ Son preguntas que buscan subconjuntos específicos:
 2. **SOLO aplica filtros cuando son EXPLÍCITOS**
    ✅ "empleados mayores de 30" → edad_min=30
    ✅ "mujeres entre 25 y 40" → genero=Femenino, edad_min=25, edad_max=40
-   ✅ "Juan Pérez" → nombre=Juan Pérez
+   ✅ "Juan Pérez" → nombre="Juan Pérez"
+   ✅ "apellido termina en 'or'" → apellidos="%or"
+   ✅ "apellido empieza con 'Gó'" → apellidos="Gó%"
+   ✅ "apellido contiene 'rod'" → apellidos="%rod%"
+   ✅ "nombre empieza con 'Mar'" → primer_nombre="Mar%"
+   ✅ "segundo nombre es 'José'" → segundo_nombre="José"
    ✅ "registrados en 2024" → created_at_min=2024-01-01, created_at_max=2024-12-31
    ✅ "actualizados esta semana" → updated_at_min=FECHA_INICIO_SEMANA
    ✅ "creados después de enero 2025" → created_at_min=2025-01-01
 
-3. **Usa limit alto para consultas analíticas**
+3. **DISTRIBUCIÓN DE NOMBRES**
+   - Si la consulta menciona "apellido" o "apellidos", usa el parámetro **apellidos**
+   - Si menciona "primer nombre", usa **primer_nombre**
+   - Si menciona "segundo nombre", usa **segundo_nombre**
+   - Si menciona "nombre completo" o solo "nombre" sin especificar, usa **nombre**
+   - Soporta patrones con comodines:
+     * "termina en X" → "%X"
+     * "empieza con X" → "X%"
+     * "contiene X" → "%X%"
+
+4. **Usa limit alto para consultas analíticas**
    - Preguntas con "más", "menos", "promedio", "total": limit=200
    - Búsquedas específicas: limit=50-100
+   - Búsquedas con patrones (termina, empieza, contiene): limit=100
 
 ## 📤 FORMATO DE RESPUESTA
 Responde SOLO con JSON válido (sin markdown):
@@ -362,6 +379,12 @@ Responde SOLO con JSON válido (sin markdown):
   "updated_at_max":null,
   "limit":100
 }
+
+**EJEMPLOS ESPECÍFICOS:**
+- "lista las personas con apellido que termina en 'or'" → {"apellidos":"%or", "limit":100}
+- "personas con nombre que empieza con 'Mar'" → {"primer_nombre":"Mar%", "limit":100}
+- "apellido contiene 'rígu'" → {"apellidos":"%rígu%", "limit":100}
+- "Juan Pérez" → {"nombre":"Juan Pérez", "limit":50}
 
 **IMPORTANTE:** Si la consulta pide análisis o superlativos, deja todos los filtros en null y usa limit alto (150-200).`;
 
@@ -462,34 +485,56 @@ Responde SOLO con JSON válido (sin markdown):
       queryParams.push(params.tipo_documento);
     }
 
-    // Filtros de nombre (búsqueda específica por campo)
+    // Filtros de nombre (búsqueda específica por campo con soporte para patrones)
     if (params.primer_nombre) {
       whereClauses.push(`p.primer_nombre ILIKE $${paramCounter++}`);
-      queryParams.push(`%${params.primer_nombre}%`);
+      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
+      const primerNombrePattern = params.primer_nombre.includes('%') 
+        ? params.primer_nombre 
+        : `%${params.primer_nombre}%`;
+      queryParams.push(primerNombrePattern);
     }
     if (params.segundo_nombre) {
       whereClauses.push(`p.segundo_nombre ILIKE $${paramCounter++}`);
-      queryParams.push(`%${params.segundo_nombre}%`);
+      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
+      const segundoNombrePattern = params.segundo_nombre.includes('%') 
+        ? params.segundo_nombre 
+        : `%${params.segundo_nombre}%`;
+      queryParams.push(segundoNombrePattern);
     }
     if (params.apellidos) {
       whereClauses.push(`p.apellidos ILIKE $${paramCounter++}`);
-      queryParams.push(`%${params.apellidos}%`);
+      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
+      const apellidosPattern = params.apellidos.includes('%') 
+        ? params.apellidos 
+        : `%${params.apellidos}%`;
+      queryParams.push(apellidosPattern);
     }
     // Filtro de nombre general (busca en todos los campos de nombre)
     if (params.nombre) {
-      // Si el nombre tiene múltiples palabras, buscar con concatenación de campos
-      const nombrePalabras = params.nombre.trim().split(/\s+/);
+      // Detectar si tiene comodines (%) para patrones específicos
+      const tieneComodines = params.nombre.includes('%');
       
-      if (nombrePalabras.length > 1) {
-        // Para nombres completos, buscar en la concatenación de todos los campos
-        const nombreCompleto = `CONCAT(p.primer_nombre, ' ', COALESCE(p.segundo_nombre, ''), ' ', p.apellidos)`;
-        whereClauses.push(`${nombreCompleto} ILIKE $${paramCounter}`);
-        queryParams.push(`%${params.nombre}%`);
-        paramCounter++;
+      if (!tieneComodines) {
+        // Si el nombre tiene múltiples palabras, buscar con concatenación de campos
+        const nombrePalabras = params.nombre.trim().split(/\s+/);
+        
+        if (nombrePalabras.length > 1) {
+          // Para nombres completos, buscar en la concatenación de todos los campos
+          const nombreCompleto = `CONCAT(p.primer_nombre, ' ', COALESCE(p.segundo_nombre, ''), ' ', p.apellidos)`;
+          whereClauses.push(`${nombreCompleto} ILIKE $${paramCounter}`);
+          queryParams.push(`%${params.nombre}%`);
+          paramCounter++;
+        } else {
+          // Para una sola palabra, buscar en cualquier campo individual
+          whereClauses.push(`(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`);
+          queryParams.push(`%${params.nombre}%`);
+          paramCounter++;
+        }
       } else {
-        // Para una sola palabra, buscar en cualquier campo individual
+        // Si tiene comodines, buscar el patrón en cualquier campo
         whereClauses.push(`(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`);
-        queryParams.push(`%${params.nombre}%`);
+        queryParams.push(params.nombre);
         paramCounter++;
       }
     }
