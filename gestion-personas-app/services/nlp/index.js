@@ -37,33 +37,36 @@ class NLPService {
   }
 
   buildSystemPrompt() {
-    return `Eres un asistente inteligente especializado en consultas de gestión de personas para una base de datos empresarial.
+    return `Eres un asistente inteligente especializado en análisis y consultas sobre información de empleados/personas en una base de datos empresarial.
 
 ## 🎯 TU FUNCIÓN
-Ayudar a usuarios a consultar información sobre personas registradas en la base de datos mediante lenguaje natural, utilizando búsqueda vectorial semántica con pgvector y PostgreSQL.
+Analizar, interpretar y responder CUALQUIER pregunta relacionada con los empleados registrados en la base de datos, utilizando razonamiento, cálculos y análisis basados en los datos disponibles.
 
 ## 📊 DATOS DISPONIBLES
-La base de datos contiene información EXCLUSIVAMENTE de personas con estos campos:
+La base de datos contiene información de personas con estos campos:
 - **Identificación**: número de documento, tipo de documento (Cédula, Tarjeta de identidad)
 - **Información personal**: primer nombre, segundo nombre, apellidos, fecha de nacimiento, edad (calculada), género (Masculino, Femenino, No binario, Prefiero no reportar)
 - **Contacto**: correo electrónico, celular
 - **Clasificación**: grupo de edad (Menor de edad, Adulto, Adulto mayor)
 
-## ✅ CONSULTAS PERMITIDAS
-Puedes responder preguntas sobre:
-- Búsqueda de personas por nombre, documento, edad, género
-- Estadísticas demográficas (promedios, conteos, distribuciones)
-- Filtros combinados (ej: "mujeres mayores de 30 años")
-- Análisis de grupos etarios
-- Listados con criterios específicos
+## ✅ CAPACIDADES
+Puedes realizar CUALQUIER análisis o consulta sobre los empleados:
+- Búsquedas simples y complejas por cualquier campo
+- Estadísticas descriptivas (promedios, medianas, modas, desviaciones)
+- Análisis demográficos y distribuciones
+- Comparaciones y relaciones entre grupos
+- Cálculos personalizados basados en los datos
+- Análisis de tendencias y patrones
+- Agregaciones complejas y segmentaciones
+- Respuestas a preguntas hipotéticas basadas en datos reales
+- Insights y conclusiones basadas en evidencia
 
-## 🚫 RESTRICCIONES IMPORTANTES
-**NO DEBES**:
-2. Responder preguntas sobre temas fuera del ámbito de gestión de personas
-3. Inventar o asumir datos que no existen en la base de datos
-4. Proporcionar información de seguridad del sistema, contraseñas, o detalles técnicos internos
-5. Responder consultas sobre otros sistemas, servicios o información externa
-6. Hacer análisis predictivos o especulativos sobre personas
+## 🧠 METODOLOGÍA DE ANÁLISIS
+1. **Examina los datos**: Revisa TODA la información disponible en los resultados
+2. **Razona**: Aplica lógica y matemáticas según la pregunta
+3. **Calcula**: Realiza todas las operaciones necesarias (sumas, promedios, porcentajes, etc.)
+4. **Interpreta**: Extrae insights y conclusiones significativas
+5. **Presenta**: Formatea en Markdown profesional y claro
 
 ## 📝 FORMATO DE RESPUESTAS
 Siempre responde en **Markdown formateado profesionalmente**:
@@ -78,62 +81,39 @@ Siempre responde en **Markdown formateado profesionalmente**:
 | Juan Pérez García | 34 | Masculino | 12345678 |
 | María López Silva | 28 | Femenino | 45435490 |
 
-*Mostrando 15 de 15 resultados encontrados.*
-
-### Para Estadísticas:
-- Usa **listas con negritas** para métricas clave
-- Incluye **tablas** para distribuciones
-- Agrega **insights breves** interpretando los datos
-- Ejemplo:
+### Para Análisis y Estadísticas:
+Usa títulos, listas, tablas y métricas en negritas:
 
 ## Análisis Demográfico
 
-**Métricas Generales:**
+**Métricas Clave:**
 - Total de personas: **150**
 - Edad promedio: **34.5 años**
-- Rango de edad: 18 - 75 años
+- Desviación estándar: **8.2 años**
 
 ### Distribución por Género
 
 | Género | Cantidad | Porcentaje |
 |--------|----------|------------|
-| Masculino | 75 | 50% |
+| Masculino | 75 | 50.0% |
 | Femenino | 70 | 46.7% |
-| No binario | 5 | 3.3% |
 
-### Para Consultas Vacías:
-Si no hay resultados, responde amablemente:
+**Conclusión:** La distribución de género es equilibrada...
 
-## Sin Resultados
+## 🚫 RESTRICCIONES
+- NO inventes datos que no existen en los resultados
+- NO proporciones información sensible o de seguridad del sistema
+- NO respondas preguntas completamente ajenas a los empleados
+- Si la pregunta está fuera de alcance, explícalo cortésmente y redirige
 
-No se encontraron personas que coincidan con los criterios especificados.
+## 🎨 ESTILO
+- Profesional, claro y conciso
+- Sin emojis (mantén tono formal)
+- Usa números exactos y precisos
+- Incluye interpretaciones y conclusiones cuando sea relevante
+- Organiza con títulos y secciones
 
-**Sugerencias:**
-- Verifica los filtros aplicados
-- Intenta con criterios más amplios
-- Revisa la ortografía de los nombres
-
-## 🛡️ MANEJO DE CONSULTAS INAPROPIADAS
-Si el usuario pregunta algo fuera de alcance:
-- Responde cortésmente indicando tu función específica
-- Redirige hacia consultas válidas
-- Ejemplo: "Lo siento, solo puedo ayudarte con consultas sobre personas registradas en la base de datos. ¿Te gustaría buscar información demográfica o una persona específica?"
-
-## 🎨 ESTILO DE COMUNICACIÓN
-- **Profesional y claro**: Usa lenguaje formal pero accesible
-- **Conciso**: Evita explicaciones innecesarias
-- **Estructurado**: Organiza la información con títulos y secciones
-- **Preciso**: Reporta números exactos, no aproximaciones
-- **Emojis**: evita el uso de emojis en las respuestas para mantener un tono profesional.
-
-## 🔐 PRIVACIDAD Y SEGURIDAD
-- Si detectas una consulta sospechosa, responde con precaución
-
-## ⚡ EFICIENCIA
-- Prioriza búsquedas vectoriales semánticas para mejor precisión
-- Calcula porcentajes y métricas derivadas cuando sea útil
-
-Recuerda: Eres un asistente de consulta de base de datos, no un sistema de análisis predictivo ni un chatbot general. Mantente dentro de tu ámbito de gestión de personas y protege la privacidad de los datos.`;
+Eres un analista de datos experto. Usa TODO el contexto disponible para proporcionar respuestas completas, precisas y útiles sobre los empleados.`;
   }
 
   setupMiddleware() {
@@ -300,68 +280,107 @@ Recuerda: Eres un asistente de consulta de base de datos, no un sistema de anál
     return response.data.data[0].embedding;
   }
 
-  async classifyIntent(query) {
-    const prompt = `${this.SYSTEM_PROMPT}
+  async extractQueryParameters(query) {
+    const prompt = `Analiza la consulta y extrae TODOS los filtros o criterios mencionados: "${query}"
 
-Clasifica la intención de: "${query}"
+Parámetros disponibles (campos de la tabla personas):
+- numero_documento (string - número exacto de documento)
+- tipo_documento: "Cédula", "Tarjeta de identidad"
+- primer_nombre (string - búsqueda parcial)
+- segundo_nombre (string - búsqueda parcial)
+- apellidos (string - búsqueda parcial)
+- nombre (string - busca en primer_nombre, segundo_nombre y apellidos)
+- fecha_nacimiento_min, fecha_nacimiento_max (formato: YYYY-MM-DD)
+- edad_min, edad_max (números)
+- genero: "Masculino", "Femenino", "No binario", "Prefiero no reportar"
+- correo_electronico (string - búsqueda parcial)
+- celular (string - número exacto o parcial)
+- grupo_edad: "Menor de edad", "Adulto", "Adulto mayor"
+- limit (número entre 10-200, default 100)
 
-Categorías: SEARCH_VECTOR, FILTER_VECTOR, COUNT_VECTOR, AGGREGATE_VECTOR, SPECIFIC_VECTOR, DEMOGRAPHIC_VECTOR, INVALID_QUERY
+Interpretaciones especiales:
+- "mayor de X años" → edad_min=X
+- "menor de X años" → edad_max=X
+- "entre X y Y años" → edad_min=X, edad_max=Y
+- "adultos" → edad_min=18, edad_max=65 o grupo_edad="Adulto"
+- "menores" → edad_max=17 o grupo_edad="Menor de edad"
+- "adultos mayores" → edad_min=60 o grupo_edad="Adulto mayor"
+- "hombres/masculino" → genero=Masculino
+- "mujeres/femenino" → genero=Femenino
+- "cédula/cedula XXX" → tipo_documento=Cédula, numero_documento=XXX
+- "correo/email XXX" → correo_electronico=XXX
+- "celular/teléfono XXX" → celular=XXX
 
-Responde: CATEGORIA|0.95`;
-
-    try {
-      const text = await this.callAzureAI({
-        systemMessage: 'Clasificador de intenciones de consultas.',
-        userMessage: prompt,
-        temperature: 0.3,
-        maxTokens: 50
-      });
-      const [intent, confidence] = (text || 'SEARCH_VECTOR|0.5').split('|');
-      return { intent: intent.trim(), confidence: parseFloat(confidence) || 0.8 };
-    } catch (error) {
-      console.error('Error clasificación:', error.message);
-      return { intent: 'SEARCH_VECTOR', confidence: 0.5 };
-    }
-  }
-
-  async extractQueryParameters(query, intent) {
-    const prompt = `${this.SYSTEM_PROMPT}
-
-Extrae parámetros de: "${query}" (intent: ${intent})
-
-Parámetros: edad_min, edad_max, genero ("Masculino"|"Femenino"|"No binario"|"Prefiero no reportar"), tipo_documento ("Cédula"|"Tarjeta de identidad"), numero_documento, nombre, limit (10-200, default 50)
-
-Reglas: "mayor de X"→edad_min=X, "menor de X"→edad_max=X, "adultos"→edad_min=18, "menores"→edad_max=17, "adultos mayores"→edad_min=60
-
-Responde JSON sin markdown:
-{"edad_min":null,"edad_max":null,"genero":null,"tipo_documento":null,"numero_documento":null,"nombre":null,"limit":numero(si es necesario)}`;
+Responde SOLO con JSON válido (sin markdown, sin comentarios):
+{
+  "numero_documento":null,
+  "tipo_documento":null,
+  "primer_nombre":null,
+  "segundo_nombre":null,
+  "apellidos":null,
+  "nombre":null,
+  "fecha_nacimiento_min":null,
+  "fecha_nacimiento_max":null,
+  "edad_min":null,
+  "edad_max":null,
+  "genero":null,
+  "correo_electronico":null,
+  "celular":null,
+  "grupo_edad":null,
+  "limit":100
+}`;
 
     try {
       let text = await this.callAzureAI({
-        systemMessage: 'Extractor de parámetros.',
+        systemMessage: 'Eres un extractor de parámetros preciso. Responde solo con JSON válido.',
         userMessage: prompt,
-        temperature: 0.3,
-        maxTokens: 300
+        temperature: 0.2,
+        maxTokens: 400
       });
+      
       text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim() || '{}';
       const params = JSON.parse(text);
       
       return {
+        numero_documento: params.numero_documento || null,
+        tipo_documento: ['Cédula', 'Tarjeta de identidad'].includes(params.tipo_documento) ? params.tipo_documento : null,
+        primer_nombre: params.primer_nombre || null,
+        segundo_nombre: params.segundo_nombre || null,
+        apellidos: params.apellidos || null,
+        nombre: params.nombre || null,
+        fecha_nacimiento_min: params.fecha_nacimiento_min || null,
+        fecha_nacimiento_max: params.fecha_nacimiento_max || null,
         edad_min: params.edad_min && !isNaN(params.edad_min) ? parseInt(params.edad_min) : null,
         edad_max: params.edad_max && !isNaN(params.edad_max) ? parseInt(params.edad_max) : null,
         genero: ['Masculino', 'Femenino', 'No binario', 'Prefiero no reportar'].includes(params.genero) ? params.genero : null,
-        tipo_documento: ['Cédula', 'Tarjeta de identidad'].includes(params.tipo_documento) ? params.tipo_documento : null,
-        numero_documento: params.numero_documento || null,
-        nombre: params.nombre || null,
-        limit: params.limit && !isNaN(params.limit) ? Math.min(Math.max(parseInt(params.limit), 10), 100) : 50
+        correo_electronico: params.correo_electronico || null,
+        celular: params.celular || null,
+        grupo_edad: ['Menor de edad', 'Adulto', 'Adulto mayor'].includes(params.grupo_edad) ? params.grupo_edad : null,
+        limit: params.limit && !isNaN(params.limit) ? Math.min(Math.max(parseInt(params.limit), 10), 200) : 100
       };
     } catch (error) {
       console.error('Error extracción params:', error.message);
-      return { edad_min: null, edad_max: null, genero: null, tipo_documento: null, numero_documento: null, nombre: null, limit: 50 };
+      return {
+        numero_documento: null,
+        tipo_documento: null,
+        primer_nombre: null,
+        segundo_nombre: null,
+        apellidos: null,
+        nombre: null,
+        fecha_nacimiento_min: null,
+        fecha_nacimiento_max: null,
+        edad_min: null,
+        edad_max: null,
+        genero: null,
+        correo_electronico: null,
+        celular: null,
+        grupo_edad: null,
+        limit: 100
+      };
     }
   }
 
-  async queryVectorDatabase(query, intent, parameters) {
+  async queryVectorDatabase(query, parameters) {
     const queryEmbedding = await this.generateEmbedding(query);
     const { whereClauses, queryParams, paramCounter } = this.buildWhereClause(parameters);
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -382,8 +401,6 @@ Responde JSON sin markdown:
     queryParams.push(pgvector.toSql(queryEmbedding), parameters.limit || 100);
     const results = (await this.pool.query(sqlQuery, queryParams)).rows;
 
-    if (intent === 'AGGREGATE_VECTOR' || intent === 'DEMOGRAPHIC_VECTOR') return this.performAggregations(results);
-    if (intent === 'COUNT_VECTOR') return [{ total: results.length, filtros_aplicados: parameters }];
     return results;
   }
 
@@ -392,114 +409,183 @@ Responde JSON sin markdown:
     const queryParams = [];
     let paramCounter = 1;
 
-    if (params.edad_min !== null && params.edad_max !== null) {
-      whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN $${paramCounter} AND $${paramCounter + 1}`);
-      queryParams.push(params.edad_min, params.edad_max);
-      paramCounter += 2;
-    } else if (params.edad_min !== null) {
-      whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) >= $${paramCounter}`);
-      queryParams.push(params.edad_min);
-      paramCounter++;
-    } else if (params.edad_max !== null) {
-      whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) <= $${paramCounter}`);
-      queryParams.push(params.edad_max);
-      paramCounter++;
-    }
-
-    if (params.genero) {
-      whereClauses.push(`p.genero = $${paramCounter++}`);
-      queryParams.push(params.genero);
+    // Filtros de documento
+    if (params.numero_documento) {
+      whereClauses.push(`p.numero_documento = $${paramCounter++}`);
+      queryParams.push(params.numero_documento);
     }
     if (params.tipo_documento) {
       whereClauses.push(`p.tipo_documento = $${paramCounter++}`);
       queryParams.push(params.tipo_documento);
     }
-    if (params.numero_documento) {
-      whereClauses.push(`p.numero_documento = $${paramCounter++}`);
-      queryParams.push(params.numero_documento);
+
+    // Filtros de nombre (búsqueda específica por campo)
+    if (params.primer_nombre) {
+      whereClauses.push(`p.primer_nombre ILIKE $${paramCounter++}`);
+      queryParams.push(`%${params.primer_nombre}%`);
     }
+    if (params.segundo_nombre) {
+      whereClauses.push(`p.segundo_nombre ILIKE $${paramCounter++}`);
+      queryParams.push(`%${params.segundo_nombre}%`);
+    }
+    if (params.apellidos) {
+      whereClauses.push(`p.apellidos ILIKE $${paramCounter++}`);
+      queryParams.push(`%${params.apellidos}%`);
+    }
+    // Filtro de nombre general (busca en todos los campos de nombre)
     if (params.nombre) {
-      whereClauses.push(`(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`);
-      queryParams.push(`%${params.nombre}%`);
-      paramCounter++;
+      // Si el nombre tiene múltiples palabras, buscar con concatenación de campos
+      const nombrePalabras = params.nombre.trim().split(/\s+/);
+      
+      if (nombrePalabras.length > 1) {
+        // Para nombres completos, buscar en la concatenación de todos los campos
+        const nombreCompleto = `CONCAT(p.primer_nombre, ' ', COALESCE(p.segundo_nombre, ''), ' ', p.apellidos)`;
+        whereClauses.push(`${nombreCompleto} ILIKE $${paramCounter}`);
+        queryParams.push(`%${params.nombre}%`);
+        paramCounter++;
+      } else {
+        // Para una sola palabra, buscar en cualquier campo individual
+        whereClauses.push(`(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`);
+        queryParams.push(`%${params.nombre}%`);
+        paramCounter++;
+      }
+    }
+
+    // Filtros de fecha de nacimiento
+    if (params.fecha_nacimiento_min && params.fecha_nacimiento_max) {
+      whereClauses.push(`p.fecha_nacimiento BETWEEN $${paramCounter} AND $${paramCounter + 1}`);
+      queryParams.push(params.fecha_nacimiento_min, params.fecha_nacimiento_max);
+      paramCounter += 2;
+    } else if (params.fecha_nacimiento_min) {
+      whereClauses.push(`p.fecha_nacimiento >= $${paramCounter++}`);
+      queryParams.push(params.fecha_nacimiento_min);
+    } else if (params.fecha_nacimiento_max) {
+      whereClauses.push(`p.fecha_nacimiento <= $${paramCounter++}`);
+      queryParams.push(params.fecha_nacimiento_max);
+    }
+
+    // Filtros de edad (calculada)
+    if (params.edad_min !== null && params.edad_max !== null) {
+      whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN $${paramCounter} AND $${paramCounter + 1}`);
+      queryParams.push(params.edad_min, params.edad_max);
+      paramCounter += 2;
+    } else if (params.edad_min !== null) {
+      whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) >= $${paramCounter++}`);
+      queryParams.push(params.edad_min);
+    } else if (params.edad_max !== null) {
+      whereClauses.push(`EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) <= $${paramCounter++}`);
+      queryParams.push(params.edad_max);
+    }
+
+    // Filtro de género
+    if (params.genero) {
+      whereClauses.push(`p.genero = $${paramCounter++}`);
+      queryParams.push(params.genero);
+    }
+
+    // Filtro de grupo de edad
+    if (params.grupo_edad) {
+      const grupoEdadConditions = {
+        'Menor de edad': `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18`,
+        'Adulto': `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65`,
+        'Adulto mayor': `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) > 65`
+      };
+      if (grupoEdadConditions[params.grupo_edad]) {
+        whereClauses.push(grupoEdadConditions[params.grupo_edad]);
+      }
+    }
+
+    // Filtros de contacto
+    if (params.correo_electronico) {
+      whereClauses.push(`p.correo_electronico ILIKE $${paramCounter++}`);
+      queryParams.push(`%${params.correo_electronico}%`);
+    }
+    if (params.celular) {
+      whereClauses.push(`p.celular LIKE $${paramCounter++}`);
+      queryParams.push(`%${params.celular}%`);
     }
 
     return { whereClauses, queryParams, paramCounter };
   }
 
-  performAggregations(results) {
-    if (results.length === 0) return [];
-
-    const edades = results.map(r => r.edad).filter(e => e != null).map(e => parseInt(e));
-    const aggregations = { total: results.length };
-
-    if (edades.length > 0) {
-      aggregations.edad_promedio = parseFloat((edades.reduce((a, b) => a + b, 0) / edades.length).toFixed(1));
-      aggregations.edad_minima = Math.min(...edades);
-      aggregations.edad_maxima = Math.max(...edades);
+  async generateMarkdownResponse(query, vectorResults) {
+    if (vectorResults.length === 0) {
+      return `## Sin Resultados\n\nNo se encontraron empleados que coincidan con los criterios de búsqueda.\n\n**Sugerencias:**\n- Verifica los filtros aplicados\n- Intenta con criterios más amplios\n- Revisa la ortografía`;
     }
 
-    const countBy = (field) => results.reduce((acc, r) => (r[field] && (acc[r[field]] = (acc[r[field]] || 0) + 1), acc), {});
-    aggregations.distribucion_genero = countBy('genero');
-    aggregations.distribucion_grupo_edad = countBy('grupo_edad');
-    aggregations.distribucion_tipo_documento = countBy('tipo_documento');
-
-    return [aggregations];
-  }
-
-  async generateMarkdownResponse(query, vectorResults, intent) {
-    if (intent === 'INVALID_QUERY') {
-      return `## Consulta Fuera de Alcance\n\nSolo puedo ayudar con consultas sobre personas registradas.\n\n**Puedo**: Búsqueda, estadísticas, análisis demográfico.\n**No puedo**: Información sensible masiva, temas externos, predicciones.`;
-    }
-
-    const isAggregation = intent.includes('AGGREGATE') || intent.includes('DEMOGRAPHIC') || (vectorResults[0]?.distribucion_genero);
-    const isCount = intent === 'COUNT_VECTOR' || (vectorResults[0]?.total && Object.keys(vectorResults[0]).length <= 3);
-    const resultsInfo = JSON.stringify(vectorResults);
-
-    const prompts = {
-      aggregation: `${this.SYSTEM_PROMPT}\n\nTarea: Análisis estadístico de "${query}"\nDatos:\n${resultsInfo}\n\n**CRÍTICO**: Genera Markdown PURO (NO uses \`\`\`markdown). Incluye título ##, métricas en negritas, tablas con porcentajes. Responde DIRECTAMENTE en Markdown.`,
-      count: `${this.SYSTEM_PROMPT}\n\nTarea: Conteo de "${query}"\nDatos:\n${resultsInfo}\n\n**CRÍTICO**: Genera Markdown PURO (NO uses \`\`\`). Respuesta breve con número en negritas y contexto.`,
-      listing: `${this.SYSTEM_PROMPT}\n\nTarea: Búsqueda "${query}" (${vectorResults.length} resultados)\nMuestra:\n${resultsInfo}\n\n**CRÍTICO**: Genera Markdown PURO (NO uses \`\`\`markdown). Incluye tabla Markdown con columnas relevantes y total al final.`
+    // Preparar información completa para la IA
+    const dataContext = {
+      total_resultados: vectorResults.length,
+      muestra_completa: vectorResults.map(r => ({
+        nombre_completo: `${r.primer_nombre} ${r.segundo_nombre || ''} ${r.apellidos}`.trim(),
+        edad: r.edad,
+        genero: r.genero,
+        grupo_edad: r.grupo_edad,
+        tipo_documento: r.tipo_documento,
+        numero_documento: r.numero_documento,
+        correo_electronico: r.correo_electronico,
+        celular: r.celular,
+        fecha_nacimiento: r.fecha_nacimiento
+      }))
     };
 
-    const promptType = isAggregation ? 'aggregation' : isCount ? 'count' : 'listing';
+    const prompt = `${this.SYSTEM_PROMPT}
+
+## CONSULTA DEL USUARIO
+"${query}"
+
+## DATOS DISPONIBLES (${vectorResults.length} registros)
+${JSON.stringify(dataContext, null, 2)}
+
+## INSTRUCCIONES
+1. **Analiza** la pregunta del usuario y TODOS los datos proporcionados
+2. **Realiza** todos los cálculos, agregaciones y análisis necesarios (promedios, conteos, porcentajes, comparaciones, etc.)
+3. **Razona** sobre patrones, tendencias o insights relevantes
+4. **Responde** de forma completa y profesional en Markdown
+
+**IMPORTANTE**: 
+- Genera Markdown PURO (NO uses bloques \`\`\`markdown)
+- Incluye tablas para listados (| Columna | Columna |)
+- Usa negritas ** para métricas clave
+- Incluye títulos ## y subtítulos ###
+- Calcula TODO lo que la pregunta requiera (no aproximes)
+- Si la pregunta requiere estadísticas, calcúlalas: promedios, medianas, distribuciones, porcentajes
+- Si requiere comparaciones, hazlas
+- Si requiere análisis, proporciona insights basados en los datos
+
+Responde DIRECTAMENTE en Markdown:`;
 
     try {
       let markdown = await this.callAzureAI({
         systemMessage: this.SYSTEM_PROMPT,
-        userMessage: prompts[promptType],
+        userMessage: prompt,
         temperature: this.chatConfig.temperature,
         maxTokens: this.chatConfig.max_tokens
-      }) || 'Sin respuesta.';
+      }) || 'Error generando respuesta.';
       
-      // Limpiar bloques de código markdown si la IA los incluyó
+      // Limpiar bloques de código markdown
       markdown = markdown.replace(/```markdown\n?/gi, '').replace(/```\n?$/g, '').trim();
       
       return markdown;
     } catch (error) {
       console.error('Error generando markdown:', error.message);
-      return this.generateFallbackMarkdown(vectorResults, isCount, isAggregation);
+      return this.generateFallbackMarkdown(vectorResults);
     }
   }
 
-  generateFallbackMarkdown(results, isCount, isAggregation) {
-    if (results.length === 0) return '## Sin resultados\n\nNo se encontraron registros.';
-    if (isCount) return `## Conteo\n\n**Total:** ${results[0].total}`;
-    
-    if (isAggregation) {
-      const agg = results[0];
-      let md = `## Análisis\n\n**Total:** ${agg.total}\n\n`;
-      if (agg.edad_promedio) md += `**Edad promedio:** ${agg.edad_promedio} años\n`;
-      if (agg.distribucion_genero) {
-        md += `\n| Género | Cantidad |\n|---|---|\n`;
-        Object.entries(agg.distribucion_genero).forEach(([k, v]) => md += `| ${k} | ${v} |\n`);
-      }
-      return md;
-    }
+  generateFallbackMarkdown(results) {
+    if (results.length === 0) return '## Sin Resultados\n\nNo se encontraron empleados.';
 
-    let md = `## Resultados (${results.length})\n\n| Nombre | Edad | Género |\n|---|---|---|\n`;
-    results.slice(0, 20).forEach(r => md += `| ${r.primer_nombre || 'N/A'} ${r.apellidos || ''} | ${r.edad || 'N/A'} | ${r.genero || 'N/A'} |\n`);
-    if (results.length > 20) md += `\n*Mostrando 20 de ${results.length}*`;
+    let md = `## Resultados de Búsqueda\n\n**Total encontrado:** ${results.length}\n\n`;
+    md += `| Nombre Completo | Edad | Género | Documento |\n|---|---|---|---|\n`;
+    
+    results.slice(0, 30).forEach(r => {
+      const nombreCompleto = `${r.primer_nombre} ${r.segundo_nombre || ''} ${r.apellidos}`.trim();
+      md += `| ${nombreCompleto} | ${r.edad || 'N/A'} | ${r.genero || 'N/A'} | ${r.tipo_documento || ''} ${r.numero_documento || ''} |\n`;
+    });
+    
+    if (results.length > 30) md += `\n*Mostrando 30 de ${results.length} resultados*`;
+    
     return md;
   }
 
@@ -553,29 +639,32 @@ Responde JSON sin markdown:
       const { query } = req.body;
 
       try {
-        if (!query || typeof query !== 'string' || query.length > 1000) {
-          return res.status(400).json({ success: false, error: 'Query inválido (max 1000 chars)' });
+        if (!query || typeof query !== 'string' || query.length > 2000) {
+          return res.status(400).json({ success: false, error: 'Query inválido (max 2000 chars)' });
         }
 
-        const { intent, confidence } = await this.classifyIntent(query);
-        const parameters = await this.extractQueryParameters(query, intent);
-        const results = await this.queryVectorDatabase(query, intent, parameters);
-        const markdownResponse = await this.generateMarkdownResponse(query, results, intent);
+        const parameters = await this.extractQueryParameters(query);
+        const results = await this.queryVectorDatabase(query, parameters);
+        const markdownResponse = await this.generateMarkdownResponse(query, results);
 
         const response = {
           success: true,
-          data: { markdown: markdownResponse, raw_results: results },
+          data: { 
+            markdown: markdownResponse, 
+            raw_results: results 
+          },
           metadata: {
-            intent, confidence, results_count: results.length,
+            results_count: results.length,
             processing_time_ms: Date.now() - startTime,
-            query_parameters: parameters
+            query_parameters: parameters,
+            vector_search: true
           }
         };
 
         await this.logTransaction('NLP_QUERY', query, 'SUCCESS', req, response);
         res.json(response);
       } catch (error) {
-        console.error('Error query:', error.message);
+        console.error('❌ Error query:', error.message);
         await this.logTransaction('NLP_QUERY', query, 'ERROR', req, null, error.message);
         res.status(500).json({
           success: false,
