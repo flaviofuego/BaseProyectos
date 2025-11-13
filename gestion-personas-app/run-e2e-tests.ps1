@@ -19,21 +19,21 @@ if (-not (Test-Path "docker-compose.yml")) {
 }
 
 # Verificar que Docker Compose está corriendo
-Write-Host "`n🔍 Verificando que Docker Compose está corriendo..." -ForegroundColor Cyan
+Write-Host "`nVerificando que Docker Compose está corriendo..." -ForegroundColor Cyan
 $containers = docker compose ps --services --filter "status=running" 2>$null
 if (-not $containers -or $containers.Count -eq 0) {
-    Write-Host "⚠️  Docker Compose no está corriendo. Iniciando..." -ForegroundColor Yellow
+    Write-Host "ADVERTENCIA: Docker Compose no está corriendo. Iniciando..." -ForegroundColor Yellow
     docker compose up -d
     Start-Sleep -Seconds 5
 }
 
 # Verificar que la app responde
-Write-Host "🔍 Verificando que la app está disponible..." -ForegroundColor Cyan
+Write-Host "Verificando que la app está disponible..." -ForegroundColor Cyan
 try {
     $response = Invoke-WebRequest -Uri "http://localhost:5001" -TimeoutSec 5 -UseBasicParsing
-    Write-Host "✅ App disponible en http://localhost:5001" -ForegroundColor Green
+    Write-Host "OK: App disponible en http://localhost:5001" -ForegroundColor Green
 } catch {
-    Write-Host "❌ App no responde en http://localhost:5001" -ForegroundColor Red
+    Write-Host "ERROR: App no responde en http://localhost:5001" -ForegroundColor Red
     Write-Host "   Verificar que Docker Compose está corriendo correctamente" -ForegroundColor Yellow
     exit 1
 }
@@ -43,12 +43,12 @@ Set-Location $E2EDir
 
 # Verificar instalación
 if (-not (Test-Path "node_modules")) {
-    Write-Host "📦 Instalando dependencias..." -ForegroundColor Cyan
+    Write-Host "Instalando dependencias..." -ForegroundColor Cyan
     npm install
     npx playwright install chromium
 }
 
-Write-Host "`n🧪 Ejecutando tests E2E..." -ForegroundColor Green
+Write-Host "`nEjecutando tests E2E..." -ForegroundColor Green
 
 # Determinar comando según opciones
 $cmd = "npx playwright test"
@@ -92,5 +92,5 @@ Invoke-Expression $cmd
 # Volver a raíz
 Set-Location ..\..
 
-Write-Host "`n✅ Tests E2E completados" -ForegroundColor Green
-Write-Host "📊 Ver reporte HTML: cd tests\e2e; npm run test:report" -ForegroundColor Cyan
+Write-Host "`nTests E2E completados" -ForegroundColor Green
+Write-Host "Ver reporte HTML: cd tests\\e2e; npm run test:report" -ForegroundColor Cyan

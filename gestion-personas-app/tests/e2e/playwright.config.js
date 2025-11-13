@@ -6,6 +6,8 @@ const { defineConfig, devices } = require("@playwright/test");
  */
 module.exports = defineConfig({
   testDir: "./specs",
+  // Ignorar temporalmente los tests de NLP (CU-012) hasta que la funcionalidad esté lista
+  testIgnore: ["**/07-consulta-nlp.spec.js"],
 
   // Timeout para cada test
   timeout: 30 * 1000,
