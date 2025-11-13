@@ -17,9 +17,9 @@ services:
     networks:
       - app-network
 
-  # Base de datos PostgreSQL
+  # Base de datos PostgreSQL con pgvector
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg15
     container_name: personas_db
     environment:
       POSTGRES_DB: personas_db
@@ -47,16 +47,16 @@ services:
     networks:
       - app-network
 
-  # Vector Database para RAG
-  qdrant:
-    image: qdrant/qdrant
-    container_name: personas_vectordb
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    networks:
-      - app-network
+  # Vector Database para RAG - DEPRECATED: Ahora se usa pgvector en PostgreSQL
+  # qdrant:
+  #   image: qdrant/qdrant
+  #   container_name: personas_vectordb
+  #   ports:
+  #     - "6333:6333"
+  #   volumes:
+  #     - qdrant_data:/qdrant/storage
+  #   networks:
+  #     - app-network
 
   # API Gateway
   gateway:
@@ -142,20 +142,21 @@ services:
     networks:
       - app-network
 
-  # Servicio de NLP con RAG
+  # Servicio de NLP con RAG (usando pgvector)
   nlp-service:
     build: ./services/nlp
     container_name: nlp_service
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - QDRANT_URL=http://qdrant:6333
+      - AZURE_FOUNDRY_ENDPOINT=${AZURE_FOUNDRY_ENDPOINT}
+      - AZURE_EMBEDDING_MODEL=${AZURE_EMBEDDING_MODEL}
+      - AZURE_CHAT_MODEL=${AZURE_CHAT_MODEL}
+      - AZURE_API_KEY=${AZURE_API_KEY}
       - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
       - SERVICE_REGISTRY_URL=http://service-registry:3010
       - SERVICE_NAME=nlp-service
       - SERVICE_PORT=3004
     depends_on:
       - postgres
-      - qdrant
       - service-registry
     networks:
       - app-network
@@ -192,7 +193,7 @@ services:
 
 volumes:
   postgres_data:
-  qdrant_data:
+  # qdrant_data:  # DEPRECATED: Ahora se usa pgvector
   personas_uploads:
 
 networks:
