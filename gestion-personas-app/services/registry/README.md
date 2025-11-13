@@ -153,13 +153,37 @@ registryClient.setupGracefulShutdown();
 
 ## 🧪 Testing
 
-### Ejecutar Tests de Integración
+### Tests Disponibles
+
+- **Integración** (`integration/service-registry.integration.test.js`):
+  - Registro de servicios, heartbeat, descubrimiento
+  - Múltiples instancias y load balancing
+  - Deregistro y estado del registry
+  
+- **Unit** (`tests/unit/cleanup.job.test.js`):
+  - Job automático de cleanup (fake timers)
+  - Verifica remoción de servicios con heartbeat expirado (>30s)
+
+### Ejecutar Tests
+
+```bash
+# Tests unitarios
+npm test
+
+# Tests de integración
+npm run test:integration
+
+# Todos los tests
+npm run test:all
+```
+
+### Test Manual de Service Registry
 ```bash
 cd services/registry
 node test-service-registry.js
 ```
 
-### Test Manual
+### Test Manual de API
 ```bash
 # Verificar Service Registry
 curl http://localhost:3010/health

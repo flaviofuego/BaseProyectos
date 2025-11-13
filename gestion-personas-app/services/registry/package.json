@@ -6,9 +6,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "test": "jest",
+    "test:unit": "jest",
     "test:integration": "jest --config=jest.integration.config.js",
     "test:integration:watch": "jest --config=jest.integration.config.js --watch",
-    "test:all": "npm run test:integration"
+    "test:all": "npm run test && npm run test:integration"
   },
   "dependencies": {
     "express": "^4.18.2",

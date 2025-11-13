@@ -1,6 +1,6 @@
 # Tests E2E
 
-## Specs implementados (7)
+## Specs implementados (8)
 
 - `01-registro.spec.js` — CU-001 Registrarse (7 tests)
 - `02-login.spec.js` — CU-002 Login (8 tests)
@@ -9,6 +9,7 @@
 - `05-actualizar-persona.spec.js` — CU-008 Actualizar (8 tests)
 - `06-eliminar-persona.spec.js` — CU-009 Eliminar (7 tests)
 - `07-consulta-nlp.spec.js` — CU-012 NLP (12 tests, temporalmente excluido)
+- `08-full-journey.spec.js` — CU-FULL: Full journey (login → crear → consultar → logs)
 
 ## Ejecución
 
@@ -18,6 +19,10 @@ npx playwright install     # Navegadores
 npm test                   # Todos los tests
 npm run test:ui            # Con interfaz
 npm run test:report        # Ver reporte
+
+# Desde raíz con PowerShell helper
+cd ../..
+.\run-e2e-tests.ps1
 ```
 
 ## Requisitos

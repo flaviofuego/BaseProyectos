@@ -11,10 +11,13 @@
 
 ### Integration
 
-- `integration/auth-flow.integration.test.js` — registro y login
+- `integration/auth-flow.integration.test.js` — registro y login con PostgreSQL y Redis (Testcontainers)
+- `integration/preferences.integration.test.js` — actualización de preferencias (CU-010), mock de Docker
 
 ## Ejecución
 
 ```bash
 npm test
 ```
+
+Requiere Docker para Testcontainers (PostgreSQL + Redis).
