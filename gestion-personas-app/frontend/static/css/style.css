@@ -9,7 +9,7 @@
   --bg-secondary: #f8f9fa;
   --bg-tertiary: #e9ecef;
   --bg-card: #ffffff;
-  --bg-navbar: #0d6efd;
+  --bg-navbar: #5B4FC5;
   --bg-footer: #f8f9fa;
   
   /* Colores de texto */
@@ -59,7 +59,7 @@
   --bg-secondary: #161b22;
   --bg-tertiary: #21262d;
   --bg-card: #161b22;
-  --bg-navbar: #0969da;
+  --bg-navbar: #4B3FB5;
   --bg-footer: #161b22;
   
   /* Colores de texto */
@@ -280,7 +280,7 @@
     --bg-secondary: #161b22;
     --bg-tertiary: #21262d;
     --bg-card: #161b22;
-    --bg-navbar: #0969da;
+    --bg-navbar: #4B3FB5;
     --bg-footer: #161b22;
     
     --text-primary: #f0f6fc;
