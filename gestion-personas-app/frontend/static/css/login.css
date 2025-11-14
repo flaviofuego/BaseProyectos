@@ -17,6 +17,11 @@
   padding: 3rem 2rem;
 }
 
+/* Dark Mode - Panel izquierdo */
+[data-theme="dark"] .login-panel-left {
+  background: #1A202C;
+}
+
 .login-form-wrapper {
   width: 100%;
   max-width: 450px;
@@ -28,21 +33,22 @@
 
 .login-logo h1 {
   font-size: 1.75rem;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-weight: 700;
+  color: #000000;
   margin: 0;
 }
 
 .login-logo p {
   font-size: 0.95rem;
-  color: #6c757d;
+  color: #2D3748;
   margin-top: 0.5rem;
+  font-weight: 500;
 }
 
 .login-title {
   font-size: 1.5rem;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-weight: 700;
+  color: #000000;
   margin-bottom: 2rem;
 }
 
@@ -58,8 +64,8 @@
   padding: 0.75rem;
   border: none;
   background: transparent;
-  color: #6c757d;
-  font-weight: 500;
+  color: #2D3748;
+  font-weight: 600;
   cursor: pointer;
   position: relative;
   transition: color 0.3s ease;
@@ -67,6 +73,7 @@
 
 .auth-toggle-btn.active {
   color: #0066cc;
+  font-weight: 700;
 }
 
 .auth-toggle-btn.active::after {
@@ -87,8 +94,8 @@
 
 .auth-method-selector label {
   font-size: 0.9rem;
-  font-weight: 500;
-  color: #495057;
+  font-weight: 600;
+  color: #1A202C;
   margin-bottom: 0.75rem;
   display: block;
 }
@@ -113,13 +120,13 @@
   align-items: center;
   justify-content: center;
   padding: 0.75rem;
-  border: 2px solid #e9ecef;
+  border: 2px solid #CBD5E0;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.9rem;
-  font-weight: 500;
-  color: #495057;
+  font-weight: 600;
+  color: #1A202C;
 }
 
 .method-option input[type="radio"]:checked + label {
@@ -139,8 +146,8 @@
 
 .form-group label {
   font-size: 0.9rem;
-  font-weight: 500;
-  color: #495057;
+  font-weight: 600;
+  color: #1A202C;
   margin-bottom: 0.5rem;
   display: block;
 }
@@ -148,19 +155,23 @@
 .form-control-clean {
   width: 100%;
   padding: 0.85rem 1rem;
-  border: 2px solid #e9ecef;
+  border: 2px solid #CBD5E0;
   border-radius: 8px;
   font-size: 0.95rem;
+  color: #1A202C;
+  font-weight: 500;
   transition: border-color 0.3s ease;
 }
 
 .form-control-clean:focus {
   outline: none;
   border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
 
 .form-control-clean::placeholder {
-  color: #adb5bd;
+  color: #718096;
+  font-weight: 400;
 }
 
 /* Botón principal */
@@ -279,22 +290,25 @@
 
 /* Info boxes */
 .info-box {
-  background: #f8f9fa;
+  background: #F7FAFC;
   border-radius: 8px;
   padding: 1rem;
   margin-top: 1.5rem;
+  border: 1px solid #E2E8F0;
 }
 
 .info-box small {
   font-size: 0.85rem;
-  color: #6c757d;
+  color: #2D3748;
+  font-weight: 500;
 }
 
 .info-box code {
-  background: #e9ecef;
+  background: #EDF2F7;
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   color: #0066cc;
+  font-weight: 600;
 }
 
 /* Alert personalizado */
@@ -318,7 +332,8 @@
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   font-size: 0.85rem;
-  color: #6c757d;
+  color: #2D3748;
+  font-weight: 500;
 }
 
 .requirement-item.valid {
@@ -351,4 +366,133 @@
     flex: 1;
     max-width: 100%;
   }
+}
+
+/* ========================================================================
+   DARK MODE STYLES
+   ======================================================================== */
+
+/* Textos principales */
+[data-theme="dark"] .login-logo h1 {
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .login-logo p {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .login-title {
+  color: #F7FAFC;
+}
+
+/* Botones de toggle */
+[data-theme="dark"] .auth-toggle-btn {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .auth-toggle-btn.active {
+  color: #7C70DB;
+}
+
+[data-theme="dark"] .auth-toggle-btn.active::after {
+  background: #7C70DB;
+}
+
+/* Selector de método */
+[data-theme="dark"] .auth-method-selector label {
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .method-option label {
+  border-color: #4A5568;
+  color: #E2E8F0;
+  background: #2D3748;
+}
+
+[data-theme="dark"] .method-option input[type="radio"]:checked + label {
+  border-color: #7C70DB;
+  background: rgba(124, 112, 219, 0.15);
+  color: #A78BFA;
+}
+
+/* Labels de formulario */
+[data-theme="dark"] .form-group label {
+  color: #F7FAFC;
+}
+
+/* Campos de input */
+[data-theme="dark"] .form-control-clean {
+  background: #2D3748;
+  border-color: #4A5568;
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .form-control-clean:focus {
+  border-color: #7C70DB;
+  box-shadow: 0 0 0 3px rgba(124, 112, 219, 0.2);
+}
+
+[data-theme="dark"] .form-control-clean::placeholder {
+  color: #A0AEC0;
+}
+
+/* Botones */
+[data-theme="dark"] .btn-primary-clean {
+  background: #7C70DB;
+}
+
+[data-theme="dark"] .btn-primary-clean:hover {
+  background: #6C5FCE;
+}
+
+[data-theme="dark"] .btn-secondary-clean {
+  color: #A78BFA;
+  border-color: #7C70DB;
+}
+
+[data-theme="dark"] .btn-secondary-clean:hover {
+  background: rgba(124, 112, 219, 0.15);
+  color: #A78BFA;
+  border-color: #7C70DB;
+}
+
+/* Info boxes */
+[data-theme="dark"] .info-box {
+  background: #2D3748;
+  border-color: #4A5568;
+}
+
+[data-theme="dark"] .info-box small {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .info-box code {
+  background: #1A202C;
+  color: #A78BFA;
+}
+
+/* Alerts */
+[data-theme="dark"] .alert-clean {
+  background: rgba(252, 211, 77, 0.15);
+  border-left-color: #FBBF24;
+  color: #FDE68A;
+}
+
+[data-theme="dark"] .alert-clean.alert-danger {
+  background: rgba(248, 113, 113, 0.15);
+  border-left-color: #F87171;
+  color: #FCA5A5;
+}
+
+/* Requisitos */
+[data-theme="dark"] .requirement-item {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .requirement-item.valid {
+  color: #34D399;
+}
+
+[data-theme="dark"] .requirement-item.invalid {
+  color: #F87171;
 }
