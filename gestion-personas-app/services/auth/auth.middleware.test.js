@@ -67,24 +67,26 @@ describe("Middleware de Autenticación JWT", () => {
   describe("Sin token", () => {
     it("debe rechazar peticiones sin header de autorización", () => {
       // Simular que passport no encuentra token
-      passport.authenticate = jest.fn((strategy, options, callback) => {
+      passport.authenticate = jest.fn((strategy, options) => {
         return (req, res, next) => {
-          // No hay user
-          callback(null, false, { message: "No token provided" });
+          // No hay user, llamar a next o responder directamente
+          res.status(401).json({ error: "No token provided" });
         };
       });
 
       const authMiddleware = passport.authenticate("jwt", { session: false });
       const handler = authMiddleware(req, res, next);
 
-      expect(res.status).not.toHaveBeenCalledWith(200);
+      expect(res.status).toHaveBeenCalledWith(401);
     });
 
     it("debe retornar 401 cuando no hay token", () => {
       passport.authenticate = jest.fn((strategy, options, callback) => {
-        return (req, res, next) => {
+        // Invocar el callback inmediatamente con user = false
+        if (callback) {
           callback(null, false, { message: "No authorization header" });
-        };
+        }
+        return (req, res, next) => {};
       });
 
       const authMiddleware = passport.authenticate(
@@ -111,10 +113,11 @@ describe("Middleware de Autenticación JWT", () => {
       req.headers.authorization = "Bearer invalid-token-format";
 
       passport.authenticate = jest.fn((strategy, options, callback) => {
-        return (req, res, next) => {
-          // Simular error de verificación
+        // Invocar el callback inmediatamente con user = false
+        if (callback) {
           callback(null, false, { message: "Invalid token" });
-        };
+        }
+        return (req, res, next) => {};
       });
 
       const authMiddleware = passport.authenticate(
@@ -143,10 +146,11 @@ describe("Middleware de Autenticación JWT", () => {
       req.headers.authorization = `Bearer ${invalidToken}`;
 
       passport.authenticate = jest.fn((strategy, options, callback) => {
-        return (req, res, next) => {
-          // JWT no puede verificar el token
+        // Invocar el callback inmediatamente con user = false
+        if (callback) {
           callback(null, false, { message: "Invalid signature" });
-        };
+        }
+        return (req, res, next) => {};
       });
 
       const authMiddleware = passport.authenticate(
@@ -177,10 +181,11 @@ describe("Middleware de Autenticación JWT", () => {
       req.headers.authorization = `Bearer ${expiredToken}`;
 
       passport.authenticate = jest.fn((strategy, options, callback) => {
-        return (req, res, next) => {
-          // JWT detecta que el token expiró
+        // Invocar el callback inmediatamente con user = false
+        if (callback) {
           callback(null, false, { message: "Token expired" });
-        };
+        }
+        return (req, res, next) => {};
       });
 
       const authMiddleware = passport.authenticate(

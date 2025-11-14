@@ -20,15 +20,14 @@ jest.mock("node-cron", () => ({
 
 // Use modern fake timers to control time
 jest.useFakeTimers();
-jest.spyOn(global, "Date");
 
 describe("Service Registry - automatic cleanup job", () => {
   let app;
 
   beforeAll(() => {
-    // Fix initial time
-    const startAt = new Date("2025-01-01T00:00:00Z");
-    jest.setSystemTime(startAt);
+    // Fix initial time (milliseconds since epoch)
+    const startAtMs = Date.parse("2025-01-01T00:00:00Z");
+    jest.setSystemTime(startAtMs);
 
     // Load the app (this wires the cron.schedule mock)
     app = require("../../index");
@@ -57,7 +56,7 @@ describe("Service Registry - automatic cleanup job", () => {
     expect(beforeIds).toContain("stale-svc-1");
 
     // 2) Advance time by 31 seconds so isHealthy(30000) becomes false
-    jest.setSystemTime(new Date(Date.now() + 31_000));
+    jest.setSystemTime(Date.now() + 31_000);
 
     // 3) Run scheduled cleanup callback manually
     await scheduledCleanup();

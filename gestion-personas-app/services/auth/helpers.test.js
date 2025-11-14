@@ -94,7 +94,7 @@ describe("Funciones Auxiliares y Helpers", () => {
       const cachedPreferences = {
         user_id: 1,
         consulta_service_enabled: true,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       };
 
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedPreferences));

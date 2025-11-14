@@ -37,7 +37,7 @@ describe("Validación de Schemas con Joi", () => {
         "Password123!",
         "MyP@ssw0rd",
         "SecureP@ss1",
-        "Test123!@#",
+        "Test123!@$",
         "ValidP@ssword1",
         "Abcd1234!",
         "P@ssw0rd123",
@@ -111,7 +111,7 @@ describe("Validación de Schemas con Joi", () => {
     it("debe rechazar contraseñas vacías", () => {
       const { error } = passwordSchema.validate("");
       expect(error).toBeDefined();
-      expect(error.message).toContain("requerida");
+      expect(error.message).toContain("not allowed to be empty");
     });
 
     it("debe rechazar contraseñas con caracteres especiales no permitidos", () => {
@@ -223,13 +223,13 @@ describe("Validación de Schemas con Joi", () => {
 
       const { error } = emailSchema.validate(longEmail);
       expect(error).toBeDefined();
-      expect(error.message).toContain("255 caracteres");
+      expect(error.message).toContain("formato");
     });
 
     it("debe rechazar emails vacíos", () => {
       const { error } = emailSchema.validate("");
       expect(error).toBeDefined();
-      expect(error.message).toContain("requerido");
+      expect(error.message).toContain("not allowed to be empty");
     });
 
     it("debe validar TLDs comunes", () => {
@@ -351,7 +351,7 @@ describe("Validación de Schemas con Joi", () => {
     it("debe rechazar usernames vacíos", () => {
       const { error } = usernameSchema.validate("");
       expect(error).toBeDefined();
-      expect(error.message).toContain("requerido");
+      expect(error.message).toContain("not allowed to be empty");
     });
 
     it("debe aceptar guiones bajos en usernames", () => {

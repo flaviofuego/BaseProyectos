@@ -27,7 +27,7 @@ describe("Generación y Verificación de Tokens JWT", () => {
       username: user.username,
       email: user.email,
       jti: jti,
-      iat: Date.now(),
+      iat: Math.floor(Date.now() / 1000),
     };
 
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
@@ -250,17 +250,15 @@ describe("Generación y Verificación de Tokens JWT", () => {
         username: user.username,
         email: user.email,
         jti: jti,
-        iat: Date.now(),
+        iat: Math.floor(Date.now() / 1000),
       };
 
-      const expiredToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "0s" });
+      const expiredToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "-1s" });
 
-      // Esperar un momento para asegurar expiración
-      return new Promise((resolve) => setTimeout(resolve, 100)).then(() => {
-        expect(() => {
-          jwt.verify(expiredToken, JWT_SECRET);
-        }).toThrow("jwt expired");
-      });
+      // El token ya está expirado
+      expect(() => {
+        jwt.verify(expiredToken, JWT_SECRET);
+      }).toThrow("jwt expired");
     });
 
     it("debe verificar el algoritmo de firma", () => {
