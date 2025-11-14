@@ -599,8 +599,279 @@ pre {
   text-align: center;
 }
 
+/* ========================================
+   MODAL STYLES
+======================================== */
+
+/* Modal Dialog - Ancho aumentado para mejor visualización */
+.modal-dialog.modal-lg {
+  max-width: 800px;
+}
+
+/* Animación de entrada para la modal */
+.modal.fade .modal-dialog {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  transform: translateY(-30px);
+  opacity: 0;
+}
+
+.modal.show .modal-dialog {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Animación del backdrop (fondo oscuro) */
+.modal-backdrop.fade {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.modal-backdrop.show {
+  opacity: 0.5;
+}
+
+/* Modal Content */
+.modal-content {
+  border: none;
+  border-radius: 12px;
+  background-color: white !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .modal-content {
+  background-color: white !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Modal Header */
+.modal-header {
+  background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-purple-light) 100%);
+  color: white;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  border-bottom: none;
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-header .modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: white;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+/* Modal Body */
+.modal-body {
+  padding: 1.5rem;
+  color: #2d3748 !important;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+[data-theme="dark"] .modal-body {
+  color: #2d3748 !important;
+}
+
+/* Log Details Container */
+.log-details-container h6 {
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  color: var(--primary-purple) !important;
+}
+
+[data-theme="dark"] .log-details-container h6 {
+  border-bottom-color: #e5e7eb !important;
+  color: #5b4fc5 !important;
+}
+
+.log-details-container h6:first-child {
+  margin-top: 0;
+}
+
+/* Table Responsive Wrapper - Crítico para evitar desbordamiento */
+.log-details-container .table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+/* Tables dentro de la modal */
+.log-details-container .table {
+  width: 100%;
+  margin-bottom: 0;
+  background-color: white !important;
+  color: #2d3748 !important;
+  table-layout: fixed; /* Fuerza columnas de ancho fijo */
+}
+
+[data-theme="dark"] .log-details-container .table {
+  background-color: white !important;
+  color: #2d3748 !important;
+}
+
+.log-details-container .table thead th {
+  background-color: #f8f9fa !important;
+  color: #2d3748 !important;
+  font-weight: 600;
+  border-color: #e5e7eb !important;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .log-details-container .table thead th {
+  background-color: #f8f9fa !important;
+  color: #2d3748 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Celdas de tabla - Envoltura de texto */
+.log-details-container .table td,
+.log-details-container .table th {
+  padding: 0.75rem;
+  border-color: #e5e7eb !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  vertical-align: top;
+  color: #2d3748 !important;
+}
+
+[data-theme="dark"] .log-details-container .table td,
+[data-theme="dark"] .log-details-container .table th {
+  border-color: #e5e7eb !important;
+  color: #2d3748 !important;
+}
+
+/* Primera columna (Propiedad) - 35% del ancho */
+.log-details-container .table td:first-child,
+.log-details-container .table th:first-child {
+  width: 35%;
+  font-weight: 600;
+}
+
+/* Segunda columna (Valor) - 65% del ancho */
+.log-details-container .table td:last-child,
+.log-details-container .table th:last-child {
+  width: 65%;
+}
+
+.log-details-container .table td strong {
+  color: #5b4fc5 !important;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+[data-theme="dark"] .log-details-container .table td strong {
+  color: #5b4fc5 !important;
+}
+
+/* Code blocks dentro de la modal */
+.log-details-container code {
+  background-color: #f1f3f5 !important;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #e83e8c !important;
+  word-break: break-all;
+  display: inline-block;
+  max-width: 100%;
+}
+
+[data-theme="dark"] .log-details-container code {
+  background-color: #f1f3f5 !important;
+  color: #e83e8c !important;
+}
+
+/* Small text dentro de celdas */
+.log-details-container .table small {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  display: block;
+  word-wrap: break-word;
+  color: #2d3748 !important;
+}
+
+/* Badges dentro de la modal */
+.log-details-container .badge {
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  white-space: nowrap;
+}
+
+/* Alert dentro de la modal */
+.log-details-container .alert {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  word-wrap: break-word;
+}
+
+[data-theme="dark"] .log-details-container .alert-danger {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  border-color: #f43f5e !important;
+  color: #991b1b !important;
+}
+
+/* Modal Footer */
+.modal-footer {
+  border-top: 2px solid #e5e7eb !important;
+  padding: 1rem 1.5rem;
+  background-color: #f9fafb !important;
+}
+
+[data-theme="dark"] .modal-footer {
+  background-color: #f9fafb !important;
+  border-top-color: #e5e7eb !important;
+}
+
+.modal-footer .btn-outline-secondary {
+  border: 2px solid var(--primary-purple);
+  color: var(--primary-purple);
+  padding: 0.5rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modal-footer .btn-outline-secondary:hover {
+  background-color: var(--primary-purple);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(91, 79, 197, 0.3);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .btn-group {
+    flex-direction: column;
+  }
+  
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .log-details-container .table td,
+  .log-details-container .table th {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
   .btn-group {
     flex-direction: column;
   }
