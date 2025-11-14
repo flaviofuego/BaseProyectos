@@ -1160,6 +1160,8 @@ def borrar_persona():
                     flash('Error de conexión: No se pudo contactar con el servidor', 'error')
             else:
                 flash('Debe confirmar la eliminaciÃ³n', 'warning')
+    else:
+        session.pop('persona_to_delete', None)
     
     if 'persona_to_delete' in session:
         persona = session['persona_to_delete']
