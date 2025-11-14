@@ -38,6 +38,11 @@ test.describe("CU-009: Eliminar Persona", () => {
     await page.waitForTimeout(1000);
 
     // Verificar que existe botón de eliminar
+    // Abrir dropdown de acciones si existe para exponer "Eliminar"
+    const dropdownToggle = page.locator('.dropdown-toggle, button[aria-expanded]');
+    if ((await dropdownToggle.count()) > 0) {
+      await dropdownToggle.first().click();
+    }
     const deleteButton = page
       .locator(
         'a:has-text("Eliminar"), button:has-text("Eliminar"), a:has-text("Borrar")'
@@ -62,6 +67,10 @@ test.describe("CU-009: Eliminar Persona", () => {
     }
     await page.waitForTimeout(1000);
 
+    const dropdownToggle2 = page.locator('.dropdown-toggle, button[aria-expanded]');
+    if ((await dropdownToggle2.count()) > 0) {
+      await dropdownToggle2.first().click();
+    }
     const deleteButton = page
       .locator('a:has-text("Eliminar"), button:has-text("Eliminar")')
       .first();
@@ -118,6 +127,10 @@ test.describe("CU-009: Eliminar Persona", () => {
     await page.waitForTimeout(1000);
 
     // Eliminar
+    const dropdownToggle3 = page.locator('.dropdown-toggle, button[aria-expanded]');
+    if ((await dropdownToggle3.count()) > 0) {
+      await dropdownToggle3.first().click();
+    }
     const deleteButton = page
       .locator('a:has-text("Eliminar"), button:has-text("Eliminar")')
       .first();
@@ -234,6 +247,10 @@ test.describe("CU-009: Eliminar Persona", () => {
     expect(rowsBefore).toBeGreaterThan(0);
 
     // Eliminar
+    const dropdownToggle4 = page.locator('.dropdown-toggle, button[aria-expanded]');
+    if ((await dropdownToggle4.count()) > 0) {
+      await dropdownToggle4.first().click();
+    }
     const deleteButton = page.locator('a:has-text("Eliminar")').first();
 
     if ((await deleteButton.count()) > 0) {

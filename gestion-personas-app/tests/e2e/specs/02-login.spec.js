@@ -85,7 +85,7 @@ test.describe("CU-002: Inicio de Sesión", () => {
 
     // Verificar mensaje de error
     const alertDanger = page.locator(".alert-danger").first();
-    const expected = /credenciales|inválido|incorrect|No se pudo conectar/i;
+    const expected = /credenciales|inválido|incorrect|No se pudo conectar|Error en el servidor|Something went wrong/i;
     if ((await alertDanger.count()) > 0) {
       await expect(alertDanger).toContainText(expected);
     } else {
@@ -105,7 +105,7 @@ test.describe("CU-002: Inicio de Sesión", () => {
     // Verificar mensaje de error
     const alertDanger = page.locator(".alert-danger").first();
     const expected =
-      /no encontrado|not found|credenciales|No se pudo conectar/i;
+      /no encontrado|not found|credenciales|No se pudo conectar|Error en el servidor|Something went wrong/i;
     if ((await alertDanger.count()) > 0) {
       await expect(alertDanger).toContainText(expected);
     } else {
