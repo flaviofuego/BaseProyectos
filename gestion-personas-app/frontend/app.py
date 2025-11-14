@@ -12,6 +12,8 @@ from PIL import Image
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
+import markdown
+import bleach
 
 load_dotenv(dotenv_path='../.env')
 load_dotenv() 
@@ -1093,15 +1095,89 @@ def consulta_nlp():
         pregunta = request.form.get('pregunta')
         
         if pregunta:
-            response = make_request('POST', '/api/nlp/query', {'pregunta': pregunta})
-            
-            if response is not None and response.status_code == 200:
-                resultado = response.json()
-                flash('Consulta procesada exitosamente', 'success')
-            elif response is not None:
-                flash(f'Error al procesar la pregunta (Código: {response.status_code}). Verifica que el servicio de NLP esté configurado correctamente.', 'error')
-            else:
-                flash('Error de conexión: No se pudo contactar con el servicio de NLP. Verifica tu conexión.', 'error')
+            try:
+                # Llamar al nuevo endpoint del servicio NLP v2
+                # Timeout aumentado a 90 segundos debido al procesamiento de IA (Gemini puede tardar 30-40s)
+                # El servicio NLP hace 3-4 llamadas a Gemini AI que pueden tardar 8-12s cada una
+                response = make_request('POST', '/api/nlp/query', {'query': pregunta}, timeout_seconds=90.0)
+                
+                if response is not None and response.status_code == 200:
+                    data = response.json()
+                    
+                    # Verificar si la respuesta es exitosa
+                    if data.get('success'):
+                        # Renderizar Markdown a HTML en el servidor
+                        markdown_text = data['data']['markdown']
+                        
+                        # Configurar markdown con extensiones
+                        md = markdown.Markdown(extensions=[
+                            'extra',        # Tablas, listas, etc.
+                            'nl2br',        # Saltos de línea automáticos
+                            'sane_lists',   # Listas mejoradas
+                            'tables',       # Soporte de tablas
+                            'fenced_code'   # Bloques de código
+                        ])
+                        
+                        # Renderizar markdown a HTML
+                        html_content = md.convert(markdown_text)
+                        
+                        # Sanitizar HTML para prevenir XSS
+                        allowed_tags = [
+                            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                            'p', 'br', 'strong', 'em', 'u', 'a',
+                            'ul', 'ol', 'li', 'blockquote', 'code', 'pre',
+                            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+                            'hr', 'span', 'div'
+                        ]
+                        
+                        allowed_attributes = {
+                            'a': ['href', 'title'],
+                            'table': ['class'],
+                            'th': ['align'],
+                            'td': ['align']
+                        }
+                        
+                        safe_html = bleach.clean(
+                            html_content,
+                            tags=allowed_tags,
+                            attributes=allowed_attributes,
+                            strip=True
+                        )
+                        
+                        # Extraer información relevante
+                        resultado = {
+                            'pregunta': pregunta,
+                            'markdown_raw': markdown_text,  # Markdown original (por si se necesita)
+                            'html': safe_html,  # HTML pre-renderizado y sanitizado
+                            'datos': data['data']['raw_results'],  # Datos crudos de la consulta
+                            'sql': data['data'].get('sql'),  # SQL generado (opcional)
+                            'metadata': data.get('metadata', {}),  # Metadata adicional
+                            'respuesta': safe_html  # HTML para compatibilidad
+                        }
+                        
+                        # Mensaje personalizado basado en resultados
+                        results_count = data['metadata'].get('results_count', 0)
+                        intent = data['metadata'].get('intent', 'GENERAL')
+                        processing_time = data['metadata'].get('processing_time_ms', 0)
+                        
+                        flash(f'✅ Consulta procesada: {results_count} resultado(s) en {processing_time}ms', 'success')
+                        
+                        # Log adicional para debugging
+                        print(f"NLP Query processed - Intent: {intent}, Results: {results_count}, Time: {processing_time}ms")
+                    else:
+                        # Error en el procesamiento de la consulta
+                        error_msg = data.get('error', 'Error desconocido')
+                        flash(f'❌ Error al procesar la consulta: {error_msg}', 'error')
+                        print(f"NLP Query error: {error_msg}")
+                        
+                elif response is not None:
+                    flash(f'Error al procesar la pregunta (Código: {response.status_code}). Verifica que el servicio de NLP esté configurado correctamente.', 'error')
+                else:
+                    flash('Error de conexión: No se pudo contactar con el servicio de NLP. Verifica tu conexión.', 'error')
+                    
+            except Exception as e:
+                print(f"Exception in consulta_nlp: {str(e)}")
+                flash(f'Error inesperado: {str(e)}', 'error')
         else:
             flash('Por favor, escribe una pregunta', 'warning')
     

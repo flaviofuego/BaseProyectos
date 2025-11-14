@@ -2093,5 +2093,396 @@ footer .text-muted {
     box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
 }
 
+/* ====================================
+   ESTILOS PARA CONSULTAS NLP ESTRUCTURADAS
+   ====================================*/
+
+/* Respuesta estructurada */
+.border-left-primary {
+    border-left: 4px solid var(--color-primary) !important;
+}
+
+/* Tabla de resultados estructurados */
+.table-structured {
+    font-size: 0.95rem;
+}
+
+.table-structured th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+    border: none;
+}
+
+.table-structured td {
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Badges mejorados para los datos */
+.badge-gender-masculino {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    color: white;
+}
+
+.badge-gender-femenino {
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.badge-gender-nobinario {
+    background: linear-gradient(45deg, #f39c12, #e67e22);
+    color: white;
+}
+
+.badge-edad {
+    background: linear-gradient(45deg, #17a2b8, #138496);
+    color: white;
+    font-weight: 500;
+}
+
+/* Animaciones sutiles para la tabla */
+.table-structured tbody tr {
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.table-structured tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Indicadores de tipo de consulta */
+.query-type-indicator {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-radius: 0.375rem;
+    margin-left: 0.5rem;
+}
+
+.query-type-structured {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+}
+
+.query-type-semantic {
+    background: linear-gradient(45deg, #6f42c1, #e83e8c);
+    color: white;
+}
+
+.query-type-statistical {
+    background: linear-gradient(45deg, #fd7e14, #ffc107);
+    color: white;
+}
+
+/* Ejemplos de consultas mejorados */
+.example-query-structured {
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
+    border-left: 4px solid #28a745;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.example-query-structured:hover {
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(32, 201, 151, 0.15));
+    transform: translateX(5px);
+}
+
+/* Respuesta pre-formateada mejorada */
+.structured-response-pre {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.5;
+    color: #495057;
+    white-space: pre-wrap;
+    margin: 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Resumen de consulta mejorado */
+.query-summary-card {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.05), rgba(102, 126, 234, 0.05));
+    border: 1px solid rgba(13, 110, 253, 0.2);
+}
+
+/* Iconos de metadata */
+.metadata-icon {
+    color: var(--color-primary);
+    margin-right: 0.25rem;
+}
+
+/* Responsive para tablas estructuradas */
+@media (max-width: 768px) {
+    .table-structured {
+        font-size: 0.8rem;
+    }
+    
+    .table-structured th, 
+    .table-structured td {
+        padding: 0.5rem 0.25rem;
+    }
+    
+    .badge {
+        font-size: 0.6rem;
+    }
+}
+
+/* Loading state para consultas */
+.query-loading {
+    display: none;
+}
+
+.query-loading.show {
+    display: block;
+}
+
+.loading-spinner {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top: 3px solid var(--color-primary);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mejoras para el modo oscuro */
+[data-bs-theme="dark"] .table-structured th {
+    background: linear-gradient(135deg, #495057, #343a40);
+}
+
+[data-bs-theme="dark"] .structured-response-pre {
+    background: linear-gradient(135deg, #343a40, #495057);
+    border-color: #495057;
+    color: #ced4da;
+}
+
+[data-bs-theme="dark"] .query-summary-card {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(102, 126, 234, 0.1));
+    border-color: rgba(13, 110, 253, 0.3);
+}
+
+[data-bs-theme="dark"] .example-query-structured {
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(32, 201, 151, 0.15));
+    border-left-color: #28a745;
+}
+
+/* ====================================
+   LOADING AND INTERACTION EFFECTS
+   ====================================*/
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Character Counter Styles */
+#char-counter {
+    transition: color 0.3s ease;
+    font-size: 0.875rem;
+}
+
+/* Form Enhancement */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    transform: scale(1.01);
+    transition: all 0.3s ease;
+}
+
+/* Button Enhancement */
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Tooltip Enhancement */
+[title] {
+    position: relative;
+}
+
+/* Table Row Hover Enhancement */
+.table-structured tbody tr {
+    transition: all 0.3s ease;
+}
+
+.table-structured tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.08) !important;
+    transform: translateX(2px);
+}
+
+/* Badge Hover Effects */
+.badge-gender-masculino:hover,
+.badge-gender-femenino:hover,
+.badge-gender-nobinario:hover,
+.badge-edad:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+/* Example Query Click Animation */
+.example-query-structured {
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Sortable Column Enhancement */
+th[style*="cursor: pointer"] {
+    user-select: none;
+    position: relative;
+}
+
+th[style*="cursor: pointer"]:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Loading State for Textarea */
+.form-control.loading {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    background: linear-gradient(45deg, transparent 30%, rgba(13, 110, 253, 0.1) 50%, transparent 70%);
+    background-size: 200% 200%;
+    animation: shimmer 2s infinite linear;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* ====================================
+   NO RESULTS UI
+   ====================================*/
+
+/* No Results Alert Styling */
+.no-results-alert {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 1px solid #ffc107;
+    border-left: 4px solid #ffc107;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.15);
+}
+
+.no-results-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 193, 7, 0.1);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.no-results-suggestions {
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.no-results-suggestions h6 {
+    color: #856404;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.no-results-suggestions ul {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.no-results-suggestions ul li {
+    margin-bottom: 0.3rem;
+}
+
+.no-results-quick-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.quick-action-btn {
+    transition: all 0.3s ease;
+    border-width: 1px;
+    font-size: 0.875rem;
+}
+
+.quick-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.quick-action-btn i {
+    margin-right: 0.5rem;
+}
+
+/* Dark theme support for no results */
+[data-bs-theme="dark"] .no-results-alert {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 234, 167, 0.1) 100%);
+    border-color: rgba(255, 193, 7, 0.5);
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .no-results-suggestions {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+[data-bs-theme="dark"] .no-results-suggestions h6 {
+    color: #ffc107;
+}
+
+[data-bs-theme="dark"] .no-results-icon {
+    background: rgba(255, 193, 7, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .no-results-alert .d-flex {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .no-results-icon {
+        margin: 0 auto 1rem auto;
+    }
+    
+    .btn-group-vertical.d-grid {
+        gap: 0.5rem;
+    }
+}
+
 
 
