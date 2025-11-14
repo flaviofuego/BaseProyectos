@@ -59,12 +59,18 @@ test.describe("CU-001: Registro de Usuario", () => {
     await page.locator('button[type="submit"]').click();
 
     // Verificar mensaje de error (acepta genérico de servidor)
-    const errorBox = page.locator('.alert-danger, .error, [role="alert"]').first();
+    const errorBox = page
+      .locator('.alert-danger, .error, [role="alert"]')
+      .first();
     const errorExists = (await errorBox.count()) > 0;
     if (errorExists) {
-      await expect(errorBox).toContainText(/email.*existe|ya registrado|something went wrong|error/i);
+      await expect(errorBox).toContainText(
+        /email.*existe|ya registrado|something went wrong|error/i
+      );
     } else {
-      await expect(page).toContainText(/email.*existe|ya registrado|something went wrong|error/i);
+      await expect(page).toContainText(
+        /email.*existe|ya registrado|something went wrong|error/i
+      );
     }
   });
 
@@ -77,11 +83,17 @@ test.describe("CU-001: Registro de Usuario", () => {
     await page.locator('button[type="submit"]').click();
 
     // Verificar mensaje de error (fallback a texto en página)
-    const alertBox = page.locator('.alert-danger, .error, [role="alert"]').first();
+    const alertBox = page
+      .locator('.alert-danger, .error, [role="alert"]')
+      .first();
     if ((await alertBox.count()) > 0) {
-      await expect(alertBox).toContainText(/contraseñas.*coinciden|passwords.*match/i);
+      await expect(alertBox).toContainText(
+        /contraseñas.*coinciden|passwords.*match/i
+      );
     } else {
-      await expect(page).toContainText(/contraseñas.*coinciden|passwords.*match/i);
+      await expect(page).toContainText(
+        /contraseñas.*coinciden|passwords.*match/i
+      );
     }
   });
 
@@ -94,7 +106,9 @@ test.describe("CU-001: Registro de Usuario", () => {
     await page.locator('button[type="submit"]').click();
 
     // Verificar mensaje de error (fallback a texto en página)
-    const minAlert = page.locator('.alert-danger, .error, [role="alert"]').first();
+    const minAlert = page
+      .locator('.alert-danger, .error, [role="alert"]')
+      .first();
     if ((await minAlert.count()) > 0) {
       await expect(minAlert).toContainText(/mínimo 8|at least 8/i);
     } else {

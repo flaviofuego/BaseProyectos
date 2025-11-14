@@ -19,9 +19,12 @@ async function login(
   if ((await quickLogin.count()) > 0) {
     await quickLogin.first().click();
     try {
-      await page.waitForURL(/\/dashboard|\/home|\/personas\/(consultar|crear)/i, {
-        timeout: 5000,
-      });
+      await page.waitForURL(
+        /\/dashboard|\/home|\/personas\/(consultar|crear)/i,
+        {
+          timeout: 5000,
+        }
+      );
       return;
     } catch (e) {
       // continuar con login manual

@@ -46,7 +46,9 @@ test.describe("CU-008: Actualizar Persona", () => {
 
     // Hacer clic en "Editar" de la primera persona
     // Abrir dropdown de acciones si existe
-    const dropdownToggle = page.locator('.dropdown-toggle, button[aria-expanded]');
+    const dropdownToggle = page.locator(
+      ".dropdown-toggle, button[aria-expanded]"
+    );
     if ((await dropdownToggle.count()) > 0) {
       await dropdownToggle.first().click();
     }
@@ -89,7 +91,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle = page.locator('.dropdown-toggle, button[aria-expanded]');
+    const dropdownToggle = page.locator(
+      ".dropdown-toggle, button[aria-expanded]"
+    );
     if ((await dropdownToggle.count()) > 0) {
       await dropdownToggle.first().click();
     }
@@ -139,7 +143,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle2 = page.locator('.dropdown-toggle, button[aria-expanded]');
+    const dropdownToggle2 = page.locator(
+      ".dropdown-toggle, button[aria-expanded]"
+    );
     if ((await dropdownToggle2.count()) > 0) {
       await dropdownToggle2.first().click();
     }
@@ -177,7 +183,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle3 = page.locator('.dropdown-toggle, button[aria-expanded]');
+    const dropdownToggle3 = page.locator(
+      ".dropdown-toggle, button[aria-expanded]"
+    );
     if ((await dropdownToggle3.count()) > 0) {
       await dropdownToggle3.first().click();
     }
@@ -215,7 +223,9 @@ test.describe("CU-008: Actualizar Persona", () => {
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle4 = page.locator('.dropdown-toggle, button[aria-expanded]');
+    const dropdownToggle4 = page.locator(
+      ".dropdown-toggle, button[aria-expanded]"
+    );
     if ((await dropdownToggle4.count()) > 0) {
       await dropdownToggle4.first().click();
     }
