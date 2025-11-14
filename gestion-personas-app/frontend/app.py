@@ -95,6 +95,11 @@ def make_request(method, endpoint, data=None, files=None, params=None, timeout_s
         else:
             app.logger.info(f"DEBUG: Response success")
         
+        # Manejar expiración de token
+        if response.status_code == 401:
+            app.logger.warning("DEBUG: Token expired or invalid - clearing session")
+            session.clear()
+        
         return response
     except requests.exceptions.ConnectionError as e:
         app.logger.error(f"DEBUG: Connection error: {e}")
@@ -437,12 +442,23 @@ def dashboard():
 def reportes():
     response = make_request('GET', '/api/consulta/stats')
 
-    stats = {}
+    stats = None
     if response is not None and response.status_code == 200:
-        stats = response.json()
+        stats_data = response.json()
+        # Solo pasar stats si realmente tiene datos
+        if stats_data and stats_data.get('total_personas', 0) > 0:
+            stats = stats_data
+        else:
+            flash('No hay personas registradas en el sistema todavía.', 'info')
+    elif response is not None and response.status_code == 401:
+        # Token expirado - redirigir al login
+        flash('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'warning')
+        return redirect(url_for('login'))
     else:
         if response is None:
-            flash('El servicio de estadisticas esta lento o no disponible. Mostrando reportes sin datos.', 'info')
+            flash('El servicio de estadísticas está lento o no disponible. Por favor, intenta de nuevo en unos momentos.', 'warning')
+        else:
+            flash('Error al cargar las estadísticas. Por favor, recarga la página.', 'error')
     
     return render_template('reportes.html', stats=stats, user=session.get('user'))
 
@@ -925,6 +941,9 @@ def consultar_personas():
         
         if response is not None and response.status_code == 200:
             personas = [response.json()]
+        elif response is not None and response.status_code == 401:
+            flash('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'warning')
+            return redirect(url_for('login'))
         elif response is not None and response.status_code == 403:
             try:
                 error_data = response.json()
@@ -980,6 +999,9 @@ def consultar_personas():
                 flash(f'Se encontraron {total_results} personas (mostrando {len(personas)})', 'success')
             else:
                 flash('No se encontraron personas con los criterios especificados', 'info')
+        elif response is not None and response.status_code == 401:
+            flash('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'warning')
+            return redirect(url_for('login'))
         elif response is not None and response.status_code == 403:
             try:
                 error_data = response.json()
