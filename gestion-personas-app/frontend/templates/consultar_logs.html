@@ -2,6 +2,10 @@
 
 {% block title %}Consultar Logs - Sistema de Gestión de Personas{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/consultar_logs.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="row" data-animate="fade-in">
     <div class="col-12">
@@ -101,10 +105,10 @@
 
 <!-- Statistics -->
 {% if stats %}
-<div class="row mb-4">
+<div class="row mb-4 stats-card-container">
     <div class="col-12">
-        <div class="card border-info">
-            <div class="card-header bg-info text-white">
+        <div class="card">
+            <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-chart-bar"></i> Estadísticas de Logs
                 </h5>
@@ -164,13 +168,13 @@
 
 <!-- Logs Results -->
 {% if logs %}
-<div class="row" data-animate="slide-in-right" data-delay="200">
+<div class="row logs-results-card" data-animate="slide-in-right" data-delay="200">
     <div class="col-12">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-list"></i> Registros de Logs
-                    <span class="badge bg-primary">{{ logs|length }}</span>
+                    <span class="badge bg-primary ms-2">{{ logs|length }}</span>
                 </h5>
             </div>
             <div class="card-body">
@@ -272,17 +276,17 @@
                 </div>
                 
                 <!-- Pagination Controls -->
-                <div class="row mt-3">
-                    <div class="col-md-6">
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
                         <div class="d-flex align-items-center">
                             <label for="pageSize" class="form-label me-2 mb-0">Mostrar:</label>
-                            <select class="form-select form-select-sm me-2" id="pageSize" style="width: auto;" onchange="changePageSize(this.value)">
+                            <select class="form-select form-select-sm" id="pageSize" style="width: auto;" onchange="changePageSize(this.value)">
                                 <option value="10" {{ 'selected' if request.args.limit == '10' else '' }}>10</option>
                                 <option value="20" {{ 'selected' if request.args.limit == '20' or not request.args.limit else '' }}>20</option>
                                 <option value="50" {{ 'selected' if request.args.limit == '50' else '' }}>50</option>
                                 <option value="100" {{ 'selected' if request.args.limit == '100' else '' }}>100</option>
                             </select>
-                            <small class="text-muted">registros por página</small>
+                            <small class="text-muted ms-3">registros por página</small>
                         </div>
                     </div>
                     <div class="col-md-6">
