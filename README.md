@@ -777,6 +777,72 @@ docker exec -it personas_redis redis-cli
 - [ ] Load balancer setup
 - [ ] CDN para assets estáticos
 
+## 🧪 Testing y Calidad de Código
+
+### Entorno de Testing Dockerizado
+
+El proyecto incluye un **entorno de testing completamente automatizado** que permite ejecutar tests de forma aislada sin afectar el entorno de desarrollo.
+
+#### 🚀 Quick Start
+
+```bash
+# Opción 1: Script interactivo
+cd gestion-personas-app
+./test-quickstart.sh
+
+# Opción 2: Comandos Make
+make test              # Ejecutar TODOS los tests
+make test-unit         # Solo tests unitarios
+make test-integration  # Solo tests de integración
+make test-e2e          # Solo tests E2E
+make test-coverage     # Generar reporte de cobertura
+```
+
+#### 📊 Tipos de Tests
+
+- **Unitarios**: Tests de funciones individuales
+- **Integración**: Tests de API endpoints y bases de datos
+- **E2E**: Tests de flujo completo con Playwright
+- **Frontend**: Tests de Python con pytest
+
+#### 📈 Cobertura y Reportes
+
+```bash
+# Ver resultados interactivamente
+./view-test-results.sh
+
+# O consultar reportes
+make test-results
+
+# Reportes disponibles en:
+# - test-results/index.html (consolidado)
+# - test-results/coverage-python/index.html
+# - test-results/coverage/*/index.html
+```
+
+#### 🐳 Servicios de Test
+
+El entorno incluye:
+
+- PostgreSQL Test (puerto 5433, tmpfs)
+- Redis Test (puerto 6380, tmpfs)
+- Service Registry Test
+- Gateway Test
+- Test Runners (Node.js, Python, E2E)
+
+#### 📚 Documentación Completa
+
+- **Guía Completa**: [`gestion-personas-app/TESTING-GUIDE.md`](gestion-personas-app/TESTING-GUIDE.md)
+- **Quick Reference**: [`gestion-personas-app/TESTING-README.md`](gestion-personas-app/TESTING-README.md)
+- **Setup Summary**: [`gestion-personas-app/TEST-SETUP-SUMMARY.md`](gestion-personas-app/TEST-SETUP-SUMMARY.md)
+
+#### ✅ Verificar Setup
+
+```bash
+cd gestion-personas-app
+./check-test-setup.sh
+```
+
 ## 📄 Licencia y Contacto
 
 **Licencia**: MIT License

@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/playwright:v1.50.0-noble
+
+WORKDIR /app/tests/e2e
+
+# Instalar Node.js 18
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copiar package.json para E2E tests
+COPY tests/e2e/package*.json ./
+
+# Instalar dependencias
+RUN npm ci
+
+# Instalar Playwright para E2E tests
+RUN npx playwright install --with-deps chromium
+
+# Copiar tests E2E
+COPY tests/e2e ./
+
+# Crear directorio de resultados
+RUN mkdir -p /app/test-results
+
+CMD ["npm", "test"]

@@ -1,5 +1,8 @@
 .PHONY: help build up down logs clean test init-db db-backup db-restore db-reset db-migrations db-status
 
+# Use bash as shell
+SHELL := /bin/bash
+
 # Default target
 help:
 	@echo "Available commands:"
@@ -26,10 +29,27 @@ help:
 	@echo "  make db-status   - Show database statistics"
 	@echo ""
 	@echo "🧪 TESTING COMMANDS:"
-	@echo "  make test-auth   - Run Auth Service tests"
-	@echo "  make test-personas - Run Personas Service tests"
-	@echo "  make test-frontend - Run Frontend tests (Python + JavaScript)"
-	@echo "  make test-all    - Run all service tests"
+	@echo "  make test              - Run all tests (unit + integration + e2e)"
+	@echo "  make test-build        - Build test environment"
+	@echo "  make test-up           - Start test environment"
+	@echo "  make test-down         - Stop test environment"
+	@echo "  make test-unit         - Run unit tests only"
+	@echo "  make test-integration  - Run integration tests only"
+	@echo "  make test-e2e          - Run end-to-end tests"
+	@echo "  make test-frontend     - Run frontend tests"
+	@echo "  make test-coverage     - Generate coverage report"
+	@echo "  make test-watch        - Run tests in watch mode"
+	@echo "  make test-clean        - Clean test artifacts and volumes"
+	@echo "  make test-results      - Show test results summary"
+	@echo "  make test-service      - Test specific service (interactive)"
+	@echo "  make test-auth         - Test auth service"
+	@echo "  make test-personas     - Test personas service"
+	@echo "  make test-consulta     - Test consulta service"
+	@echo "  make test-nlp-service  - Test nlp service"
+	@echo "  make test-log          - Test log service"
+	@echo "  make test-gateway      - Test gateway"
+	@echo "  make test-registry     - Test service registry"
+	@echo "  make test-frontend-dev - Test frontend (dev container)"
 	@echo ""
 	@echo "🧹 MAINTENANCE COMMANDS:"
 	@echo "  make clean       - Stop services and remove volumes"
@@ -94,25 +114,154 @@ clean:
 	docker-compose down -v
 	rm -rf uploads/
 
-# Run tests for Auth Service
-test-auth:
-	@echo "Running Auth Service tests..."
-	@cd services/auth && bash test.sh
+# ==========================================
+# 🧪 TESTING COMMANDS
+# ==========================================
 
-# Run tests for Personas Service
-test-personas:
-	@echo "Running Personas Service tests..."
-	@cd services/personas && bash test.sh
+# Build test environment
+test-build:
+	@echo "🏗️  Building test environment..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml build
+	@echo "✅ Test environment built successfully!"
 
-# Run tests for Frontend
+# Start test environment
+test-up:
+	@echo "🚀 Starting test environment..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml up -d postgres-test redis-test service-registry-test gateway-test
+	@echo "⏳ Waiting for services to be ready..."
+	@sleep 10
+	@echo "✅ Test environment is ready!"
+
+# Stop test environment
+test-down:
+	@echo "🛑 Stopping test environment..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml down
+	@echo "✅ Test environment stopped!"
+
+# Run ALL tests (unit + integration + frontend)
+test:
+	@echo "🧪 =========================================="
+	@echo "🧪 RUNNING ALL TESTS"
+	@echo "🧪 =========================================="
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-node test-runner-node test-runner-python
+	@echo ""
+	@echo "✅ All tests completed! Check tests/results/ for detailed reports"
+	@echo "📊 Open tests/results/index.html for consolidated report"
+
+# Run unit tests only
+test-unit:
+	@echo "🧪 Running unit tests..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:unit
+	@echo "✅ Unit tests completed!"
+
+# Run integration tests only
+test-integration:
+	@echo "🧪 Running integration tests..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:integration
+	@echo "✅ Integration tests completed!"
+
+# Run E2E tests
+test-e2e:
+	@echo "🧪 Running end-to-end tests..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-e2e test-runner-e2e
+	@echo "✅ E2E tests completed!"
+
+# Run frontend tests
 test-frontend:
-	@echo "Running Frontend tests..."
-	@cd frontend && bash test.sh
+	@echo "🧪 Running frontend tests..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-python
+	@echo "✅ Frontend tests completed!"
 
-# Run all tests
-test-all:
-	@echo "Running all service tests..."
-	@cd services/auth && bash test.sh && cd ../personas && bash test.sh && cd ../../frontend && bash test.sh
+# Generate coverage report
+test-coverage:
+	@echo "📊 Generating coverage report..."
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:coverage
+	@echo "📊 Coverage report available at: tests/results/coverage/index.html"
+	@echo "📊 Open in browser with: open tests/results/coverage/index.html"
+
+# Run tests in watch mode (for development)
+test-watch:
+	@echo "👀 Running tests in watch mode..."
+	@echo "⚠️  Press Ctrl+C to stop"
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:watch
+
+# Clean test artifacts
+test-clean:
+	@echo "🧹 Cleaning test artifacts..."
+	rm -rf tests/results/*
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml down -v
+	@echo "✅ Test artifacts cleaned!"
+
+# Show test results summary
+test-results:
+	@echo "📊 =========================================="
+	@echo "📊 TEST RESULTS SUMMARY"
+	@echo "📊 =========================================="
+	@if [ -d "tests/results" ]; then \
+		echo ""; \
+		echo "📁 Available Reports:"; \
+		find tests/results -name "*.html" -o -name "*.xml" -o -name "*.json" | head -20; \
+		echo ""; \
+		echo "📊 Main Report: tests/results/index.html"; \
+		echo "📊 Python Coverage: tests/results/coverage-python/index.html"; \
+		echo ""; \
+	else \
+		echo "❌ No test results found. Run 'make test' first."; \
+	fi
+
+
+
+# Test specific service (runs in dev container)
+test-service:
+	@echo "🧪 Testing specific service..."
+	@echo "Available services: auth, personas, consulta, nlp, log, gateway, registry, frontend"
+	@read -p "Enter service name: " service; \
+	case "$$service" in \
+		auth) make test-auth ;; \
+		personas) make test-personas ;; \
+		consulta) make test-consulta ;; \
+		nlp) make test-nlp-service ;; \
+		log) make test-log ;; \
+		gateway) make test-gateway ;; \
+		registry) make test-registry ;; \
+		frontend) make test-frontend-dev ;; \
+		*) echo "❌ Unknown service: $$service"; \
+		   echo "Please choose from: auth, personas, consulta, nlp, log, gateway, registry, frontend"; \
+		   exit 1 ;; \
+	esac
+
+# Test specific services directly
+test-auth:
+	@echo "🧪 Testing auth service..."
+	@docker exec -it auth_service_dev npm test
+
+test-personas:
+	@echo "🧪 Testing personas service..."
+	@docker exec -it personas_service_dev npm test
+
+test-consulta:
+	@echo "🧪 Testing consulta service..."
+	@docker exec -it consulta_service_dev npm run test:integration
+
+test-nlp-service:
+	@echo "🧪 Testing nlp service..."
+	@docker exec -it nlp_service_dev npm test
+
+test-log:
+	@echo "🧪 Testing log service..."
+	@docker exec -it log_service_dev npm test
+
+test-gateway:
+	@echo "🧪 Testing gateway..."
+	@docker exec -it api_gateway_dev npm test
+
+test-registry:
+	@echo "🧪 Testing service registry..."
+	@docker exec -it service_registry_dev npm test
+
+test-frontend-dev:
+	@echo "🧪 Testing frontend..."
+	@docker exec -it frontend_dev sh -c "pytest --cov -v || npm test"
 
 # Initialize database with sample data
 init-db:
@@ -143,9 +292,6 @@ dev-log:
 dev-frontend:
 	cd frontend && pip install -r requirements.txt && streamlit run app.py
 
-# Production build
-prod:
-	docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # Check service health
 health:
@@ -160,12 +306,12 @@ health:
 # Sync embeddings for Gemini
 sync-embeddings:
 	@echo "Synchronizing embeddings with Gemini..."
-	@curl -X POST http://localhost:8001/api/nlp/sync-embeddings
+	@curl -X POST http://gateway:8001/api/nlp/sync-embeddings
 
 # Test NLP query
 test-nlp:
 	@echo "Testing NLP query..."
-	@curl -X POST http://localhost:8001/api/nlp/query \
+	@curl -X POST http://gateway:8001/api/nlp/query \
 		-H "Content-Type: application/json" \
 		-d '{"pregunta": "¿Cuál es el empleado más joven registrado?"}' | jq .
 
