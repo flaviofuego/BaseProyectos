@@ -17,6 +17,7 @@ cd tests/e2e && npm test
 ## Estado actual (Nov 2025)
 
 ### ✅ Backend: 176/176 (100%)
+
 - Registry: 1/1
 - Gateway: 5/5
 - Auth: 124/124
@@ -26,8 +27,10 @@ cd tests/e2e && npm test
 - NLP: omitido
 
 ### ❓ E2E: pendiente verificación
+
 - 8 specs implementados (NLP excluido)
 
 ## Notas
+
 - Gateway: añadido caso específico sin instancias de consulta-service.
 - Usa Docker levantado para integración y E2E.

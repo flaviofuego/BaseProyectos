@@ -74,15 +74,20 @@ describe("Gateway integration (esenciales - contra Docker)", () => {
     const REGISTRY_URL = process.env.REGISTRY_URL || "http://localhost:3010";
 
     // Verificamos si hay instancias disponibles; si las hay, omitimos el caso específico
-    const discovery = await axios.get(`${REGISTRY_URL}/discover/consulta-service`, {
-      validateStatus: () => true,
-    });
+    const discovery = await axios.get(
+      `${REGISTRY_URL}/discover/consulta-service`,
+      {
+        validateStatus: () => true,
+      }
+    );
 
     if (discovery.status === 200 && discovery.data?.instance) {
       // Entorno tiene consulta-service activo; no aplican las precondiciones de la guía
       // Omitimos aserción para no generar falso negativo
       // eslint-disable-next-line no-console
-      console.warn("consulta-service está disponible; se omite este test de indisponibilidad");
+      console.warn(
+        "consulta-service está disponible; se omite este test de indisponibilidad"
+      );
       return;
     }
 
