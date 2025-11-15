@@ -48,6 +48,8 @@ help:
 	@echo "  make test-nlp-service  - Test nlp service"
 	@echo "  make test-log          - Test log service"
 	@echo "  make test-gateway      - Test gateway"
+	@echo "  make test-registry     - Test service registry"
+	@echo "  make test-frontend-dev - Test frontend (dev container)"
 	@echo ""
 	@echo "🧹 MAINTENANCE COMMANDS:"
 	@echo "  make clean       - Stop services and remove volumes"
@@ -207,16 +209,12 @@ test-results:
 		echo "❌ No test results found. Run 'make test' first."; \
 	fi
 
-# Quick test (only modified services)
-test-quick:
-	@echo "⚡ Running quick tests on modified files..."
-	docker-compose -f docker-compose.test.yml run --rm test-runner-node npm run test -- --onlyChanged
-	@echo "✅ Quick tests completed!"
+
 
 # Test specific service (runs in dev container)
 test-service:
 	@echo "🧪 Testing specific service..."
-	@echo "Available services: auth, personas, consulta, nlp, log, gateway"
+	@echo "Available services: auth, personas, consulta, nlp, log, gateway, registry, frontend"
 	@read -p "Enter service name: " service; \
 	case "$$service" in \
 		auth) make test-auth ;; \
@@ -225,8 +223,10 @@ test-service:
 		nlp) make test-nlp-service ;; \
 		log) make test-log ;; \
 		gateway) make test-gateway ;; \
+		registry) make test-registry ;; \
+		frontend) make test-frontend-dev ;; \
 		*) echo "❌ Unknown service: $$service"; \
-		   echo "Please choose from: auth, personas, consulta, nlp, log, gateway"; \
+		   echo "Please choose from: auth, personas, consulta, nlp, log, gateway, registry, frontend"; \
 		   exit 1 ;; \
 	esac
 
@@ -254,6 +254,14 @@ test-log:
 test-gateway:
 	@echo "🧪 Testing gateway..."
 	@docker exec -it api_gateway_dev npm test
+
+test-registry:
+	@echo "🧪 Testing service registry..."
+	@docker exec -it service_registry_dev npm test
+
+test-frontend-dev:
+	@echo "🧪 Testing frontend..."
+	@docker exec -it frontend_dev sh -c "pytest --cov -v || npm test"
 
 # Initialize database with sample data
 init-db:
