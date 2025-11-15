@@ -1,6 +1,3 @@
-/* Crear Persona - Estilos del formulario de creación */
-
-/* Asegurar que el body tenga el mismo fondo del dashboard */
 body {
   background-color: #f7f9fc;
 }
@@ -9,7 +6,6 @@ body {
   background-color: #1a202c;
 }
 
-/* Variables de color para consistencia */
 :root {
   --primary-purple: #5b4fc5;
   --primary-purple-light: #6b5fd5;
@@ -22,7 +18,6 @@ body {
   --primary-purple-dark: #6c60cb;
 }
 
-/* Estilo del contenedor principal */
 .card {
   border: none;
   border-radius: 12px;
@@ -52,7 +47,6 @@ body {
   font-weight: 600;
 }
 
-/* Estilo personalizado para input file */
 .file-input-wrapper {
   position: relative;
   overflow: hidden;
@@ -111,7 +105,6 @@ body {
   color: #a0aec0;
 }
 
-/* Botones de acción modernos */
 .btn-action-container {
   display: flex;
   gap: 1rem;
@@ -125,7 +118,6 @@ body {
   border-top-color: #4a5568;
 }
 
-/* Botón Primario - Crear Persona */
 .btn-primary-custom {
   background: linear-gradient(
     135deg,
@@ -154,7 +146,6 @@ body {
   transform: translateY(0);
 }
 
-/* Botón Secundario - Cancelar */
 .btn-secondary-custom {
   background: transparent;
   border: 2px solid var(--primary-purple);
@@ -190,13 +181,11 @@ body {
   color: white;
 }
 
-/* Ocultar botones originales de Bootstrap */
 .btn-primary:not(.btn-primary-custom),
 .btn-secondary:not(.btn-secondary-custom) {
   display: none !important;
 }
 
-/* Mejorar campos del formulario */
 .form-control,
 .form-select {
   border-radius: 8px;
@@ -224,7 +213,6 @@ body {
   box-shadow: 0 0 0 3px rgba(124, 112, 219, 0.2);
 }
 
-/* Título de la página */
 h1 {
   color: var(--primary-purple);
   font-weight: 700;

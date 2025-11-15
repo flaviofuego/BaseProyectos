@@ -1,6 +1,5 @@
-/* Bulk Upload - Estilos de Carga Masiva de Personas */
+/* Bulk Upload */
 
-/* Fondo del lienzo consistente con el dashboard */
 body {
   background-color: #f7f9fc;
 }
@@ -9,14 +8,12 @@ body {
   background-color: #1a202c;
 }
 
-/* Variables de color */
 :root {
   --primary-purple: #5b4fc5;
   --primary-purple-light: #6b5fd5;
   --primary-purple-dark: #4b3fb5;
   --text-dark: #2d3748;
   --text-muted: #718096;
-  /* Rojo rose suave para duplicados - modo claro */
   --rose-duplicate: #f43f5e;
   --rose-duplicate-light: #fb7185;
 }
@@ -27,18 +24,15 @@ body {
   --primary-purple-dark: #6c60cb;
   --text-dark: #e2e8f0;
   --text-muted: #a0aec0;
-  /* Rojo rose suave para duplicados - modo oscuro */
   --rose-duplicate: #fb7185;
   --rose-duplicate-light: #fda4af;
 }
 
-/* Título principal */
 h1 {
   color: var(--primary-purple);
   font-weight: 700;
 }
 
-/* Tarjeta principal mejorada */
 .card {
   border: none;
   border-radius: 12px;
@@ -158,7 +152,6 @@ h1 {
   color: #a5b4fc;
 }
 
-/* Nota de advertencia */
 .warning-note {
   background-color: #fff4e5;
   border-left: 3px solid #ffa500;
@@ -172,7 +165,6 @@ h1 {
   color: #ffb84d;
 }
 
-/* Separador visual */
 .section-divider {
   border: none;
   height: 2px;
@@ -186,7 +178,6 @@ h1 {
   opacity: 0.3;
 }
 
-/* Input de archivo personalizado */
 .file-input-wrapper {
   position: relative;
   overflow: hidden;
@@ -246,7 +237,6 @@ h1 {
   color: #a0aec0;
 }
 
-/* Botones de acción estilizados */
 .btn-primary-custom {
   background: linear-gradient(
     135deg,
@@ -295,7 +285,6 @@ h1 {
   text-decoration: none;
 }
 
-/* Tarjetas de resultados */
 .stats-card {
   border: 2px solid #e2e8f0;
   border-radius: 10px;
@@ -320,8 +309,6 @@ h1 {
   margin-bottom: 0.25rem;
 }
 
-/* ===== MODO CLARO - COLORES DE TEXTO ===== */
-/* Textos info (Documentos Duplicados) en modo claro */
 .text-info,
 small.text-info {
   color: #f43f5e !important;
@@ -332,29 +319,24 @@ h6.text-info {
   font-weight: 600;
 }
 
-/* Tablas mejoradas */
 .table {
   border-radius: 8px;
   overflow: hidden;
   background-color: white;
 }
 
-/* ===== MODO OSCURO - ESTILOS DE TABLA ===== */
-/* Contenedor de la tabla */
 [data-theme="dark"] .table-responsive {
   background-color: #2d3748;
   border-radius: 8px;
   overflow: hidden;
 }
 
-/* Tabla completa */
 [data-theme="dark"] .table {
   color: #e2e8f0 !important;
   background-color: #2d3748 !important;
   border-color: #4a5568 !important;
 }
 
-/* Encabezado general de la tabla */
 [data-theme="dark"] .table thead {
   background-color: #374151 !important;
 }
@@ -366,7 +348,6 @@ h6.text-info {
   font-weight: 600;
 }
 
-/* Filas del cuerpo de la tabla */
 [data-theme="dark"] .table tbody {
   background-color: #2d3748 !important;
 }
@@ -380,7 +361,6 @@ h6.text-info {
   background-color: #374151 !important;
 }
 
-/* Celdas de la tabla */
 [data-theme="dark"] .table td,
 [data-theme="dark"] .table th {
   border-color: #4a5568 !important;
@@ -388,14 +368,11 @@ h6.text-info {
   background-color: transparent !important;
 }
 
-/* Asegurar que las celdas no tengan fondo blanco */
 [data-theme="dark"] .table > :not(caption) > * > * {
   background-color: transparent !important;
   border-bottom-color: #4a5568 !important;
 }
 
-/* Encabezados de tabla específicos con colores pastel suaves */
-/* Warning (Errores de Validación) */
 [data-theme="dark"] .table-warning {
   background-color: rgba(251, 191, 36, 0.12) !important;
 }
@@ -411,7 +388,6 @@ h6.text-info {
   background-color: #2d3748 !important;
 }
 
-/* Info (Documentos Duplicados) - Rojo rose suave */
 [data-theme="dark"] .table-info {
   background-color: rgba(244, 63, 94, 0.12) !important;
 }
@@ -427,7 +403,6 @@ h6.text-info {
   background-color: #2d3748 !important;
 }
 
-/* Danger (Errores de Base de Datos) */
 [data-theme="dark"] .table-danger {
   background-color: rgba(248, 113, 113, 0.12) !important;
 }
@@ -443,7 +418,6 @@ h6.text-info {
   background-color: #2d3748 !important;
 }
 
-/* Textos de colores en modo oscuro con tonos pastel suaves */
 [data-theme="dark"] .text-muted,
 [data-theme="dark"] small.text-muted {
   color: #cbd5e0 !important;
@@ -471,7 +445,6 @@ h6.text-info {
   color: #fb7185 !important;
 }
 
-/* Títulos de secciones de error con colores pastel */
 [data-theme="dark"] h6.text-warning {
   color: #fcd34d !important;
   font-weight: 600;
@@ -487,7 +460,6 @@ h6.text-info {
   font-weight: 600;
 }
 
-/* Alerts mejorados para modo oscuro con colores suaves */
 [data-theme="dark"] .alert-success {
   background-color: rgba(110, 231, 183, 0.12);
   border-color: #6ee7b7;
@@ -516,7 +488,6 @@ h6.text-info {
   color: #bfdbfe;
 }
 
-/* Stats card números con colores pastel suaves */
 [data-theme="dark"] .stats-card h3.text-primary {
   color: #c4b5fd !important;
 }
@@ -533,43 +504,36 @@ h6.text-info {
   color: #fca5a5 !important;
 }
 
-/* Mejorar visibilidad de acordeón en modo oscuro */
 [data-theme="dark"] .accordion-item {
   background-color: #2d3748;
   border-color: #4a5568;
 }
 
-/* Responsive para tablas */
 [data-theme="dark"] .table-responsive {
   background-color: #2d3748;
   border-radius: 8px;
   overflow: hidden;
 }
 
-/* Tablas con hover */
 [data-theme="dark"] .table-hover > tbody > tr:hover > * {
   background-color: #374151 !important;
   color: #e2e8f0 !important;
 }
 
-/* Tablas pequeñas */
 [data-theme="dark"] .table-sm > :not(caption) > * > * {
   background-color: transparent !important;
   color: #e2e8f0 !important;
 }
 
-/* Filas alternadas (si se usan) */
 [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
   background-color: rgba(55, 65, 81, 0.5) !important;
 }
 
-/* Asegurar que small dentro de td mantenga el color correcto */
 [data-theme="dark"] .table td small,
 [data-theme="dark"] .table th small {
   color: inherit !important;
 }
 
-/* Ocultar botones Bootstrap por defecto */
 .btn-primary:not(.btn-primary-custom),
 .btn-secondary:not(.btn-secondary-custom) {
   display: none !important;

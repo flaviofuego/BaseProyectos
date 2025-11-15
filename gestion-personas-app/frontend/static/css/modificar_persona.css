@@ -1,6 +1,3 @@
-/* Modificar Persona - Estilos de búsqueda y edición */
-
-/* Fondo del lienzo consistente con el dashboard */
 body {
   background-color: #f7f9fc;
 }
@@ -9,7 +6,6 @@ body {
   background-color: #1a202c;
 }
 
-/* Variables de color para consistencia */
 :root {
   --primary-purple: #5b4fc5;
   --primary-purple-light: #6b5fd5;
@@ -22,7 +18,6 @@ body {
   --primary-purple-dark: #6c60cb;
 }
 
-/* Título principal de la página */
 h1 {
   color: var(--primary-purple);
   font-weight: 700;
@@ -41,7 +36,6 @@ h1 i {
   color: var(--primary-purple-light);
 }
 
-/* Tarjeta principal que contiene el formulario */
 .card {
   border: none;
   border-radius: 12px;
@@ -76,7 +70,6 @@ h1 i {
   padding: 2rem;
 }
 
-/* Mejorar campos del formulario */
 .form-control,
 .form-select {
   border-radius: 8px;
@@ -104,7 +97,6 @@ h1 i {
   box-shadow: 0 0 0 3px rgba(124, 112, 219, 0.2);
 }
 
-/* Labels del formulario */
 .form-label {
   font-weight: 500;
   color: #2d3748;
@@ -115,7 +107,6 @@ h1 i {
   color: #e2e8f0;
 }
 
-/* Botón Primario - Buscar Persona / Guardar Cambios */
 .btn-primary-custom {
   background: linear-gradient(
     135deg,
@@ -146,7 +137,6 @@ h1 i {
   transform: translateY(0);
 }
 
-/* Botón Secundario - Cancelar / Volver */
 .btn-secondary-custom {
   background: transparent;
   border: 2px solid var(--primary-purple);
@@ -183,7 +173,6 @@ h1 i {
   color: white !important;
 }
 
-/* Botón de peligro - Eliminar */
 .btn-danger-custom {
   background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
   border: none;
@@ -210,7 +199,6 @@ h1 i {
   transform: translateY(0);
 }
 
-/* Contenedor de botones */
 .btn-action-container {
   display: flex;
   gap: 1rem;
@@ -224,14 +212,12 @@ h1 i {
   border-top-color: #4a5568;
 }
 
-/* Ocultar botones originales de Bootstrap */
 .btn-primary:not(.btn-primary-custom),
 .btn-secondary:not(.btn-secondary-custom),
 .btn-danger:not(.btn-danger-custom) {
   display: none !important;
 }
 
-/* Estilo para la sección de búsqueda */
 .search-section {
   background-color: rgba(91, 79, 197, 0.02);
   border-left: 4px solid var(--primary-purple);
@@ -244,7 +230,6 @@ h1 i {
   background-color: rgba(124, 112, 219, 0.1);
 }
 
-/* Estilo personalizado para input file (si existe) */
 .file-input-wrapper {
   position: relative;
   overflow: hidden;

@@ -1,6 +1,5 @@
-/* Configurar Cuenta - Sistema de Diseño Establecido */
 
-/* Fondo del lienzo - gris claro estándar */
+
 body {
   background-color: #f7f9fc;
 }
@@ -9,7 +8,6 @@ body {
   background-color: #1a202c;
 }
 
-/* Variables de color - Sistema establecido */
 :root {
   --primary-purple: #5b4fc5;
   --primary-purple-light: #6b5fd5;
@@ -32,7 +30,6 @@ body {
   --warning-color: #fcd34d;
 }
 
-/* Título principal */
 h1 {
   color: var(--primary-purple);
   font-weight: 700;
@@ -42,7 +39,6 @@ h1 i {
   color: var(--primary-purple);
 }
 
-/* Tarjetas principales */
 .card {
   border: none;
   border-radius: 12px;
@@ -66,7 +62,6 @@ h1 i {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* Card Header */
 .card-header {
   background: white;
   border-bottom: 2px solid #f3f4f6;
@@ -86,7 +81,6 @@ h1 i {
   margin: 0;
 }
 
-/* Info Card - Información del Usuario */
 .current-info {
   background: white;
   padding: 1.5rem;
@@ -121,7 +115,6 @@ h1 i {
   margin-right: 0.5rem;
 }
 
-/* Labels */
 .form-label {
   font-size: 0.9rem;
   font-weight: 600;
@@ -134,7 +127,6 @@ h1 i {
   font-size: 0.875rem;
 }
 
-/* Campos de formulario */
 .form-control {
   border: 2px solid #e9ecef;
   border-radius: 8px;
@@ -172,7 +164,6 @@ h1 i {
   color: #6b7280;
 }
 
-/* Input Group */
 .input-group-text {
   background-color: #f9fafb;
   border: 2px solid #e9ecef;
@@ -198,7 +189,6 @@ h1 i {
   border-color: var(--primary-purple-light);
 }
 
-/* Eliminar íconos de validación de Bootstrap en campos de contraseña */
 .form-control.is-valid,
 .form-control.is-invalid {
   background-image: none !important;
@@ -211,7 +201,6 @@ h1 i {
   padding-right: 0.75rem !important;
 }
 
-/* Mantener solo el borde de color para feedback visual */
 .form-control.is-valid {
   border-color: var(--success-color);
 }
@@ -230,7 +219,6 @@ h1 i {
   box-shadow: 0 0 0 0.2rem rgba(244, 63, 94, 0.25);
 }
 
-/* Botones Primarios */
 .btn-primary {
   background: var(--primary-purple);
   border: none;
@@ -255,7 +243,6 @@ h1 i {
   box-shadow: 0 1px 2px rgba(91, 79, 197, 0.2);
 }
 
-/* Botón Secundario */
 .btn-secondary,
 .btn-outline-secondary {
   background: transparent;
@@ -289,7 +276,6 @@ h1 i {
   color: #1a202c;
 }
 
-/* Toggle Switch - Estilo Morado */
 .form-check-input {
   width: 3.5rem;
   height: 1.75rem;
@@ -318,7 +304,6 @@ h1 i {
   border-color: var(--primary-purple);
 }
 
-/* Badges */
 .badge {
   padding: 0.5rem 1rem;
   border-radius: 12px;
@@ -337,7 +322,6 @@ h1 i {
   color: white;
 }
 
-/* Password Strength Indicator */
 .password-strength {
   height: 5px;
   border-radius: 3px;
@@ -372,7 +356,6 @@ h1 i {
   background: #4a5568;
 }
 
-/* Password Requirements List */
 .password-requirements {
   font-size: 0.875rem;
   margin-top: 0.75rem;
@@ -392,7 +375,6 @@ h1 i {
   color: var(--success-color);
 }
 
-/* Service Toggle Section */
 .service-toggle-section {
   display: flex;
   justify-content: space-between;
@@ -422,7 +404,6 @@ h1 i {
   margin-bottom: 0.25rem;
 }
 
-/* Status Badge Container */
 #consulta-service-status {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -433,7 +414,6 @@ h1 i {
   border-top-color: #4a5568;
 }
 
-/* Breadcrumb */
 .breadcrumb {
   background: transparent;
   padding: 0;
@@ -454,7 +434,6 @@ h1 i {
   color: var(--text-muted);
 }
 
-/* Modal de Confirmación */
 .modal-content {
   border: none;
   border-radius: 12px;
@@ -468,7 +447,6 @@ h1 i {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* Animación de entrada de modal */
 @keyframes modalFadeIn {
   from {
     opacity: 0;
@@ -480,7 +458,6 @@ h1 i {
   }
 }
 
-/* Modal Header */
 .modal-header {
   background: white;
   border-bottom: 2px solid #f3f4f6;
@@ -507,7 +484,6 @@ h1 i {
   font-size: 1.5rem;
 }
 
-/* Modal Body */
 .modal-body {
   padding: 1.5rem;
   color: var(--text-dark);
@@ -522,7 +498,6 @@ h1 i {
   color: var(--warning-color);
 }
 
-/* Alertas dentro de modal */
 .modal-body .alert {
   border-radius: 8px;
   border: none;
@@ -570,7 +545,6 @@ h1 i {
   margin-right: 0.5rem;
 }
 
-/* Acordeón dentro de modal */
 .modal-body .accordion {
   border-radius: 8px;
   overflow: hidden;
@@ -649,7 +623,6 @@ h1 i {
   border-top-color: #4a5568;
 }
 
-/* Botones de modal */
 .modal-footer .btn {
   padding: 0.625rem 1.25rem;
   font-weight: 500;
@@ -678,7 +651,6 @@ h1 i {
   border-color: #6b7280;
 }
 
-/* Botón destructivo (Desactivar) */
 .modal-footer .btn-danger {
   background-color: var(--error-color);
   border: none;
@@ -696,7 +668,6 @@ h1 i {
   box-shadow: 0 4px 12px rgba(251, 113, 133, 0.3);
 }
 
-/* Botón de éxito (Activar) */
 .modal-footer .btn-success {
   background-color: var(--success-color);
   border: none;
@@ -714,7 +685,6 @@ h1 i {
   box-shadow: 0 4px 12px rgba(110, 231, 183, 0.3);
 }
 
-/* Botón close en header */
 .modal-header .btn-close {
   filter: none;
   opacity: 0.6;
@@ -729,7 +699,6 @@ h1 i {
   filter: invert(1) grayscale(100%) brightness(200%);
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   .service-toggle-section {
     flex-direction: column;
