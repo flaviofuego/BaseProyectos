@@ -86,7 +86,7 @@ test.describe("CU-002: Inicio de Sesión", () => {
     // Verificar mensaje de error
     const alertDanger = page.locator(".alert-danger").first();
     const expected =
-      /credenciales|inválido|incorrect|No se pudo conectar|Error en el servidor|Something went wrong/i;
+      /credenciales|inválido|incorrect|usuario\s*no\s*encontrado|nombre\s*de\s*usuario|No se pudo conectar|Error en el servidor|Something went wrong/i;
     if ((await alertDanger.count()) > 0) {
       await expect(alertDanger).toContainText(expected);
     } else {

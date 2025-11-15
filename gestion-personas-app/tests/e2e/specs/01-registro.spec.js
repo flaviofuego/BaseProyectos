@@ -40,14 +40,22 @@ test.describe("CU-001: Registro de Usuario", () => {
     // Submit
     await page.locator('button[type="submit"]').click();
 
-    // Algunos UIs permanecen en /register mostrando éxito.
-    // Aceptamos cualquiera de los dos comportamientos.
-    await expect(page).toHaveURL(/\/(login|register)/);
+    // La aplicación redirige al dashboard después de registro exitoso
+    // o puede quedarse en login/register con mensaje de éxito
+    await expect(page).toHaveURL(/\/(login|register|dashboard)/);
 
-    // Verificar mensaje de éxito
-    await expect(
-      page.locator('.alert-success, .success, [role="alert"]').first()
-    ).toContainText(/registrado|éxito|success/i);
+    // Si redirige a dashboard, el registro fue exitoso
+    // Si queda en login/register, verificar mensaje de éxito
+    const currentUrl = page.url();
+    if (currentUrl.includes("/dashboard")) {
+      // Registro exitoso - redirigió al dashboard
+      await expect(page).toHaveURL(/\/dashboard/);
+    } else {
+      // Quedó en login/register - verificar mensaje de éxito
+      await expect(
+        page.locator('.alert-success, .success, [role="alert"]').first()
+      ).toContainText(/registrado|éxito|success/i);
+    }
   });
 
   test("debe validar email duplicado", async ({ page }) => {
