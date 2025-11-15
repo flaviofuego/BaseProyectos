@@ -35,7 +35,12 @@ help:
 	@echo "  make test-down         - Stop test environment"
 	@echo "  make test-unit         - Run unit tests only"
 	@echo "  make test-integration  - Run integration tests only"
-	@echo "  make test-e2e          - Run end-to-end tests"
+	@echo "  make test-e2e          - Run end-to-end tests (Playwright)"
+	@echo "  make test-e2e-ui       - Run E2E tests with interactive UI"
+	@echo "  make test-e2e-debug    - Run E2E tests in debug mode"
+	@echo "  make test-e2e-headed   - Run E2E tests with visible browser"
+	@echo "  make test-e2e-report   - Show E2E test report"
+	@echo "  make test-e2e-suite    - Run specific E2E test suite (interactive)"
 	@echo "  make test-frontend     - Run frontend tests"
 	@echo "  make test-coverage     - Generate coverage report"
 	@echo "  make test-watch        - Run tests in watch mode"
@@ -160,11 +165,98 @@ test-integration:
 	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:integration
 	@echo "✅ Integration tests completed!"
 
-# Run E2E tests
+# Run E2E tests with Playwright
 test-e2e:
-	@echo "🧪 Running end-to-end tests..."
-	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-e2e test-runner-e2e
+	@echo "🧪 =========================================="
+	@echo "🧪 RUNNING END-TO-END TESTS (Playwright)"
+	@echo "🧪 =========================================="
+	@echo ""
+	@echo "🔍 Verificando que Docker Compose está corriendo..."
+	@if [ -z "$$(docker compose ps --services --filter 'status=running' 2>/dev/null)" ]; then \
+		echo "⚠️  ADVERTENCIA: Docker Compose no está corriendo. Iniciando..."; \
+		docker compose up -d; \
+		sleep 5; \
+	fi
+	@echo "✅ Docker Compose está corriendo"
+	@echo ""
+	@echo "🔍 Verificando que la app está disponible..."
+	@timeout 30 bash -c 'until curl -sf http://localhost:5001 > /dev/null 2>&1; do sleep 2; done' && \
+		echo "✅ App disponible en http://localhost:5001" || \
+		(echo "❌ ERROR: App no responde en http://localhost:5001" && exit 1)
+	@echo ""
+	@cd tests/e2e && \
+		if [ ! -d "node_modules" ]; then \
+			echo "📦 Instalando dependencias..."; \
+			npm install && npx playwright install chromium; \
+		fi && \
+		echo "🚀 Ejecutando tests E2E..." && \
+		npx playwright test
+	@echo ""
 	@echo "✅ E2E tests completed!"
+	@echo "📊 Ver reporte HTML: cd tests/e2e && npm run test:report"
+
+# Run E2E tests with UI (interactive mode)
+test-e2e-ui:
+	@echo "🧪 Running E2E tests with UI..."
+	@cd tests/e2e && \
+		if [ ! -d "node_modules" ]; then \
+			npm install && npx playwright install chromium; \
+		fi && \
+		npx playwright test --ui
+
+# Run E2E tests in debug mode
+test-e2e-debug:
+	@echo "🧪 Running E2E tests in debug mode..."
+	@cd tests/e2e && \
+		if [ ! -d "node_modules" ]; then \
+			npm install && npx playwright install chromium; \
+		fi && \
+		npx playwright test --debug
+
+# Run E2E tests with visible browser
+test-e2e-headed:
+	@echo "🧪 Running E2E tests with visible browser..."
+	@cd tests/e2e && \
+		if [ ! -d "node_modules" ]; then \
+			npm install && npx playwright install chromium; \
+		fi && \
+		npx playwright test --headed
+
+# Show E2E test report
+test-e2e-report:
+	@echo "📊 Opening E2E test report..."
+	@cd tests/e2e && npm run test:report
+
+# Run specific E2E test suite
+test-e2e-suite:
+	@echo "🧪 Running specific E2E test suite..."
+	@echo "Available suites:"
+	@echo "  1) registro    - CU-001 Registrarse"
+	@echo "  2) login       - CU-002 Login"
+	@echo "  3) crear       - CU-006 Crear Persona"
+	@echo "  4) consultar   - CU-007 Consultar Personas"
+	@echo "  5) actualizar  - CU-008 Actualizar Persona"
+	@echo "  6) eliminar    - CU-009 Eliminar Persona"
+	@echo "  7) nlp         - CU-012 Consulta NLP"
+	@echo "  8) journey     - CU-FULL Full Journey"
+	@read -p "Enter suite name or number: " suite; \
+	case "$$suite" in \
+		1|registro) file="01-registro.spec.js" ;; \
+		2|login) file="02-login.spec.js" ;; \
+		3|crear) file="03-crear-persona.spec.js" ;; \
+		4|consultar) file="04-consultar-personas.spec.js" ;; \
+		5|actualizar) file="05-actualizar-persona.spec.js" ;; \
+		6|eliminar) file="06-eliminar-persona.spec.js" ;; \
+		7|nlp) file="07-consulta-nlp.spec.js" ;; \
+		8|journey) file="08-full-journey.spec.js" ;; \
+		*) echo "❌ Invalid option: $$suite"; exit 1 ;; \
+	esac; \
+	echo "🚀 Running $$file..."; \
+	cd tests/e2e && \
+		if [ ! -d "node_modules" ]; then \
+			npm install && npx playwright install chromium; \
+		fi && \
+		npx playwright test "specs/$$file"
 
 # Run frontend tests
 test-frontend:
@@ -290,30 +382,18 @@ dev-log:
 	cd services/log && npm install && npm run dev
 
 dev-frontend:
-	cd frontend && pip install -r requirements.txt && streamlit run app.py
+	cd frontend && pip install -r requirements.txt && python app.py
 
 
 # Check service health
 health:
 	@echo "Checking service health..."
 	@curl -s http://localhost:8001/health | jq .
-	@curl -s http://localhost:3001/health | jq .
-	@curl -s http://localhost:3002/health | jq .
-	@curl -s http://localhost:3003/health | jq .
-	@curl -s http://localhost:3004/health | jq .
-	@curl -s http://localhost:3005/health | jq .
 
 # Sync embeddings for Gemini
 sync-embeddings:
 	@echo "Synchronizing embeddings with Gemini..."
 	@curl -X POST http://gateway:8001/api/nlp/sync-embeddings
-
-# Test NLP query
-test-nlp:
-	@echo "Testing NLP query..."
-	@curl -X POST http://gateway:8001/api/nlp/query \
-		-H "Content-Type: application/json" \
-		-d '{"pregunta": "¿Cuál es el empleado más joven registrado?"}' | jq .
 
 # Database management commands
 db-backup:

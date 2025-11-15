@@ -10,11 +10,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$E2EDir = "tests\e2e"
+$E2EDir = "e2e"
 
-# Verificar que estamos en la raíz del proyecto
-if (-not (Test-Path "docker-compose.yml")) {
-    Write-Host "Error: Ejecutar desde la raíz del proyecto" -ForegroundColor Red
+# Verificar que estamos en la raíz del proyecto (un nivel arriba)
+if (-not (Test-Path "..\docker-compose.yml")) {
+    Write-Host "Error: Ejecutar desde el directorio tests/" -ForegroundColor Red
     exit 1
 }
 
@@ -89,8 +89,8 @@ Write-Host "Ejecutando: $cmd`n" -ForegroundColor Gray
 # Ejecutar
 Invoke-Expression $cmd
 
-# Volver a raíz
-Set-Location ..\..
+# Volver al directorio tests
+Set-Location ..
 
 Write-Host "`nTests E2E completados" -ForegroundColor Green
-Write-Host "Ver reporte HTML: cd tests\\e2e; npm run test:report" -ForegroundColor Cyan
+Write-Host "Ver reporte HTML: cd e2e; npm run test:report" -ForegroundColor Cyan
