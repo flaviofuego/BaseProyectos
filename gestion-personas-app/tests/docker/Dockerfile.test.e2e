@@ -1,0 +1,23 @@
+FROM node:18-alpine
+
+WORKDIR /app/tests/e2e
+
+# Instalar herramientas
+RUN apk add --no-cache curl wget jq bash
+
+# Copiar package.json para E2E tests
+COPY tests/e2e/package*.json ./
+
+# Instalar dependencias
+RUN npm ci
+
+# Instalar Playwright para E2E tests
+RUN npx playwright install --with-deps chromium
+
+# Copiar tests E2E
+COPY tests/e2e ./
+
+# Crear directorio de resultados
+RUN mkdir -p /app/test-results
+
+CMD ["npm", "test"]
