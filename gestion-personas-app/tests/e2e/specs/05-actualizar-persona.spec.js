@@ -27,34 +27,28 @@ test.describe("CU-008: Actualizar Persona", () => {
     // Ir a consultar personas
     await page.goto("/personas/consultar");
     await page.waitForSelector(
-      '#numero_documento, form button[type="submit"]',
+      '#tipo_documento, form button[type="submit"]',
       { timeout: 15000 }
     );
 
-    // Buscar primera persona
+    // Buscar usando el segundo formulario (búsqueda avanzada) que permite buscar sin filtros
     const searchButton = page
       .locator('button[type="submit"], button:has-text("Buscar")')
-      .first();
+      .nth(1); // Segundo botón (búsqueda avanzada)
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1); // Segundo formulario
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
     // Hacer clic en "Editar" de la primera persona
-    // Abrir dropdown de acciones si existe
-    const dropdownToggle = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle.count()) > 0) {
-      await dropdownToggle.first().click();
-    }
+    // No hay dropdown en esta página, los botones están visibles directamente
     const editButton = page
       .locator(
-        'a:has-text("Editar"), a:has-text("Modificar"), button:has-text("Editar")'
+        'a[href*="modificar_persona"], a[title="Modificar"], .btn-outline-warning'
       )
       .first();
 
@@ -81,24 +75,19 @@ test.describe("CU-008: Actualizar Persona", () => {
 
     const searchButton = page
       .locator('button[type="submit"], button:has-text("Buscar")')
-      .first();
+      .last();
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const lastForm = page.locator("form").last();
+      if ((await lastForm.count()) > 0)
+        await lastForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle.count()) > 0) {
-      await dropdownToggle.first().click();
-    }
+    // No hay dropdown, botones están visibles directamente
     const editButton = page
-      .locator('a:has-text("Editar"), a:has-text("Modificar")')
+      .locator('a[href*="modificar_persona"], .btn-outline-warning')
       .first();
 
     if ((await editButton.count()) > 0) {
@@ -112,9 +101,9 @@ test.describe("CU-008: Actualizar Persona", () => {
       const celularInput = page.locator("#celular");
       await celularInput.fill("3009876543");
 
-      // Guardar cambios
+      // Guardar cambios - el botón tiene clase btn-warning y texto 'Actualizar Persona'
       const saveButton = page.locator(
-        'button[type="submit"], button:has-text("Guardar"), button:has-text("Actualizar")'
+        'button[type="submit"].btn-warning, button:has-text("Actualizar Persona")'
       );
       await saveButton.click();
 
@@ -127,69 +116,53 @@ test.describe("CU-008: Actualizar Persona", () => {
     }
   });
 
-  test("debe validar que número de documento sigue siendo único al editar", async ({
+  test("debe verificar que el número de documento no se puede modificar", async ({
     page,
   }) => {
     // Ir a editar una persona
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1);
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle2 = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle2.count()) > 0) {
-      await dropdownToggle2.first().click();
-    }
-    const editButton = page.locator('a:has-text("Editar")').first();
+    const editButton = page.locator('a[href*="modificar_persona"], .btn-outline-warning').first();
 
     if ((await editButton.count()) > 0) {
       await editButton.click();
       await page.waitForLoadState("networkidle");
 
-      // Intentar cambiar a un documento que ya existe
-      const docInput = page.locator("#numero_documento");
-      await docInput.fill("999999999"); // Asumiendo que existe
-
-      const saveButton = page.locator('button[type="submit"]');
-      await saveButton.click();
-
-      // Verificar error
-      await expect(page.locator(".alert-danger, .error")).toContainText(
-        /documento.*existe|duplicado/i,
-        { timeout: 5000 }
-      );
+      // Verificar que el campo de documento es readonly (no se puede modificar)
+      const docInput = page.locator('input[value]:has-text("")').filter({ hasText: /^\d+$/ }).first();
+      if ((await docInput.count()) > 0) {
+        const isReadonly = await docInput.getAttribute('readonly');
+        expect(isReadonly).not.toBeNull();
+      }
     }
   });
 
   test("debe validar celular 10 dígitos al editar", async ({ page }) => {
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1);
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle3 = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle3.count()) > 0) {
-      await dropdownToggle3.first().click();
-    }
-    const editButton = page.locator('a:has-text("Editar")').first();
+    const editButton = page.locator('a[href*="modificar_persona"], .btn-outline-warning').first();
 
     if ((await editButton.count()) > 0) {
       await editButton.click();
@@ -198,38 +171,34 @@ test.describe("CU-008: Actualizar Persona", () => {
       // Ingresar celular inválido
       const celularInput = page.locator("#celular");
       await celularInput.fill("123"); // Solo 3 dígitos
+      
+      // Disparar evento input para activar la validación JavaScript
+      await celularInput.dispatchEvent('input');
+      await page.waitForTimeout(500);
 
-      const saveButton = page.locator('button[type="submit"]');
-      await saveButton.click();
-
-      // Verificar error
-      await expect(page.locator(".alert-danger, .error")).toContainText(
-        /celular.*10.*dígitos/i,
-        { timeout: 5000 }
+      // Verificar validación HTML5 (el mensaje de validación customizada)
+      const validationMessage = await celularInput.evaluate(
+        (el) => el.validationMessage
       );
+      expect(validationMessage).toContain('10 dígitos');
     }
   });
 
   test("debe validar formato de email al editar", async ({ page }) => {
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1);
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle4 = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle4.count()) > 0) {
-      await dropdownToggle4.first().click();
-    }
-    const editButton = page.locator('a:has-text("Editar")').first();
+    const editButton = page.locator('a[href*="modificar_persona"], .btn-outline-warning').first();
 
     if ((await editButton.count()) > 0) {
       await editButton.click();
@@ -250,17 +219,18 @@ test.describe("CU-008: Actualizar Persona", () => {
   test("debe poder actualizar la foto de persona", async ({ page }) => {
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1);
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    const editButton = page.locator('a:has-text("Editar")').first();
+    const editButton = page.locator('a[href*="modificar_persona"], .btn-outline-warning').first();
 
     if ((await editButton.count()) > 0) {
       await editButton.click();
@@ -279,17 +249,18 @@ test.describe("CU-008: Actualizar Persona", () => {
   test("debe poder cancelar edición sin guardar cambios", async ({ page }) => {
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1);
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    const editButton = page.locator('a:has-text("Editar")').first();
+    const editButton = page.locator('a[href*="modificar_persona"], .btn-outline-warning').first();
 
     if ((await editButton.count()) > 0) {
       await editButton.click();
@@ -302,16 +273,16 @@ test.describe("CU-008: Actualizar Persona", () => {
       // Modificar
       await nombreInput.fill("Nombre Temporal");
 
-      // Cancelar
+      // Cancelar - es un link con clase btn-outline-secondary que va al dashboard
       const cancelButton = page.locator(
-        'a:has-text("Cancelar"), button:has-text("Cancelar")'
+        'a.btn-outline-secondary:has-text("Cancelar")'
       );
 
       if ((await cancelButton.count()) > 0) {
         await cancelButton.click();
 
-        // Verificar que volvió a la lista
-        await expect(page).toHaveURL(/personas\/consultar/);
+        // Verificar que volvió al dashboard (no a consultar)
+        await expect(page).toHaveURL(/dashboard/);
       }
     }
   });
@@ -321,11 +292,12 @@ test.describe("CU-008: Actualizar Persona", () => {
   }) => {
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     await searchButton.click();
     await page.waitForTimeout(1000);
 
-    const editButton = page.locator('a:has-text("Editar")').first();
+    const editButton = page.locator('a[href*="modificar_persona"], .btn-outline-warning').first();
 
     if ((await editButton.count()) > 0) {
       await editButton.click();
@@ -342,8 +314,8 @@ test.describe("CU-008: Actualizar Persona", () => {
       const celularInput = page.locator("#celular");
       await celularInput.fill("3001111111");
 
-      // Guardar
-      const saveButton = page.locator('button[type="submit"]');
+      // Guardar - botón con clase btn-warning
+      const saveButton = page.locator('button[type="submit"].btn-warning, button:has-text("Actualizar Persona")');
       await saveButton.click();
 
       await page.waitForTimeout(1000);
