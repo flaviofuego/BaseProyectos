@@ -290,14 +290,11 @@ Personas{% endblock %} {% block extra_css %}
       }
     });
 
-    // Validación en tiempo real del número de documento para verificar duplicados
     const documentType = document.getElementById("tipo_documento");
     let validationTimeout;
     let lastCheckedDoc = "";
 
-    // Agregar indicador de validación
     function addValidationFeedback(input, isValid, message) {
-      // Remover feedback anterior
       const existingFeedback = input.parentNode.querySelector(
         ".validation-feedback"
       );
@@ -305,13 +302,11 @@ Personas{% endblock %} {% block extra_css %}
         existingFeedback.remove();
       }
 
-      // Agregar clases de validación
       input.classList.remove("is-valid", "is-invalid");
       if (isValid !== null) {
         input.classList.add(isValid ? "is-valid" : "is-invalid");
       }
 
-      // Agregar mensaje
       if (message) {
         const feedback = document.createElement("div");
         feedback.className = `validation-feedback ${
@@ -330,14 +325,12 @@ Personas{% endblock %} {% block extra_css %}
         return;
       }
 
-      // Mostrar indicador de carga
       addValidationFeedback(
         numeroDocumento,
         null,
         '<i class="fas fa-spinner fa-spin"></i> Verificando disponibilidad...'
       );
 
-      // Nota: usar ruta relativa que será manejada por Flask, no por el API Gateway directamente
       fetch(`/personas/check/${docNumber}`, {
         method: "GET",
         headers: {
@@ -381,57 +374,34 @@ Personas{% endblock %} {% block extra_css %}
         });
     }
 
-    // Event listener para validación en tiempo real del documento
     numeroDocumento.addEventListener("blur", function () {
       const docNumber = this.value.trim();
       if (docNumber && docNumber.length >= 5 && docNumber !== lastCheckedDoc) {
         lastCheckedDoc = docNumber;
-        // Temporalmente deshabilitado para debugging
-        // validateDocument(docNumber);
       }
     });
 
-    // Validar también cuando se cambie el tipo de documento
     documentType.addEventListener("change", function () {
       const docNumber = numeroDocumento.value.trim();
       if (docNumber && docNumber.length >= 5) {
-        // Temporalmente deshabilitado para debugging
-        // validateDocument(docNumber);
       }
     });
 
-    // Interceptar envío del formulario para manejo de errores en tiempo real
     const form = document.querySelector("form");
     const submitButton = form.querySelector('button[type="submit"]');
     const originalSubmitText = submitButton.innerHTML;
 
-    // TEMPORALMENTE DESHABILITADO AJAX - usando envío normal para debugging
-    /*
-    form.addEventListener('submit', function(e) {
-        e.preventDefault(); // Prevenir envío normal del formulario
-        
-        // ... resto del código AJAX ...
-    });
-    */
-
-    // Por ahora, permitir envío normal del formulario para ver si el error 409 se maneja correctamente
     form.addEventListener("submit", function (e) {
       // Mostrar estado de carga
       submitButton.disabled = true;
       submitButton.innerHTML =
         '<i class="fas fa-spinner fa-spin"></i> Creando persona...';
 
-      // Permitir que el formulario se envíe normalmente
-      // No prevenir el envío para debugging
-
-      // Agregar un retraso para permitir que la creación se complete
       setTimeout(() => {
-        // Disparar refresh del dashboard después de crear persona (si es exitoso)
         triggerDashboardRefresh();
       }, 1000);
     });
 
-    // Función para mostrar mensajes de error en la página
     function showError(message) {
       const alertDiv = document.createElement("div");
       alertDiv.className = "alert alert-danger alert-dismissible fade show";
@@ -441,20 +411,16 @@ Personas{% endblock %} {% block extra_css %}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
 
-      // Insertar al inicio del formulario
       const cardBody = document.querySelector(".card-body");
       cardBody.insertBefore(alertDiv, cardBody.firstChild);
 
-      // También usar el sistema de notificaciones si está disponible
       if (window.showError) {
         window.showError(message, 10000);
       }
 
-      // Scroll hacia arriba para mostrar el error
       alertDiv.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
-    // Función para mostrar mensajes de éxito
     function showSuccess(message) {
       const alertDiv = document.createElement("div");
       alertDiv.className = "alert alert-success alert-dismissible fade show";
@@ -464,27 +430,21 @@ Personas{% endblock %} {% block extra_css %}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
 
-      // Insertar al inicio del formulario
       const cardBody = document.querySelector(".card-body");
       cardBody.insertBefore(alertDiv, cardBody.firstChild);
 
-      // También usar el sistema de notificaciones si está disponible
       if (window.showSuccess) {
         window.showSuccess(message, 5000);
       }
 
-      // Scroll hacia arriba para mostrar el mensaje
       alertDiv.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   });
 
-  // Función para disparar refresh del dashboard desde otras páginas
   function triggerDashboardRefresh() {
     try {
-      // Disparar refresh en ventanas del dashboard
       localStorage.setItem("dashboard_refresh_trigger", Date.now().toString());
 
-      // Limpiar después de un momento
       setTimeout(() => {
         localStorage.removeItem("dashboard_refresh_trigger");
       }, 1000);

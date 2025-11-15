@@ -687,6 +687,7 @@ Gestión de Personas{% endblock %} {% block extra_css %}
       if (formCambiarEmail) {
           formCambiarEmail.addEventListener('submit', async function(e) {
               e.preventDefault();
+              e.stopPropagation();
 
               const submitBtn = this.querySelector('button[type="submit"]');
               const originalBtnText = submitBtn.innerHTML;
@@ -694,31 +695,33 @@ Gestión de Personas{% endblock %} {% block extra_css %}
               const nuevoEmail = document.getElementById('nuevo_email').value.trim();
               const passwordConfirm = document.getElementById('password_confirm_email').value;
 
-              // Validación básica
               if (!nuevoEmail || !passwordConfirm) {
                   window.showError('Por favor, completa todos los campos');
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
                   return;
               }
 
-              // Validar formato de email
               const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               if (!emailRegex.test(nuevoEmail)) {
                   window.showError('Por favor, ingresa un correo electrónico válido');
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
                   return;
               }
 
-              // Verificar que el email sea diferente al actual
               const emailActual = '{{ session.user.email }}';
               if (nuevoEmail === emailActual) {
                   window.showError('El nuevo correo debe ser diferente al actual');
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
                   return;
               }
 
-              try {
-                  // Deshabilitar botón y mostrar carga
-                  submitBtn.disabled = true;
-                  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando correo...';
+              submitBtn.disabled = true;
+              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando correo...';
 
+              try {
                   const response = await fetch('/api/auth/cambiar-email', {
                       method: 'POST',
                       headers: {

@@ -429,11 +429,9 @@ Personas{% endblock %} {% block extra_css %}
 </div>
 {% endif %} {% endblock %} {% block extra_js %}
 <script>
-  // Animar las tarjetas de acción cuando se cargue la página
   document.addEventListener("DOMContentLoaded", function () {
     const actionCards = document.querySelectorAll(".action-card");
 
-    // Animar entrada con efecto stagger
     actionCards.forEach((card, index) => {
       card.style.opacity = "0";
       card.style.transform = "translateY(20px)";

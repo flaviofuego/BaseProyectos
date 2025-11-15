@@ -618,7 +618,6 @@ Gestión de Personas{% endblock %} {% block content %}
       // Animar contadores numéricos
       const counters = document.querySelectorAll('.counter');
 
-      // Configurar intersection observer para animar cuando entren en viewport
       const observerOptions = {
           threshold: 0.5,
           rootMargin: '0px 0px -50px 0px'
@@ -644,7 +643,6 @@ Gestión de Personas{% endblock %} {% block content %}
           counterObserver.observe(counter);
       });
 
-      // Animar tarjetas en secuencia
       const cards = document.querySelectorAll('.stats-card');
       if (window.contentManager && cards.length > 0) {
           setTimeout(() => {
