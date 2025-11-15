@@ -23,31 +23,25 @@ test.describe("CU-009: Eliminar Persona", () => {
   }) => {
     await page.goto("/personas/consultar");
     await page.waitForSelector(
-      '#numero_documento, form button[type="submit"]',
+      '#tipo_documento, form button[type="submit"]',
       { timeout: 15000 }
     );
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1);
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    // Verificar que existe botón de eliminar
-    // Abrir dropdown de acciones si existe para exponer "Eliminar"
-    const dropdownToggle = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle.count()) > 0) {
-      await dropdownToggle.first().click();
-    }
+    // Verificar que existe botón de eliminar - no hay dropdown, están visibles directamente
     const deleteButton = page
       .locator(
-        'a:has-text("Eliminar"), button:has-text("Eliminar"), a:has-text("Borrar")'
+        'a[href*="borrar_persona"], .btn-outline-danger, a[title="Eliminar"]'
       )
       .first();
 
@@ -59,24 +53,20 @@ test.describe("CU-009: Eliminar Persona", () => {
   test("debe solicitar confirmación antes de eliminar", async ({ page }) => {
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
-      const firstForm = page.locator("form").first();
-      if ((await firstForm.count()) > 0)
-        await firstForm.evaluate((f) => f.submit());
+      const advancedForm = page.locator("form").nth(1);
+      if ((await advancedForm.count()) > 0)
+        await advancedForm.evaluate((f) => f.submit());
     }
     await page.waitForTimeout(1000);
 
-    const dropdownToggle2 = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle2.count()) > 0) {
-      await dropdownToggle2.first().click();
-    }
+    // No hay dropdown, botones están visibles directamente
     const deleteButton = page
-      .locator('a:has-text("Eliminar"), button:has-text("Eliminar")')
+      .locator('a[href*="borrar_persona"], .btn-outline-danger')
       .first();
 
     if ((await deleteButton.count()) > 0) {
@@ -130,15 +120,9 @@ test.describe("CU-009: Eliminar Persona", () => {
     }
     await page.waitForTimeout(1000);
 
-    // Eliminar
-    const dropdownToggle3 = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle3.count()) > 0) {
-      await dropdownToggle3.first().click();
-    }
+    // Eliminar - no hay dropdown, botones visibles directamente
     const deleteButton = page
-      .locator('a:has-text("Eliminar"), button:has-text("Eliminar")')
+      .locator('a[href*="borrar_persona"], .btn-outline-danger')
       .first();
 
     if ((await deleteButton.count()) > 0) {
@@ -172,39 +156,29 @@ test.describe("CU-009: Eliminar Persona", () => {
   test("debe poder cancelar eliminación", async ({ page }) => {
     await page.goto("/personas/consultar");
 
-    const searchButton = page.locator('button[type="submit"]').first();
+    // Usar segundo formulario (búsqueda avanzada)
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     await searchButton.click();
     await page.waitForTimeout(1000);
 
-    const deleteButton = page
-      .locator('a:has-text("Eliminar"), button:has-text("Eliminar")')
-      .first();
+    const deleteButton = page.locator('a[title="Eliminar"]').first();
 
     if ((await deleteButton.count()) > 0) {
-      // Manejar confirmación y cancelar
-      page.once("dialog", (dialog) => {
-        dialog.dismiss();
-      });
-
       await deleteButton.click();
-
-      // O si es página de confirmación
-      const cancelButton = page.locator(
-        'button:has-text("Cancelar"), a:has-text("Cancelar")'
-      );
-      if ((await cancelButton.count()) > 0) {
-        await cancelButton.click();
-
-        // Verificar que volvió a la lista
-        await expect(page).toHaveURL(/personas\/consultar/);
-      }
-
       await page.waitForTimeout(500);
+    
 
-      // Verificar que la persona sigue existiendo (no se eliminó)
-      const personRows = page.locator("table tbody tr, .persona-item");
-      const count = await personRows.count();
-      expect(count).toBeGreaterThan(0);
+      // En la página de confirmación, verificar que el checkbox existe
+      const checkbox = page.locator('#confirm');
+      await expect(checkbox).toBeVisible();
+
+      // Buscar el botón de cancelar (link .btn-outline-secondary que va al dashboard)
+      const cancelButton = page.locator('a.btn-outline-secondary:has-text("Cancelar")');
+      await expect(cancelButton).toBeVisible();
+      await cancelButton.click();
+
+      // Verificar que volvió al dashboard
+      await expect(page).toHaveURL(/dashboard/);
     }
   });
 
@@ -252,24 +226,21 @@ test.describe("CU-009: Eliminar Persona", () => {
       .count();
     expect(rowsBefore).toBeGreaterThan(0);
 
-    // Eliminar
-    const dropdownToggle4 = page.locator(
-      ".dropdown-toggle, button[aria-expanded]"
-    );
-    if ((await dropdownToggle4.count()) > 0) {
-      await dropdownToggle4.first().click();
-    }
-    const deleteButton = page.locator('a:has-text("Eliminar")').first();
+    // Eliminar - no hay dropdown
+    const deleteButton = page.locator('a[title="Eliminar"]').first();
 
     if ((await deleteButton.count()) > 0) {
-      page.once("dialog", (dialog) => dialog.accept());
       await deleteButton.click();
+      await page.waitForTimeout(500);
 
-      const confirmButton = page.locator(
-        'button:has-text("Confirmar"), button:has-text("Sí")'
-      );
-      if ((await confirmButton.count()) > 0) {
-        await confirmButton.click();
+      // Página de confirmación: marcar checkbox y hacer clic en botón de eliminar
+      const checkbox = page.locator('#confirm');
+      const deleteBtn = page.locator('#deleteBtn');
+      if ((await checkbox.count()) > 0 && (await deleteBtn.count()) > 0) {
+        await checkbox.check();
+        // Aceptar el confirm() nativo de JavaScript
+        page.once('dialog', (dialog) => dialog.accept());
+        await deleteBtn.click();
       }
 
       await page.waitForTimeout(1000);
@@ -294,8 +265,8 @@ test.describe("CU-009: Eliminar Persona", () => {
     // Este test depende de la lógica de negocio
     // Por ejemplo, si una persona tiene relaciones, no debería poder eliminarse
 
-    await page.goto("/consultar_personas");
-    const searchButton = page.locator('button[type="submit"]').first();
+    await page.goto("/personas/consultar");
+    const searchButton = page.locator('button[type="submit"]').nth(1);
     if ((await searchButton.count()) > 0) {
       await searchButton.click();
     } else {
@@ -345,7 +316,7 @@ test.describe("CU-009: Eliminar Persona", () => {
 
     // Si el login fue exitoso, verificar que no tiene acceso a eliminar
     if ((await page.locator(".alert-danger").count()) === 0) {
-      await page.goto("/consultar_personas");
+      await page.goto("/personas/consultar");
       await page.waitForTimeout(1000);
 
       // Verificar que no hay botón de eliminar o está deshabilitado
