@@ -198,6 +198,38 @@ h1 i {
   border-color: var(--primary-purple-light);
 }
 
+/* Eliminar íconos de validación de Bootstrap en campos de contraseña */
+.form-control.is-valid,
+.form-control.is-invalid {
+  background-image: none !important;
+  padding-right: 0.75rem !important;
+}
+
+.was-validated .form-control:valid,
+.was-validated .form-control:invalid {
+  background-image: none !important;
+  padding-right: 0.75rem !important;
+}
+
+/* Mantener solo el borde de color para feedback visual */
+.form-control.is-valid {
+  border-color: var(--success-color);
+}
+
+.form-control.is-invalid {
+  border-color: var(--error-color);
+}
+
+.form-control.is-valid:focus {
+  border-color: var(--success-color);
+  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+}
+
+.form-control.is-invalid:focus {
+  border-color: var(--error-color);
+  box-shadow: 0 0 0 0.2rem rgba(244, 63, 94, 0.25);
+}
+
 /* Botones Primarios */
 .btn-primary {
   background: var(--primary-purple);

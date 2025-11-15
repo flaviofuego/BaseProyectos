@@ -687,6 +687,10 @@ Gestión de Personas{% endblock %} {% block extra_css %}
       if (formCambiarEmail) {
           formCambiarEmail.addEventListener('submit', async function(e) {
               e.preventDefault();
+              e.stopPropagation();
+
+              const submitBtn = this.querySelector('button[type="submit"]');
+              const originalBtnText = submitBtn.innerHTML;
 
               const nuevoEmail = document.getElementById('nuevo_email').value.trim();
               const passwordConfirm = document.getElementById('password_confirm_email').value;
@@ -705,11 +709,15 @@ Gestión de Personas{% endblock %} {% block extra_css %}
               }
 
               // Verificar que el email sea diferente al actual
-              const emailActual = '{{ session.user.email }}';
-              if (nuevoEmail === emailActual) {
+              const emailActual = '{{ session.user.email }}'.trim().toLowerCase();
+              if (nuevoEmail.toLowerCase() === emailActual) {
                   window.showError('El nuevo correo debe ser diferente al actual');
                   return;
               }
+
+              // Solo deshabilitar botón si pasaron todas las validaciones
+              submitBtn.disabled = true;
+              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando correo...';
 
               try {
                   const response = await fetch('/api/auth/cambiar-email', {
@@ -735,23 +743,55 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                       }, 2000);
                   } else {
                       window.showError(data.message || 'Error al cambiar el correo electrónico');
+                      // Restaurar botón en caso de error
+                      submitBtn.disabled = false;
+                      submitBtn.innerHTML = originalBtnText;
                   }
               } catch (error) {
                   console.error('Error:', error);
                   window.showError('Error de conexión al servidor');
+                  // Restaurar botón en caso de error
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
               }
           });
       }
 
       // ===== FORMULARIO: CAMBIAR CONTRASEÑA =====
       const formCambiarPassword = document.getElementById('form-cambiar-password');
-      const passwordNueva = document.getElementById('password_nueva');
+      const passwordNuevaInput = document.getElementById('password_nueva');
+      const passwordConfirmarInput = document.getElementById('password_confirmar');
       const passwordStrength = document.getElementById('password-strength');
       const passwordStrengthText = document.getElementById('password-strength-text');
 
+      // Función para verificar si las contraseñas coinciden
+      function checkPasswordMatch() {
+          const passwordNueva = passwordNuevaInput.value;
+          const passwordConfirmar = passwordConfirmarInput.value;
+          const passwordConfirmarHelp = document.getElementById('password-confirmar-help');
+
+          if (passwordConfirmar.length > 0) {
+              if (passwordNueva === passwordConfirmar) {
+                  passwordConfirmarInput.classList.remove('is-invalid');
+                  passwordConfirmarInput.classList.add('is-valid');
+                  passwordConfirmarHelp.textContent = '✓ Las contraseñas coinciden';
+                  passwordConfirmarHelp.className = 'form-text text-success';
+              } else {
+                  passwordConfirmarInput.classList.remove('is-valid');
+                  passwordConfirmarInput.classList.add('is-invalid');
+                  passwordConfirmarHelp.textContent = '✗ Las contraseñas no coinciden';
+                  passwordConfirmarHelp.className = 'form-text text-danger';
+              }
+          } else {
+              passwordConfirmarInput.classList.remove('is-valid', 'is-invalid');
+              passwordConfirmarHelp.textContent = 'Repite la nueva contraseña.';
+              passwordConfirmarHelp.className = 'form-text';
+          }
+      }
+
       // Validación en tiempo real de la contraseña
-      if (passwordNueva) {
-          passwordNueva.addEventListener('input', function() {
+      if (passwordNuevaInput) {
+          passwordNuevaInput.addEventListener('input', function() {
               const password = this.value;
               const requirements = {
                   length: password.length >= 8,
@@ -785,12 +825,24 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                   passwordStrengthText.textContent = 'Contraseña fuerte';
                   passwordStrengthText.className = 'form-text text-success';
               }
+
+              // Verificar coincidencia cuando se escribe la nueva contraseña
+              checkPasswordMatch();
           });
+      }
+
+      // Validación en tiempo real de coincidencia de contraseñas
+      if (passwordConfirmarInput) {
+          passwordConfirmarInput.addEventListener('input', checkPasswordMatch);
       }
 
       if (formCambiarPassword) {
           formCambiarPassword.addEventListener('submit', async function(e) {
               e.preventDefault();
+              e.stopPropagation();
+
+              const submitBtn = this.querySelector('button[type="submit"]');
+              const originalBtnText = submitBtn.innerHTML;
 
               const passwordActual = document.getElementById('password_actual').value;
               const passwordNueva = document.getElementById('password_nueva').value;
@@ -821,6 +873,10 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                   return;
               }
 
+              // Solo deshabilitar botón si pasaron todas las validaciones
+              submitBtn.disabled = true;
+              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando contraseña...';
+
               try {
                   const response = await fetch('/api/auth/cambiar-password', {
                       method: 'POST',
@@ -846,10 +902,16 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                       }, 2000);
                   } else {
                       window.showError(data.message || 'Error al cambiar la contraseña');
+                      // Restaurar botón en caso de error
+                      submitBtn.disabled = false;
+                      submitBtn.innerHTML = originalBtnText;
                   }
               } catch (error) {
                   console.error('Error:', error);
                   window.showError('Error de conexión al servidor');
+                  // Restaurar botón en caso de error
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
               }
           });
       }
