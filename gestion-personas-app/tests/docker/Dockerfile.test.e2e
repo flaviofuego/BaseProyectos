@@ -1,9 +1,12 @@
-FROM node:18-alpine
+FROM mcr.microsoft.com/playwright:v1.50.0-noble
 
 WORKDIR /app/tests/e2e
 
-# Instalar herramientas
-RUN apk add --no-cache curl wget jq bash
+# Instalar Node.js 18
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copiar package.json para E2E tests
 COPY tests/e2e/package*.json ./

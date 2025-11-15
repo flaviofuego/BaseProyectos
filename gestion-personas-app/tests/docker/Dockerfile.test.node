@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -20,12 +20,12 @@ COPY services/log/package*.json /app/services/log/
 COPY gateway/package*.json /app/gateway/
 
 # Instalar dependencias de todos los servicios
-RUN cd /app/services/auth && npm ci && \
-    cd /app/services/personas && npm ci && \
-    cd /app/services/consulta && npm ci && \
-    cd /app/services/nlp && npm ci && \
-    cd /app/services/log && npm ci && \
-    cd /app/gateway && npm ci
+RUN cd /app/services/auth && npm install && \
+    cd /app/services/personas && npm install && \
+    cd /app/services/consulta && npm install && \
+    cd /app/services/nlp && npm install && \
+    cd /app/services/log && npm install && \
+    cd /app/gateway && npm install
 
 # Instalar herramientas de testing globales
 RUN npm install -g \
@@ -42,7 +42,7 @@ COPY gateway /app/gateway
 RUN mkdir -p /app/test-results
 
 # Script para ejecutar todos los tests
-COPY test-runner.sh /app/test-runner.sh
+COPY tests/scripts/test-runner.sh /app/test-runner.sh
 RUN chmod +x /app/test-runner.sh
 
 # Healthcheck

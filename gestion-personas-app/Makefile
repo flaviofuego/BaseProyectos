@@ -1,5 +1,8 @@
 .PHONY: help build up down logs clean test init-db db-backup db-restore db-reset db-migrations db-status
 
+# Use bash as shell
+SHELL := /bin/bash
+
 # Default target
 help:
 	@echo "Available commands:"
@@ -109,13 +112,13 @@ clean:
 # Build test environment
 test-build:
 	@echo "🏗️  Building test environment..."
-	docker-compose -f tests/config/docker-compose.test.yml build
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml build
 	@echo "✅ Test environment built successfully!"
 
 # Start test environment
 test-up:
 	@echo "🚀 Starting test environment..."
-	docker-compose -f tests/config/docker-compose.test.yml up -d postgres-test redis-test service-registry-test gateway-test
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml up -d postgres-test redis-test service-registry-test gateway-test
 	@echo "⏳ Waiting for services to be ready..."
 	@sleep 10
 	@echo "✅ Test environment is ready!"
@@ -123,7 +126,7 @@ test-up:
 # Stop test environment
 test-down:
 	@echo "🛑 Stopping test environment..."
-	docker-compose -f tests/config/docker-compose.test.yml down
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml down
 	@echo "✅ Test environment stopped!"
 
 # Run ALL tests (unit + integration + frontend)
@@ -131,7 +134,7 @@ test:
 	@echo "🧪 =========================================="
 	@echo "🧪 RUNNING ALL TESTS"
 	@echo "🧪 =========================================="
-	docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-node test-runner-node test-runner-python
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-node test-runner-node test-runner-python
 	@echo ""
 	@echo "✅ All tests completed! Check tests/results/ for detailed reports"
 	@echo "📊 Open tests/results/index.html for consolidated report"
@@ -139,31 +142,31 @@ test:
 # Run unit tests only
 test-unit:
 	@echo "🧪 Running unit tests..."
-	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:unit
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:unit
 	@echo "✅ Unit tests completed!"
 
 # Run integration tests only
 test-integration:
 	@echo "🧪 Running integration tests..."
-	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:integration
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:integration
 	@echo "✅ Integration tests completed!"
 
 # Run E2E tests
 test-e2e:
 	@echo "🧪 Running end-to-end tests..."
-	docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-e2e test-runner-e2e
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-e2e test-runner-e2e
 	@echo "✅ E2E tests completed!"
 
 # Run frontend tests
 test-frontend:
 	@echo "🧪 Running frontend tests..."
-	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-python
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-python
 	@echo "✅ Frontend tests completed!"
 
 # Generate coverage report
 test-coverage:
 	@echo "📊 Generating coverage report..."
-	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:coverage
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:coverage
 	@echo "📊 Coverage report available at: tests/results/coverage/index.html"
 	@echo "📊 Open in browser with: open tests/results/coverage/index.html"
 
@@ -171,13 +174,13 @@ test-coverage:
 test-watch:
 	@echo "👀 Running tests in watch mode..."
 	@echo "⚠️  Press Ctrl+C to stop"
-	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:watch
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:watch
 
 # Clean test artifacts
 test-clean:
 	@echo "🧹 Cleaning test artifacts..."
 	rm -rf tests/results/*
-	docker-compose -f tests/config/docker-compose.test.yml down -v
+	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml down -v
 	@echo "✅ Test artifacts cleaned!"
 
 # Show test results summary
