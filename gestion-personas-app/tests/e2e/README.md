@@ -14,18 +14,22 @@
 ## Ejecución
 
 ```bash
-npm install                # Primera vez
-npx playwright install     # Navegadores
-npm test                   # Todos los tests
-npm run test:ui            # Con interfaz
-npm run test:report        # Ver reporte
+# Requisitos
+npm install && npx playwright install
 
-# Desde raíz con PowerShell helper
+# Ejecutar
+npm test               # Todos
+npm run test:ui        # Con interfaz
+npm run test:report    # Reporte
+
+# Desde la raíz (opcional)
 cd ../..
-.\run-e2e-tests.ps1
+./run-e2e-tests.ps1
 ```
 
-## Requisitos
+## Estado (Nov 2025)
 
-- Stack Docker corriendo (`docker-compose up -d`)
-- Frontend en http://localhost:5001
+- Specs: 8 implementados (NLP excluido)
+- Última corrida: no ejecutados (backend 100% OK)
+
+Requisitos: stack Docker corriendo; Frontend en http://localhost:5001

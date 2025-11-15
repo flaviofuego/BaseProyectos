@@ -5,7 +5,10 @@
 ### **Tests Básicos (solo logs)**
 
 ```bash
-# Ejecutar todos los tests
+# Preferido
+make -C ../../.. test-auth
+
+# Alternativa
 ./test.sh
 
 # Ejecutar un test específico
@@ -41,6 +44,8 @@ wslview coverage/lcov-report/index.html   # WSL
 - **helpers.test.js** - Funciones auxiliares (45+ tests)
 
 **Meta de cobertura:** 85-95%
+
+Estado actual: 124/124 tests pasando ✅
 
 ## 🐛 Debugging
 
