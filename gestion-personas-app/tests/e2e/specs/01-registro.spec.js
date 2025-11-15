@@ -29,9 +29,10 @@ test.describe("CU-001: Registro de Usuario", () => {
     // Generar email único para evitar conflictos
     const timestamp = Date.now();
     const testEmail = `test${timestamp}@example.com`;
+    const testUsername = `usuario_test_${timestamp}`; // evitar colisiones de usuario
 
     // Llenar formulario
-    await page.locator("#username").fill("usuario_test");
+    await page.locator("#username").fill(testUsername);
     await page.locator("#email").fill(testEmail);
     await page.locator("#password").fill("Password123!");
     await page.locator("#confirm_password").fill("Password123!");
@@ -75,45 +76,57 @@ test.describe("CU-001: Registro de Usuario", () => {
   });
 
   test("debe validar que contraseñas coincidan", async ({ page }) => {
-    await page.locator("#username").fill("usuario_test");
-    await page.locator("#email").fill("test@example.com");
+    const ts = Date.now();
+    await page.locator("#username").fill(`usuario_test_${ts}`);
+    await page.locator("#email").fill(`mismatch${ts}@example.com`);
     await page.locator("#password").fill("Password123!");
     await page.locator("#confirm_password").fill("Password456!"); // Diferente
 
+    // En caso de invalidación de HTML5 con setCustomValidity, el submit
+    // NO dispara el evento 'submit'; por eso no habrá alert().
     await page.locator('button[type="submit"]').click();
 
-    // Verificar mensaje de error (fallback a texto en página)
-    const alertBox = page
-      .locator('.alert-danger, .error, [role="alert"]')
-      .first();
-    if ((await alertBox.count()) > 0) {
-      await expect(alertBox).toContainText(
-        /contraseñas.*coinciden|passwords.*match/i
-      );
-    } else {
-      await expect(page).toContainText(
-        /contraseñas.*coinciden|passwords.*match/i
-      );
-    }
+    // Se queda en /register y marca el campo como inválido
+    await expect(page).toHaveURL(/\/register/);
+    await expect(page.locator("#confirm_password")).toHaveClass(
+      /is-invalid-custom/
+    );
+
+    // El indicador de coincidencia debe mostrarse y marcarse como inválido
+    await expect(page.locator("#password-match-indicator")).toBeVisible();
+    await expect(page.locator("#password-match")).toHaveClass(/invalid/);
+
+    // El mensaje de validación nativo debe contener nuestro texto personalizado
+    const validationMessage = await page
+      .locator("#confirm_password")
+      .evaluate((el) => el.validationMessage);
+    expect(validationMessage).toMatch(/no coinciden/i);
   });
 
   test("debe validar password mínimo 8 caracteres", async ({ page }) => {
-    await page.locator("#username").fill("usuario_test");
-    await page.locator("#email").fill("test@example.com");
+    const ts = Date.now();
+    await page.locator("#username").fill(`usuario_test_${ts}`);
+    await page.locator("#email").fill(`short${ts}@example.com`);
     await page.locator("#password").fill("1234567"); // 7 caracteres
     await page.locator("#confirm_password").fill("1234567");
 
+    const dialogPromise = new Promise((resolve) => {
+      page.once("dialog", async (dialog) => {
+        const msg = dialog.message();
+        await dialog.dismiss();
+        resolve(msg);
+      });
+    });
+
     await page.locator('button[type="submit"]').click();
 
-    // Verificar mensaje de error (fallback a texto en página)
-    const minAlert = page
-      .locator('.alert-danger, .error, [role="alert"]')
-      .first();
-    if ((await minAlert.count()) > 0) {
-      await expect(minAlert).toContainText(/mínimo 8|at least 8/i);
-    } else {
-      await expect(page).toContainText(/mínimo 8|at least 8/i);
-    }
+    const dialogMsg = await dialogPromise;
+    expect(dialogMsg).toMatch(/mínimo\s*8|no cumple los requisitos/i);
+    await expect(page).toHaveURL(/\/register/);
+    const passInvalid = await page
+      .locator("#password")
+      .evaluate((el) => el.classList.contains("is-invalid-custom"));
+    expect(passInvalid).toBeTruthy();
   });
 
   test("debe validar formato de email", async ({ page }) => {
