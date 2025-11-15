@@ -41,6 +41,13 @@ help:
 	@echo "  make test-watch        - Run tests in watch mode"
 	@echo "  make test-clean        - Clean test artifacts and volumes"
 	@echo "  make test-results      - Show test results summary"
+	@echo "  make test-service      - Test specific service (interactive)"
+	@echo "  make test-auth         - Test auth service"
+	@echo "  make test-personas     - Test personas service"
+	@echo "  make test-consulta     - Test consulta service"
+	@echo "  make test-nlp-service  - Test nlp service"
+	@echo "  make test-log          - Test log service"
+	@echo "  make test-gateway      - Test gateway"
 	@echo ""
 	@echo "🧹 MAINTENANCE COMMANDS:"
 	@echo "  make clean       - Stop services and remove volumes"
@@ -206,23 +213,47 @@ test-quick:
 	docker-compose -f docker-compose.test.yml run --rm test-runner-node npm run test -- --onlyChanged
 	@echo "✅ Quick tests completed!"
 
-# Test specific service
+# Test specific service (runs in dev container)
 test-service:
 	@echo "🧪 Testing specific service..."
-	@read -p "Enter service name (auth/personas/consulta/nlp/log/gateway): " service; \
-	docker-compose -f docker-compose.test.yml run --rm test-runner-node sh -c "cd /app/services/$$service && npm test"
+	@echo "Available services: auth, personas, consulta, nlp, log, gateway"
+	@read -p "Enter service name: " service; \
+	case "$$service" in \
+		auth) make test-auth ;; \
+		personas) make test-personas ;; \
+		consulta) make test-consulta ;; \
+		nlp) make test-nlp-service ;; \
+		log) make test-log ;; \
+		gateway) make test-gateway ;; \
+		*) echo "❌ Unknown service: $$service"; \
+		   echo "Please choose from: auth, personas, consulta, nlp, log, gateway"; \
+		   exit 1 ;; \
+	esac
 
-# Legacy commands for backwards compatibility
+# Test specific services directly
 test-auth:
-	@echo "⚠️  Using legacy command. Please use 'make test-service' instead."
-	@docker-compose -f docker-compose.test.yml run --rm test-runner-node sh -c "cd /app/services/auth && npm test"
+	@echo "🧪 Testing auth service..."
+	@docker exec -it auth_service_dev npm test
 
 test-personas:
-	@echo "⚠️  Using legacy command. Please use 'make test-service' instead."
-	@docker-compose -f docker-compose.test.yml run --rm test-runner-node sh -c "cd /app/services/personas && npm test"
+	@echo "🧪 Testing personas service..."
+	@docker exec -it personas_service_dev npm test
 
-test-all: test
-	@echo "⚠️  'test-all' is deprecated. Use 'make test' instead."
+test-consulta:
+	@echo "🧪 Testing consulta service..."
+	@docker exec -it consulta_service_dev npm run test:integration
+
+test-nlp-service:
+	@echo "🧪 Testing nlp service..."
+	@docker exec -it nlp_service_dev npm test
+
+test-log:
+	@echo "🧪 Testing log service..."
+	@docker exec -it log_service_dev npm test
+
+test-gateway:
+	@echo "🧪 Testing gateway..."
+	@docker exec -it api_gateway_dev npm test
 
 # Initialize database with sample data
 init-db:
@@ -253,9 +284,6 @@ dev-log:
 dev-frontend:
 	cd frontend && pip install -r requirements.txt && streamlit run app.py
 
-# Production build
-prod:
-	docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # Check service health
 health:
@@ -270,12 +298,12 @@ health:
 # Sync embeddings for Gemini
 sync-embeddings:
 	@echo "Synchronizing embeddings with Gemini..."
-	@curl -X POST http://localhost:8001/api/nlp/sync-embeddings
+	@curl -X POST http://gateway:8001/api/nlp/sync-embeddings
 
 # Test NLP query
 test-nlp:
 	@echo "Testing NLP query..."
-	@curl -X POST http://localhost:8001/api/nlp/query \
+	@curl -X POST http://gateway:8001/api/nlp/query \
 		-H "Content-Type: application/json" \
 		-d '{"pregunta": "¿Cuál es el empleado más joven registrado?"}' | jq .
 
