@@ -134,14 +134,12 @@ def login():
         login_method = request.form.get('login_method')
         
         app.logger.info(f"DEBUG: Login attempt - method: {login_method}")
-        flash(f'DEBUG: Método de login: {login_method}', 'info')
         
         if login_method == 'local':
             username = request.form.get('username')
             password = request.form.get('password')
             
             app.logger.info(f"DEBUG: Local login - username: {username}")
-            flash(f'DEBUG: Intentando login con usuario: {username}', 'info')
             
             if username and password:
                 response = make_request('POST', '/api/auth/login', {
@@ -163,7 +161,7 @@ def login():
                         return redirect(url_for('dashboard'))
                     except Exception as e:
                         app.logger.error(f"Error processing login response: {e}")
-                        flash('Error al procesar la respuesta del servidor. Por favor, intenta nuevamente.', 'error')
+                        flash('Error al procesar respuesta. Intenta nuevamente.', 'error')
                 else:
                     app.logger.info(f"DEBUG: Login failed - status: {response.status_code if response is not None else 'None'}")
                     if response is not None:
@@ -173,7 +171,7 @@ def login():
                                 error_message = error_data.get('error', 'Error de validación en los datos proporcionados')
                                 flash(error_message, 'error')
                             except:
-                                flash('Error de validación. Verifica que los datos sean correctos.', 'error')
+                                flash('Error de validación. Verifica los datos.', 'error')
                         elif response.status_code == 429:
                             try:
                                 error_data = response.json()
@@ -183,34 +181,34 @@ def login():
                                     'retry_after': retry_after,
                                     'message': error_data.get('message', 'Demasiados intentos de inicio de sesión')
                                 }
-                                flash(f'⏱️ {error_data.get("message", "Demasiados intentos de inicio de sesión")}', 'warning')
+                                flash(f'{error_data.get("message", "Demasiados intentos de inicio de sesión")}', 'warning')
                             except Exception as e:
                                 app.logger.error(f"Error processing rate limit response: {e}")
-                                flash('⏱️ Demasiados intentos de inicio de sesión. Por favor, espera antes de intentar nuevamente.', 'warning')
+                                flash('Demasiados intentos. Espera antes de reintentar.', 'warning')
                         elif response.status_code == 401:
                             try:
                                 error_data = response.json()
                                 error_msg = error_data.get('error', error_data.get('message', ''))
                                 if 'password' in error_msg.lower() or 'contraseña' in error_msg.lower():
-                                    flash('Contraseña incorrecta. Por favor, verifica tus credenciales.', 'error')
+                                    flash('Contraseña incorrecta.', 'error')
                                 elif 'user' in error_msg.lower() or 'usuario' in error_msg.lower():
-                                    flash('Usuario no encontrado. Por favor, verifica el nombre de usuario.', 'error')
+                                    flash('Usuario no encontrado.', 'error')
                                 else:
-                                    flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+                                    flash('Credenciales inválidas.', 'error')
                             except:
-                                flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+                                flash('Credenciales inválidas.', 'error')
                         elif response.status_code == 500:
-                            flash('Error en el servidor. Por favor, intenta nuevamente en unos momentos.', 'error')
+                            flash('Error del servidor. Intenta en unos momentos.', 'error')
                         else:
                             try:
                                 error_data = response.json()
                                 flash(f'Error: {error_data.get("message", error_data.get("error", "Error desconocido"))}', 'error')
                             except:
-                                flash('Ocurrió un error inesperado. Por favor, intenta nuevamente.', 'error')
+                                flash('Error inesperado. Intenta nuevamente.', 'error')
                     else:
-                        flash('No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente.', 'error')
+                        flash('Error de conexión. Verifica tu red.', 'error')
             else:
-                flash('Por favor, completa todos los campos', 'warning')
+                flash('Completa todos los campos', 'warning')
         
         elif login_method == 'microsoft':
             return redirect(f'{get_browser_api_url()}/api/auth/login/microsoft')
@@ -279,12 +277,12 @@ def register():
                         'retry_after': retry_after,
                         'message': error_data.get('message', 'Demasiados intentos de registro')
                     }
-                    flash(f'⏱️ {error_data.get("message", "Demasiados intentos de registro")}', 'warning')
+                    flash(f'{error_data.get("message", "Demasiados intentos de registro")}', 'warning')
                     if from_login_page:
                         return redirect(url_for('login', mode='register', error='rate_limit'))
                 except Exception as e:
                     app.logger.error(f"Error processing rate limit response: {e}")
-                    flash('⏱️ Demasiados intentos de registro. Por favor, espera antes de intentar nuevamente.', 'warning')
+                    flash('Demasiados intentos de registro. Por favor, espera antes de intentar nuevamente.', 'warning')
                     if from_login_page:
                         return redirect(url_for('login', mode='register', error='rate_limit'))
             elif response is not None and response.status_code == 409:
@@ -333,7 +331,7 @@ def logout():
 @app.route('/logout/complete')
 def logout_complete():
     session.clear()
-    flash('Sesión cerrada exitosamente', 'success')
+    flash('Sesión cerrada', 'success')
     return redirect(url_for('login'))
 
 @app.route('/configurar-cuenta')
@@ -561,7 +559,7 @@ def crear_persona():
                 
             if response.status_code == 201:
                 invalidate_stats_cache()
-                success_msg = '✅ Persona creada exitosamente'
+                success_msg = 'Persona creada exitosamente'
                 if is_ajax:
                     return jsonify({'message': success_msg}), 201
                 flash(success_msg, 'success')
@@ -708,7 +706,7 @@ def bulk_upload_personas():
                     print(f"DEBUG: Stats - total:{total}, created:{created}, errors:{len(validation_errors)}, dups:{len(duplicates)}, failed:{len(failed)}")
                     
                     if created > 0:
-                        flash(f'✅ Se crearon {created} de {total} personas exitosamente', 'success')
+                        flash(f'Se crearon {created} de {total} personas exitosamente', 'success')
                     
                     total_errors = len(validation_errors) + len(duplicates) + len(failed)
                     if total_errors > 0:

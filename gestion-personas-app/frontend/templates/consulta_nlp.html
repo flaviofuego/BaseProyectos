@@ -316,7 +316,10 @@ Sistema de Gestión de Personas{% endblock %} {% block extra_css %}
         // Obtener solo el texto del span, no el ícono
         const questionSpan = this.querySelector("span");
         if (questionSpan) {
-          const questionText = questionSpan.textContent.trim();
+          // Normalizar el texto: eliminar saltos de línea y múltiples espacios
+          const questionText = questionSpan.textContent
+            .replace(/\s+/g, " ") // Reemplazar cualquier secuencia de espacios/saltos de línea con un solo espacio
+            .trim(); // Eliminar espacios al inicio y final
           preguntaField.value = questionText;
           preguntaField.focus();
           // Cerrar el acordeón después de seleccionar

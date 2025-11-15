@@ -1,13 +1,12 @@
-/* ========================================================================
-   ESTILOS PARA LA PÁGINA DE LOGIN Y REGISTRO
-   ======================================================================== */
+/*
+   login and registration styles
+*/
 
 .login-container {
   min-height: 100vh;
   display: flex;
 }
 
-/* Panel izquierdo - Formulario */
 .login-panel-left {
   flex: 1;
   background: #ffffff;
@@ -17,7 +16,6 @@
   padding: 3rem 2rem;
 }
 
-/* Dark Mode - Panel izquierdo */
 [data-theme="dark"] .login-panel-left {
   background: #1A202C;
 }
@@ -52,7 +50,6 @@
   margin-bottom: 2rem;
 }
 
-/* Botones de toggle (Iniciar Sesión / Registrarse) */
 .auth-toggle {
   display: flex;
   gap: 1rem;
@@ -87,7 +84,7 @@
   border-radius: 3px 3px 0 0;
 }
 
-/* Método de autenticación */
+
 .auth-method-selector {
   margin-bottom: 2rem;
 }
@@ -139,7 +136,6 @@
   margin-right: 0.5rem;
 }
 
-/* Campos de formulario */
 .form-group {
   margin-bottom: 1.5rem;
 }
@@ -158,9 +154,10 @@
   border: 2px solid #CBD5E0;
   border-radius: 8px;
   font-size: 0.95rem;
+  background: #ffffff;
   color: #1A202C;
   font-weight: 500;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
 .form-control-clean:focus {
@@ -174,7 +171,6 @@
   font-weight: 400;
 }
 
-/* Botón principal */
 .btn-primary-clean {
   width: 100%;
   padding: 0.95rem;
@@ -220,7 +216,6 @@
   text-decoration: none;
 }
 
-/* Panel derecho - Ilustración */
 .login-panel-right {
   flex: 1;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -267,7 +262,6 @@
   line-height: 1.6;
 }
 
-/* Decoración de fondo */
 .bg-decoration {
   position: absolute;
   border-radius: 50%;
@@ -288,7 +282,6 @@
   left: -50px;
 }
 
-/* Info boxes */
 .info-box {
   background: #F7FAFC;
   border-radius: 8px;
@@ -311,7 +304,6 @@
   font-weight: 600;
 }
 
-/* Alert personalizado */
 .alert-clean {
   background: #fff3cd;
   border-left: 4px solid #ffc107;
@@ -325,7 +317,6 @@
   border-left-color: #dc3545;
 }
 
-/* Requisitos de validación */
 .requirement-item {
   display: flex;
   align-items: center;
@@ -368,11 +359,11 @@
   }
 }
 
-/* ========================================================================
+/*
    DARK MODE STYLES
-   ======================================================================== */
+ */
 
-/* Textos principales */
+
 [data-theme="dark"] .login-logo h1 {
   color: #F7FAFC;
 }
@@ -385,7 +376,6 @@
   color: #F7FAFC;
 }
 
-/* Botones de toggle */
 [data-theme="dark"] .auth-toggle-btn {
   color: #E2E8F0;
 }
@@ -398,7 +388,6 @@
   background: #7C70DB;
 }
 
-/* Selector de método */
 [data-theme="dark"] .auth-method-selector label {
   color: #F7FAFC;
 }
@@ -415,12 +404,10 @@
   color: #A78BFA;
 }
 
-/* Labels de formulario */
 [data-theme="dark"] .form-group label {
   color: #F7FAFC;
 }
 
-/* Campos de input */
 [data-theme="dark"] .form-control-clean {
   background: #2D3748;
   border-color: #4A5568;
@@ -436,7 +423,6 @@
   color: #A0AEC0;
 }
 
-/* Botones */
 [data-theme="dark"] .btn-primary-clean {
   background: #7C70DB;
 }
@@ -456,7 +442,6 @@
   border-color: #7C70DB;
 }
 
-/* Info boxes */
 [data-theme="dark"] .info-box {
   background: #2D3748;
   border-color: #4A5568;
@@ -471,7 +456,6 @@
   color: #A78BFA;
 }
 
-/* Alerts */
 [data-theme="dark"] .alert-clean {
   background: rgba(252, 211, 77, 0.15);
   border-left-color: #FBBF24;
@@ -484,7 +468,6 @@
   color: #FCA5A5;
 }
 
-/* Requisitos */
 [data-theme="dark"] .requirement-item {
   color: #E2E8F0;
 }

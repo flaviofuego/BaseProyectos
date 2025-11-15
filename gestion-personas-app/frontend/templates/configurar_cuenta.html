@@ -687,7 +687,6 @@ Gestión de Personas{% endblock %} {% block extra_css %}
       if (formCambiarEmail) {
           formCambiarEmail.addEventListener('submit', async function(e) {
               e.preventDefault();
-              e.stopPropagation();
 
               const submitBtn = this.querySelector('button[type="submit"]');
               const originalBtnText = submitBtn.innerHTML;
@@ -709,17 +708,17 @@ Gestión de Personas{% endblock %} {% block extra_css %}
               }
 
               // Verificar que el email sea diferente al actual
-              const emailActual = '{{ session.user.email }}'.trim().toLowerCase();
-              if (nuevoEmail.toLowerCase() === emailActual) {
+              const emailActual = '{{ session.user.email }}';
+              if (nuevoEmail === emailActual) {
                   window.showError('El nuevo correo debe ser diferente al actual');
                   return;
               }
 
-              // Solo deshabilitar botón si pasaron todas las validaciones
-              submitBtn.disabled = true;
-              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando correo...';
-
               try {
+                  // Deshabilitar botón y mostrar carga
+                  submitBtn.disabled = true;
+                  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando correo...';
+
                   const response = await fetch('/api/auth/cambiar-email', {
                       method: 'POST',
                       headers: {
