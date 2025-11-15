@@ -26,10 +26,18 @@ help:
 	@echo "  make db-status   - Show database statistics"
 	@echo ""
 	@echo "🧪 TESTING COMMANDS:"
-	@echo "  make test-auth   - Run Auth Service tests"
-	@echo "  make test-personas - Run Personas Service tests"
-	@echo "  make test-frontend - Run Frontend tests (Python + JavaScript)"
-	@echo "  make test-all    - Run all service tests"
+	@echo "  make test              - Run all tests (unit + integration + e2e)"
+	@echo "  make test-build        - Build test environment"
+	@echo "  make test-up           - Start test environment"
+	@echo "  make test-down         - Stop test environment"
+	@echo "  make test-unit         - Run unit tests only"
+	@echo "  make test-integration  - Run integration tests only"
+	@echo "  make test-e2e          - Run end-to-end tests"
+	@echo "  make test-frontend     - Run frontend tests"
+	@echo "  make test-coverage     - Generate coverage report"
+	@echo "  make test-watch        - Run tests in watch mode"
+	@echo "  make test-clean        - Clean test artifacts and volumes"
+	@echo "  make test-results      - Show test results summary"
 	@echo ""
 	@echo "🧹 MAINTENANCE COMMANDS:"
 	@echo "  make clean       - Stop services and remove volumes"
@@ -94,25 +102,124 @@ clean:
 	docker-compose down -v
 	rm -rf uploads/
 
-# Run tests for Auth Service
-test-auth:
-	@echo "Running Auth Service tests..."
-	@cd services/auth && bash test.sh
+# ==========================================
+# 🧪 TESTING COMMANDS
+# ==========================================
 
-# Run tests for Personas Service
-test-personas:
-	@echo "Running Personas Service tests..."
-	@cd services/personas && bash test.sh
+# Build test environment
+test-build:
+	@echo "🏗️  Building test environment..."
+	docker-compose -f tests/config/docker-compose.test.yml build
+	@echo "✅ Test environment built successfully!"
 
-# Run tests for Frontend
+# Start test environment
+test-up:
+	@echo "🚀 Starting test environment..."
+	docker-compose -f tests/config/docker-compose.test.yml up -d postgres-test redis-test service-registry-test gateway-test
+	@echo "⏳ Waiting for services to be ready..."
+	@sleep 10
+	@echo "✅ Test environment is ready!"
+
+# Stop test environment
+test-down:
+	@echo "🛑 Stopping test environment..."
+	docker-compose -f tests/config/docker-compose.test.yml down
+	@echo "✅ Test environment stopped!"
+
+# Run ALL tests (unit + integration + frontend)
+test:
+	@echo "🧪 =========================================="
+	@echo "🧪 RUNNING ALL TESTS"
+	@echo "🧪 =========================================="
+	docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-node test-runner-node test-runner-python
+	@echo ""
+	@echo "✅ All tests completed! Check tests/results/ for detailed reports"
+	@echo "📊 Open tests/results/index.html for consolidated report"
+
+# Run unit tests only
+test-unit:
+	@echo "🧪 Running unit tests..."
+	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:unit
+	@echo "✅ Unit tests completed!"
+
+# Run integration tests only
+test-integration:
+	@echo "🧪 Running integration tests..."
+	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:integration
+	@echo "✅ Integration tests completed!"
+
+# Run E2E tests
+test-e2e:
+	@echo "🧪 Running end-to-end tests..."
+	docker-compose -f tests/config/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner-e2e test-runner-e2e
+	@echo "✅ E2E tests completed!"
+
+# Run frontend tests
 test-frontend:
-	@echo "Running Frontend tests..."
-	@cd frontend && bash test.sh
+	@echo "🧪 Running frontend tests..."
+	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-python
+	@echo "✅ Frontend tests completed!"
 
-# Run all tests
-test-all:
-	@echo "Running all service tests..."
-	@cd services/auth && bash test.sh && cd ../personas && bash test.sh && cd ../../frontend && bash test.sh
+# Generate coverage report
+test-coverage:
+	@echo "📊 Generating coverage report..."
+	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:coverage
+	@echo "📊 Coverage report available at: tests/results/coverage/index.html"
+	@echo "📊 Open in browser with: open tests/results/coverage/index.html"
+
+# Run tests in watch mode (for development)
+test-watch:
+	@echo "👀 Running tests in watch mode..."
+	@echo "⚠️  Press Ctrl+C to stop"
+	docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:watch
+
+# Clean test artifacts
+test-clean:
+	@echo "🧹 Cleaning test artifacts..."
+	rm -rf tests/results/*
+	docker-compose -f tests/config/docker-compose.test.yml down -v
+	@echo "✅ Test artifacts cleaned!"
+
+# Show test results summary
+test-results:
+	@echo "📊 =========================================="
+	@echo "📊 TEST RESULTS SUMMARY"
+	@echo "📊 =========================================="
+	@if [ -d "tests/results" ]; then \
+		echo ""; \
+		echo "📁 Available Reports:"; \
+		find tests/results -name "*.html" -o -name "*.xml" -o -name "*.json" | head -20; \
+		echo ""; \
+		echo "📊 Main Report: tests/results/index.html"; \
+		echo "📊 Python Coverage: tests/results/coverage-python/index.html"; \
+		echo ""; \
+	else \
+		echo "❌ No test results found. Run 'make test' first."; \
+	fi
+
+# Quick test (only modified services)
+test-quick:
+	@echo "⚡ Running quick tests on modified files..."
+	docker-compose -f docker-compose.test.yml run --rm test-runner-node npm run test -- --onlyChanged
+	@echo "✅ Quick tests completed!"
+
+# Test specific service
+test-service:
+	@echo "🧪 Testing specific service..."
+	@read -p "Enter service name (auth/personas/consulta/nlp/log/gateway): " service; \
+	docker-compose -f docker-compose.test.yml run --rm test-runner-node sh -c "cd /app/services/$$service && npm test"
+
+# Legacy commands for backwards compatibility
+test-auth:
+	@echo "⚠️  Using legacy command. Please use 'make test-service' instead."
+	@docker-compose -f docker-compose.test.yml run --rm test-runner-node sh -c "cd /app/services/auth && npm test"
+
+test-personas:
+	@echo "⚠️  Using legacy command. Please use 'make test-service' instead."
+	@docker-compose -f docker-compose.test.yml run --rm test-runner-node sh -c "cd /app/services/personas && npm test"
+
+test-all: test
+	@echo "⚠️  'test-all' is deprecated. Use 'make test' instead."
 
 # Initialize database with sample data
 init-db:
