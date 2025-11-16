@@ -38,10 +38,10 @@
       }
     },
     "setupFilesAfterEnv": [
-      "<rootDir>/tests/js/setup.js"
+      "<rootDir>/tests/unit/setup.js"
     ],
     "testMatch": [
-      "**/tests/js/**/*.test.js"
+      "**/tests/unit/**/*.test.js"
     ]
   },
   "devDependencies": {

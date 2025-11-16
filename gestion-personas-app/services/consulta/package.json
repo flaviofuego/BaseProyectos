@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "test": "jest --config=jest.integration.config.js",
     "test:integration": "jest --config=jest.integration.config.js",
     "test:integration:watch": "jest --config=jest.integration.config.js --watch",
     "test:all": "npm run test:integration"

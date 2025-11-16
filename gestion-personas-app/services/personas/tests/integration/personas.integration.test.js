@@ -9,7 +9,7 @@
 
 const axios = require("axios");
 
-const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:8001";
+const GATEWAY_URL = process.env.GATEWAY_URL || "http://api_gateway_dev:8001";
 const TOKEN = process.env.TEST_ADMIN_TOKEN || "temp-admin-token"; // accepted by gateway in dev
 
 function auth() {
