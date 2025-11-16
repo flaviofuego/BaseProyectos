@@ -65,9 +65,10 @@ make test-performance  # Load tests (~2min)
 ### 4️⃣ E2E Tests
 
 - **Framework:** Playwright
-- **Specs:** Login, CRUD, NLP, Auditoría
+- **Specs:** 4 archivos (Login, Crear Persona, Consulta NLP, Auditoría)
 - **Ejecución:** `make test-e2e`
 - **Documentación:** [tests/e2e/README.md](./e2e/README.md)
+- **Nota:** NLP temporalmente excluido en playwright.config.js
 
 ### 5️⃣ Performance Tests
 
@@ -187,11 +188,14 @@ make test-coverage             # Generar cobertura detallada
 
 ### E2E (Playwright)
 
-- **Total:** 19/30 ⚠️ (Login: 8/8 ✅, CRUD: 5/9 ⚠️, NLP: 5/11 ⚠️)
+- **Total:** 4 specs disponibles (01-login, 02-crear-persona, 03-consulta-nlp, 04-auditoria)
+- **Estado:** No ejecutados recientemente. Backend 100% OK
+- **Nota:** Spec 03-consulta-nlp excluido temporalmente en config
 
 ### Total General
 
-**207/238 tests (87%)** ✅
+**Último run:** 207/238 tests (87%) ✅  
+**Nota:** Basado en ejecución previa. Backend mantiene 100% cobertura (187/187)
 
 ---
 

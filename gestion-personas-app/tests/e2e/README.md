@@ -1,15 +1,11 @@
 # Tests E2E
 
-## Specs implementados (8)
+## Specs implementados (4)
 
-- `01-registro.spec.js` — CU-001 Registrarse (7 tests)
-- `02-login.spec.js` — CU-002 Login (8 tests)
-- `03-crear-persona.spec.js` — CU-006 Crear (9 tests)
-- `04-consultar-personas.spec.js` — CU-007 Consultar (10 tests)
-- `05-actualizar-persona.spec.js` — CU-008 Actualizar (8 tests)
-- `06-eliminar-persona.spec.js` — CU-009 Eliminar (7 tests)
-- `07-consulta-nlp.spec.js` — CU-012 NLP (12 tests, temporalmente excluido)
-- `08-full-journey.spec.js` — CU-FULL: Full journey (login → crear → consultar → logs)
+- `01-login.spec.js` — CU-002 Login
+- `02-crear-persona.spec.js` — CU-006 Crear Persona
+- `03-consulta-nlp.spec.js` — CU-012 Consulta NLP (temporalmente excluido en config)
+- `04-auditoria.spec.js` — Auditoría de sistema
 
 ## Ejecución
 
@@ -29,7 +25,8 @@ cd ../..
 
 ## Estado (Nov 2025)
 
-- Specs: 8 implementados (NLP excluido)
-- Última corrida: no ejecutados (backend 100% OK)
+- Specs: 4 archivos en `specs/` (NLP excluido temporalmente en playwright.config.js)
+- Tests totales: Ver cada archivo para conteo específico
+- Última corrida: No ejecutados recientemente (backend 100% OK)
 
 Requisitos: stack Docker corriendo; Frontend en http://localhost:5000
