@@ -9,10 +9,10 @@ module.exports = {
     "!jest.config.js",
     "!jest.integration.config.js",
   ],
-  testMatch: ["**/integration/**/*.integration.test.js"],
+  testMatch: ["**/tests/integration/**/*.integration.test.js"],
   verbose: true,
-  testTimeout: 180000, // 3 minutos para tests de integración (contenedores toman tiempo)
-  maxWorkers: 1, // Ejecutar tests de integración secuencialmente
-  forceExit: true, // Forzar salida después de tests (necesario con contenedores)
-  detectOpenHandles: true, // Detectar handles abiertos
+  testTimeout: 180000,
+  maxWorkers: 1,
+  forceExit: true,
+  detectOpenHandles: true,
 };

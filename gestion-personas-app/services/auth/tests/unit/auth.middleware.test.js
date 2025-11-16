@@ -175,7 +175,7 @@ describe("Middleware de Autenticación JWT", () => {
       const expiredToken = jwt.sign(
         { sub: 1, username: "test", jti: "test-jti" },
         JWT_SECRET,
-        { expiresIn: "-1h" } // Expiró hace 1 hora
+        { expiresIn: "-1h" }
       );
 
       req.headers.authorization = `Bearer ${expiredToken}`;

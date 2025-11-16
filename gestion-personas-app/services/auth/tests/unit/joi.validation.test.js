@@ -96,7 +96,7 @@ describe("Validación de Schemas con Joi", () => {
       shortPasswords.forEach((password) => {
         const { error } = passwordSchema.validate(password);
         expect(error).toBeDefined();
-        expect(error.message).toContain("8 caracteres");
+        expect(error.message).toContain("al menos 8 caracteres");
       });
     });
 
@@ -431,9 +431,7 @@ describe("Validación de Schemas con Joi", () => {
       };
 
       const { error } = loginSchema.validate(login, { stripUnknown: false });
-      // Si permitimos unknown, no debe fallar
-      // Si no permitimos, debería fallar
-      // Por defecto Joi permite campos extra
+      // Por defecto Joi permite campos extra; solo verificamos que no falle
       expect(login).toHaveProperty("extra");
     });
   });
@@ -503,7 +501,7 @@ describe("Validación de Schemas con Joi", () => {
       expect(error).toBeUndefined();
       expect(value.username).toBe("newuser");
       expect(value.email).toBe("newuser@example.com");
-      expect(value.password).toBe("SecurePass123!"); // Password no se normaliza
+      expect(value.password).toBe("SecurePass123!");
     });
 
     it("debe rechazar registro sin username", () => {

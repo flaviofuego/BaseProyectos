@@ -129,7 +129,7 @@ describe("Integration Tests - Auth Service: Registro y Login", () => {
 
     // Cargar la aplicación Express
     // IMPORTANTE: Cargar después de configurar las variables de entorno
-    app = require("../index");
+    app = require("../../index");
 
     console.log("✅ Aplicación cargada y lista para tests");
   }, 180000); // Timeout de 3 minutos para levantar contenedores

@@ -15,22 +15,18 @@ const jwt = require("jsonwebtoken");
 // We'll mock the docker-controller used by index.js
 let dockerModulePath;
 beforeAll(() => {
-  dockerModulePath = require.resolve("../docker-controller");
+  dockerModulePath = require.resolve("../../docker-controller");
   jest.mock(dockerModulePath, () => ({
-    startConsultaService: jest
-      .fn()
-      .mockResolvedValue({
-        success: true,
-        message: "mock-started",
-        already_running: false,
-      }),
-    stopConsultaService: jest
-      .fn()
-      .mockResolvedValue({
-        success: true,
-        message: "mock-stopped",
-        already_stopped: false,
-      }),
+    startConsultaService: jest.fn().mockResolvedValue({
+      success: true,
+      message: "mock-started",
+      already_running: false,
+    }),
+    stopConsultaService: jest.fn().mockResolvedValue({
+      success: true,
+      message: "mock-stopped",
+      already_stopped: false,
+    }),
     getContainerInfo: jest
       .fn()
       .mockResolvedValue({ name: "consulta-service", state: "running" }),
@@ -128,7 +124,7 @@ describe("Auth Service - Update Preferences (consulta_service_enabled)", () => {
     process.env.NODE_ENV = "test";
 
     // Load app
-    app = require("../index");
+    app = require("../../index");
   });
 
   afterAll(async () => {

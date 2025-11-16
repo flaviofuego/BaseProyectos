@@ -35,8 +35,8 @@ describe("Integration Tests - Service Registry Discovery", () => {
     process.env.SERVICE_REGISTRY_PORT = "3010";
 
     // Cargar aplicación Service Registry
-    delete require.cache[require.resolve("../index")];
-    registryApp = require("../index");
+    delete require.cache[require.resolve("../../index")];
+    registryApp = require("../../index");
 
     registeredServices = [];
 
