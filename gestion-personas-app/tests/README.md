@@ -1,16 +1,112 @@
-# 🧪 Quick Start - Entorno de Pruebas
+# 🧪 Testing - Gestión de Personas
+
+> **Guía completa de testing:** Unit, Integration, E2E y Performance
+
+## 📋 Tabla de Contenidos
+
+- [Inicio Rápido](#-inicio-rápido)
+- [Tipos de Tests](#-tipos-de-tests)
+- [Arquitectura](#-arquitectura)
+- [Comandos](#-comandos)
+- [Resultados](#-resultados)
+- [Troubleshooting](#-troubleshooting)
+
+---
 
 ## 🚀 Inicio Rápido
 
 ### Prerequisitos
 
-**IMPORTANTE:** Los servicios deben estar corriendo antes de ejecutar tests:
+**IMPORTANTE:** Los servicios deben estar corriendo:
 
 ```bash
-docker-compose up -d
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
-### Comandos Make
+### Ejecutar Tests
+
+```bash
+# Todos los tests (unit + integration + frontend + e2e + performance)
+make test
+
+# Por categoría
+make test-unit         # Backend unit tests (~3s)
+make test-integration  # DB/Redis integration (~10s)
+make test-frontend     # Python + Jest (~5s)
+make test-e2e         # Playwright E2E (~4min)
+make test-performance  # Load tests (~2min)
+```
+
+---
+
+## 🧪 Tipos de Tests
+
+### 1️⃣ Unit Tests
+
+- **Qué:** Funciones aisladas con mocks
+- **Ubicación:** `services/*/tests/unit/`
+- **Ejecución:** `make test-unit`
+- **Cobertura:** Auth (124), Personas (36)
+
+### 2️⃣ Integration Tests
+
+- **Qué:** Conectividad con DB/Redis real
+- **Ubicación:** `services/*/tests/integration/`
+- **Ejecución:** `make test-integration`
+- **Arquitectura:** Conecta a `personas_db` y `personas_redis` (NO Testcontainers)
+- **Tests:** Auth (11), Personas (4), Consulta (12), Registry (22)
+
+### 3️⃣ Frontend Tests
+
+- **Python:** Pytest para rutas Flask
+- **JavaScript:** Jest para utilidades frontend
+- **Ejecución:** `make test-frontend`
+
+### 4️⃣ E2E Tests
+
+- **Framework:** Playwright
+- **Specs:** Login, CRUD, NLP, Auditoría
+- **Ejecución:** `make test-e2e`
+- **Documentación:** [tests/e2e/README.md](./e2e/README.md)
+
+### 5️⃣ Performance Tests
+
+- **Framework:** Jest + Axios
+- **Tests:** Response time, Throughput, Cache ratio
+- **Ejecución:** `make test-performance`
+- **Documentación:** [tests/performance/README.md](./performance/README.md)
+
+---
+
+## 🏗️ Arquitectura
+
+### Cambio Importante (Nov 2025)
+
+Los **integration tests** ya NO usan Testcontainers:
+
+#### ❌ Antes (Testcontainers)
+
+```javascript
+const pgContainer = await new GenericContainer("postgres:15").start();
+// Problemas: lento (3min), errores de Reaper, alto consumo
+```
+
+#### ✅ Ahora (Docker existente)
+
+```javascript
+const pgPool = new Pool({
+  host: "localhost",
+  port: 5432,
+  database: "personas_db",
+});
+// Beneficios: rápido (3s), sin errores, reutiliza infraestructura
+```
+
+**Ver detalles:** [MIGRATION-GUIDE.md](./docs/MIGRATION-GUIDE.md)
+
+---
+
+## 📦 Comandos Make
 
 ```bash
 # Ejecutar TODOS los tests
@@ -60,119 +156,44 @@ Los tests de integración fueron **rediseñados** para usar servicios Docker exi
 - **Personas (4 tests):** CRUD vía API Gateway
 - **Consulta (12 tests):** Queries PostgreSQL (agregación, transacciones, JSONB) + Redis (cache TTL)
 
-## 📊 Ver Resultados
+### Resultados y Reportes
 
 ```bash
-# Script interactivo
-./tests/scripts/view-test-results.sh
-
-# O manualmente
-open tests/results/index.html                      # Reporte consolidado
-open tests/results/coverage-python/index.html      # Cobertura Python
-open tests/results/coverage/auth/index.html        # Cobertura Auth Service
+make test-results              # Resumen de resultados
+make test-coverage             # Generar cobertura detallada
 ```
 
-## 🏗️ Arquitectura de Tests
+**Reportes HTML:**
 
-### Unit Tests
+- Consolidado: `tests/results/index.html`
+- Coverage Python: `tests/results/coverage-python/index.html`
+- Coverage Backend: `tests/results/coverage/*/index.html`
+- E2E Report: `tests/e2e/playwright-report/index.html`
 
-- **Ubicación:** `services/*/tests/unit/`
-- **Ejecución:** Dentro de cada container de servicio
-- **Usan:** Mocks para DB/Redis/servicios externos
-- **Objetivo:** Funciones aisladas
+---
 
-### Integration Tests
+## 🔍 Estado Actual (Nov 2025)
 
-- **Ubicación:** `services/*/tests/integration/`
-- **Ejecución:** `docker exec <service>_dev npm run test:integration`
-- **Conectan a:** `personas_db` (PostgreSQL 15), `personas_redis` (Redis 7)
-- **NO usan:** Testcontainers ni containers aislados
-- **Objetivo:** Verificar integración con BD/cache, NO lógica HTTP (eso va en E2E)
+### Backend
 
-### E2E Tests
+- **Unit Tests:** 160/160 ✅ (Auth: 124, Personas: 36)
+- **Integration Tests:** 27/27 ✅ (Auth: 11, Personas: 4, Consulta: 12)
+- **Velocidad:** ~13s total
 
-- **Ubicación:** `tests/e2e/specs/`
-- **Ejecución:** Playwright contra sistema completo
-- **Objetivo:** Flujos de usuario completos
+### Frontend
 
-### Performance Tests
+- **Python (Pytest):** 10/15 ⚠️
+- **JavaScript (Jest):** 126/136 ⚠️
 
-- **Ubicación:** `tests/performance/`
-- **Objetivo:** Validar SLAs (response time, throughput, cache efficiency)
+### E2E (Playwright)
 
-## 📁 Estructura de Archivos Creados
+- **Total:** 19/30 ⚠️ (Login: 8/8 ✅, CRUD: 5/9 ⚠️, NLP: 5/11 ⚠️)
 
-```plant
-gestion-personas-app/
-├── tests/
-│   ├── config/
-│   │   ├── docker-compose.test.yml   # Entorno Docker de testing
-│   │   └── jest.config.js            # Configuración Jest global
-│   ├── docker/
-│   │   ├── Dockerfile.test.node      # Tests Node.js
-│   │   └── Dockerfile.test.e2e       # Tests E2E
-│   ├── scripts/
-│   │   ├── test-runner.sh            # Script ejecutor de tests
-│   │   ├── test-quickstart.sh        # Script de inicio rápido
-│   │   └── view-test-results.sh      # Visor de resultados
-│   ├── docs/
-│   │   └── GUIDE.md                  # Guía completa de testing
-│   ├── e2e/
-│   │   ├── package.json              # Dependencias E2E
-│   │   ├── playwright.config.js      # Configuración Playwright
-│   │   ├── specs/                    # Tests E2E
-│   │   ├── fixtures/
-│   │   └── helpers/
-│   └── results/                      # Resultados (generado)
-│       ├── index.html
-│       ├── coverage/
-│       ├── coverage-python/
-│       └── playwright-report/
-│
-├── frontend/
-│   └── Dockerfile.test               # Tests Python
-│
-└── services/auth/tests/
-    ├── setup.js                      # Setup de tests
-    └── unit/
-        └── jwt.token.test.js         # Ejemplo de test
-```
+### Total General
 
-## 🎯 Ejemplos de Uso
+**207/238 tests (87%)** ✅
 
-### Desarrollo Activo
-
-```bash
-# Watch mode - Re-ejecuta tests al modificar archivos
-make test-watch
-```
-
-### CI/CD
-
-```bash
-# Ejecutar todos los tests y generar reportes
-make test
-
-# Verificar códigos de salida
-echo $?  # 0 = éxito, 1 = fallos
-```
-
-### Debugging
-
-```bash
-# Iniciar entorno manualmente
-make test-up
-
-# Ver logs en tiempo real
-docker-compose -f docker-compose.test.yml logs -f
-
-# Ejecutar tests específicos
-docker-compose -f docker-compose.test.yml run --rm test-runner-node \
-  sh -c "cd /app/services/auth && npm test"
-
-# Conectarse a la base de datos de test
-docker exec -it postgres_test psql -U test_user -d test_db
-```
+---
 
 ## 🐛 Troubleshooting
 
@@ -180,46 +201,105 @@ docker exec -it postgres_test psql -U test_user -d test_db
 
 ```bash
 make test-down
-# Si persiste:
-docker-compose -f docker-compose.test.yml down -v
+docker-compose down
 ```
 
 ### Tests muy lentos
 
 ```bash
-# Ejecutar tests en paralelo
-docker-compose -f docker-compose.test.yml run --rm test-runner-node \
-  npm test -- --maxWorkers=4
+# Ejecutar en paralelo (solo unit tests)
+make test-unit
 ```
 
-### Limpiar todo y empezar de cero
+### Limpiar todo
 
 ```bash
-make test-clean
-make test-build
-make test
+make test-clean                 # Limpia artefactos
+docker system prune -af         # Limpieza profunda (cuidado!)
 ```
 
-## 📚 Documentación Completa
+### Integration tests fallan
 
-Para guía detallada de testing, ver: [`TESTING-GUIDE.md`](./TESTING-GUIDE.md)
-
-## 🎓 Próximos Pasos
-
-1. ✅ Ejecutar tests para verificar que todo funciona
-2. ✅ Escribir tests para tu código existente
-3. ✅ Configurar CI/CD (GitHub Actions, GitLab CI, etc.)
-4. ✅ Establecer políticas de cobertura mínima
-
-## 🤝 Contribuir
-
-Cuando agregues nuevas funcionalidades:
-
-1. Escribe tests primero (TDD)
-2. Ejecuta `make test` antes de commit
-3. Mantén cobertura > 70%
-4. Documenta tests complejos
+1. Verificar servicios corriendo: `docker ps`
+2. Verificar puertos: PostgreSQL (5432), Redis (6379)
+3. Reiniciar servicios: `docker-compose restart postgres redis`
 
 ---
 
-**¿Problemas?** Abre un issue o consulta [`TESTING-GUIDE.md`](./TESTING-GUIDE.md)
+## 📁 Estructura de Archivos
+
+```
+tests/
+├── README.md                      # 👈 Esta guía
+├── e2e/                           # Tests End-to-End (Playwright)
+│   ├── README.md                  # Guía específica E2E
+│   ├── specs/                     # 4 specs: Login, CRUD, NLP, Auditoría
+│   └── fixtures/                  # Archivos de prueba
+├── performance/                   # Tests de carga
+│   ├── README.md                  # Guía de performance
+│   └── performance.test.js        # TC-PERF-001 a 004
+├── docs/                          # Documentación adicional
+│   └── MIGRATION-GUIDE.md         # Historia de cambios
+├── config/                        # Configuraciones
+├── scripts/                       # Scripts auxiliares
+└── results/                       # Reportes generados (git-ignored)
+```
+
+**Backend tests** están en cada servicio:
+
+```
+services/auth/tests/
+  ├── unit/                        # Mocks, funciones aisladas
+  └── integration/                 # DB/Redis real
+```
+
+---
+
+## 📚 Documentación Adicional
+
+- **Migration Guide:** [docs/MIGRATION-GUIDE.md](./docs/MIGRATION-GUIDE.md) - Historia de cambios de Testcontainers
+- **E2E Testing:** [e2e/README.md](./e2e/README.md) - Playwright specs detallados
+- **Performance:** [performance/README.md](./performance/README.md) - Load testing
+- **Main README:** [../TESTS.md](../TESTS.md) - Documentación principal del proyecto
+
+---
+
+## 💡 Tips y Best Practices
+
+### TDD (Test-Driven Development)
+
+1. Escribe el test primero (rojo) ❌
+2. Implementa lo mínimo para pasar (verde) ✅
+3. Refactoriza manteniendo tests verdes 🔄
+
+### Cobertura
+
+- **Unit tests:** > 80% por servicio
+- **Integration tests:** Rutas críticas
+- **E2E tests:** User journeys principales
+
+### CI/CD
+
+```yaml
+# .github/workflows/tests.yml (ejemplo)
+- name: Run tests
+  run: |
+    docker-compose up -d
+    make test
+    make test-results
+```
+
+---
+
+## 🤝 Contribuir
+
+Al agregar features:
+
+1. ✅ Escribe tests primero (TDD)
+2. ✅ Ejecuta `make test` antes de commit
+3. ✅ Mantén cobertura > 70%
+4. ✅ Documenta casos edge
+
+---
+
+**¿Preguntas?** Consulta [docs/MIGRATION-GUIDE.md](./docs/MIGRATION-GUIDE.md) o abre un issue.
