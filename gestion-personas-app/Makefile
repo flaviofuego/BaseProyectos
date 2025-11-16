@@ -144,7 +144,7 @@ test-down:
 	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml down
 	@echo "✅ Test environment stopped!"
 
-# Run ALL tests (unit + integration + frontend)
+# Run ALL tests (unit + integration + frontend + e2e + performance)
 test:
 	@echo "🧪 =========================================="
 	@echo "🧪 RUNNING ALL TESTS"
@@ -155,6 +155,10 @@ test:
 	@make test-integration
 	@echo ""
 	@make test-frontend
+	@echo ""
+	@make test-e2e
+	@echo ""
+	@make test-performance
 	@echo ""
 	@echo "✅ All tests completed!"
 
