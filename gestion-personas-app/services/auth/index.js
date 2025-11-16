@@ -17,6 +17,7 @@ const rateLimit = require("express-rate-limit");
 const {
   createServiceRegistryClient,
 } = require("./shared/service-registry-client");
+const dockerController = require("./docker-controller");
 require("dotenv").config();
 
 const app = express();
@@ -401,10 +402,8 @@ app.put(
 
       // Control del contenedor Docker
       let dockerResult = null;
-      const dockerController = require("./docker-controller");
 
       if (enabled) {
-        // ✅ ACTIVAR SERVICIO: Activar para TODOS y iniciar contenedor
         console.log(
           `✅ User ${userId} (${username}) is ENABLING service - starting container and enabling for ALL users`
         );
@@ -463,7 +462,15 @@ app.put(
 
         // 2. Invalidar cache de todos los usuarios afectados
         for (const affectedUserId of affectedUsers) {
-          await invalidateUserPreferencesCache(affectedUserId);
+          try {
+            await invalidateUserPreferencesCache(affectedUserId);
+          } catch (cacheError) {
+            console.warn(
+              `⚠️ Failed to invalidate cache for user ${affectedUserId}:`,
+              cacheError.message
+            );
+            // Continue even if cache invalidation fails
+          }
         }
 
         // 3. Registrar en logs la activación masiva
@@ -518,7 +525,15 @@ app.put(
 
         // 2. Invalidar cache de todos los usuarios afectados
         for (const affectedUserId of affectedUsers) {
-          await invalidateUserPreferencesCache(affectedUserId);
+          try {
+            await invalidateUserPreferencesCache(affectedUserId);
+          } catch (cacheError) {
+            console.warn(
+              `⚠️ Failed to invalidate cache for user ${affectedUserId}:`,
+              cacheError.message
+            );
+            // Continue even if cache invalidation fails
+          }
         }
 
         // 3. Detener el contenedor Docker
@@ -618,7 +633,6 @@ app.get(
   passport.authenticate("jwt", { session: false }),
   async (req, res) => {
     try {
-      const dockerController = require("./docker-controller");
       const info = await dockerController.getContainerInfo();
 
       // También obtener cuántos usuarios tienen el servicio habilitado
