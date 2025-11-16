@@ -2,31 +2,34 @@
 
 ## 🚀 Inicio Rápido
 
-### Opción 1: Script Interactivo (Recomendado)
+### Prerequisitos
+
+**IMPORTANTE:** Los servicios deben estar corriendo antes de ejecutar tests:
 
 ```bash
-./tests/scripts/test-quickstart.sh
+docker-compose up -d
 ```
 
-Este script te guiará a través de todas las opciones disponibles.
-
-### Opción 2: Comandos Make
+### Comandos Make
 
 ```bash
 # Ejecutar TODOS los tests
 make test
 
-# Solo tests unitarios (rápido)
+# Solo tests unitarios (rápido) - ~160 tests
 make test-unit
 
-# Solo tests de integración
+# Solo tests de integración - 27 tests (Auth: 11, Personas: 4, Consulta: 12)
 make test-integration
 
-# Tests del frontend Python
+# Tests del frontend Python + Jest
 make test-frontend
 
-# Tests end-to-end
+# Tests end-to-end (4 specs: Auth, CRUD, NLP, Auditoría)
 make test-e2e
+
+# Tests de performance (TC-PERF-001 a 004)
+make test-performance
 
 # Generar reporte de cobertura
 make test-coverage
@@ -34,6 +37,28 @@ make test-coverage
 # Ver resultados
 make test-results
 ```
+
+## 🔄 Cambios Recientes (Noviembre 2025)
+
+### Integration Tests - Nueva Arquitectura
+
+Los tests de integración fueron **rediseñados** para usar servicios Docker existentes:
+
+- ❌ **Antes:** Usaban Testcontainers (spawneaban containers separados)
+- ✅ **Ahora:** Conectan a servicios corriendo (`personas_db`, `personas_redis`)
+
+**Ventajas:**
+
+- ✅ Más rápidos (no levantan containers)
+- ✅ Prueban infraestructura real
+- ✅ Sin conflictos de puertos
+- ✅ Mejor aislamiento de concerns (DB/cache vs HTTP)
+
+**Qué prueban:**
+
+- **Auth (11 tests):** Esquema PostgreSQL (users, logs, preferences) + Redis (sesiones)
+- **Personas (4 tests):** CRUD vía API Gateway
+- **Consulta (12 tests):** Queries PostgreSQL (agregación, transacciones, JSONB) + Redis (cache TTL)
 
 ## 📊 Ver Resultados
 
@@ -47,21 +72,33 @@ open tests/results/coverage-python/index.html      # Cobertura Python
 open tests/results/coverage/auth/index.html        # Cobertura Auth Service
 ```
 
-## 🔧 Comandos de Gestión
+## 🏗️ Arquitectura de Tests
 
-```bash
-# Construir entorno de testing
-make test-build
+### Unit Tests
 
-# Iniciar servicios de test (sin ejecutar tests)
-make test-up
+- **Ubicación:** `services/*/tests/unit/`
+- **Ejecución:** Dentro de cada container de servicio
+- **Usan:** Mocks para DB/Redis/servicios externos
+- **Objetivo:** Funciones aisladas
 
-# Detener servicios de test
-make test-down
+### Integration Tests
 
-# Limpiar todo
-make test-clean
-```
+- **Ubicación:** `services/*/tests/integration/`
+- **Ejecución:** `docker exec <service>_dev npm run test:integration`
+- **Conectan a:** `personas_db` (PostgreSQL 15), `personas_redis` (Redis 7)
+- **NO usan:** Testcontainers ni containers aislados
+- **Objetivo:** Verificar integración con BD/cache, NO lógica HTTP (eso va en E2E)
+
+### E2E Tests
+
+- **Ubicación:** `tests/e2e/specs/`
+- **Ejecución:** Playwright contra sistema completo
+- **Objetivo:** Flujos de usuario completos
+
+### Performance Tests
+
+- **Ubicación:** `tests/performance/`
+- **Objetivo:** Validar SLAs (response time, throughput, cache efficiency)
 
 ## 📁 Estructura de Archivos Creados
 

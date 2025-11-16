@@ -32,4 +32,4 @@ cd ../..
 - Specs: 8 implementados (NLP excluido)
 - Última corrida: no ejecutados (backend 100% OK)
 
-Requisitos: stack Docker corriendo; Frontend en http://localhost:5001
+Requisitos: stack Docker corriendo; Frontend en http://localhost:5000

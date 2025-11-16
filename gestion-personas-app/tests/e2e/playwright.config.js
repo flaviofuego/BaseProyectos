@@ -29,7 +29,7 @@ module.exports = defineConfig({
   // Configuración compartida para todos los tests
   use: {
     // URL base de la aplicación
-    baseURL: process.env.BASE_URL || "http://localhost:5001",
+    baseURL: process.env.BASE_URL || "http://localhost:5000",
 
     // Trace en caso de fallo
     trace: "retain-on-failure",

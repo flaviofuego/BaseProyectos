@@ -170,6 +170,78 @@ Usa títulos, listas, tablas y métricas en negritas:
     });
   }
 
+  /**
+   * Security validation for queries (CU-08: Security Risk Detection)
+   * Detects dangerous keywords and SQL injection attempts
+   */
+  checkSecurityRisks(query) {
+    const queryLower = query.toLowerCase();
+
+    // Lista de palabras clave peligrosas
+    const dangerousKeywords = [
+      "password",
+      "contraseña",
+      "passwd",
+      "drop table",
+      "drop database",
+      "delete from",
+      "truncate",
+      "update personas",
+      "update usuarios",
+      "update users",
+      "insert into",
+      "alter table",
+      "create table",
+      "grant",
+      "revoke",
+      "exec",
+      "execute",
+      "script",
+      "<script",
+      "javascript:",
+      "onerror=",
+      "onload=",
+      "--",
+      "/*",
+      "*/",
+      "xp_",
+      "sp_",
+      "0x",
+      "char(",
+      "union select",
+      "union all select",
+    ];
+
+    for (const keyword of dangerousKeywords) {
+      if (queryLower.includes(keyword)) {
+        return {
+          isDangerous: true,
+          reason: `Palabra clave no permitida: "${keyword}"`,
+        };
+      }
+    }
+
+    // Detectar patrones de SQL injection
+    const sqlInjectionPatterns = [
+      /;\s*(drop|delete|truncate|update|insert|alter|create)\s+/i,
+      /'\s*or\s*'1'\s*=\s*'1/i,
+      /'\s*or\s*1\s*=\s*1/i,
+      /'\s*;\s*--/i,
+      /\/\*.*\*\//i,
+    ];
+
+    for (const pattern of sqlInjectionPatterns) {
+      if (pattern.test(query)) {
+        return {
+          isDangerous: true,
+          reason: "Patrón de SQL injection detectado",
+        };
+      }
+    }
+
+    return { isDangerous: false };
+  }
+
   async initializeService() {
     try {
       console.log("🚀 Iniciando NLP Service v2.0...");
@@ -937,6 +1009,15 @@ Responde DIRECTAMENTE en Markdown:`;
             .json({ success: false, error: "Query inválido (max 2000 chars)" });
         }
 
+        // Validación de seguridad (CU-08: Security Risk Detection)
+        const securityCheck = this.checkSecurityRisks(query);
+        if (securityCheck.isDangerous) {
+          return res.status(400).json({
+            success: false,
+            error: `Consulta no permitida por seguridad: ${securityCheck.reason}`,
+          });
+        }
+
         const parameters = await this.extractQueryParameters(query);
         const results = await this.queryVectorDatabase(query, parameters);
         const markdownResponse = await this.generateMarkdownResponse(
@@ -1032,13 +1113,11 @@ Responde DIRECTAMENTE en Markdown:`;
           null,
           error.message
         );
-        res
-          .status(500)
-          .json({
-            success: false,
-            error: "Error actualizando embedding",
-            details: error.message,
-          });
+        res.status(500).json({
+          success: false,
+          error: "Error actualizando embedding",
+          details: error.message,
+        });
       }
     });
 
@@ -1081,13 +1160,11 @@ Responde DIRECTAMENTE en Markdown:`;
           null,
           error.message
         );
-        res
-          .status(500)
-          .json({
-            success: false,
-            error: "Error en sincronización",
-            details: error.message,
-          });
+        res.status(500).json({
+          success: false,
+          error: "Error en sincronización",
+          details: error.message,
+        });
       }
     });
 
@@ -1130,13 +1207,11 @@ Responde DIRECTAMENTE en Markdown:`;
         });
       } catch (error) {
         console.error("Error stats:", error.message);
-        res
-          .status(500)
-          .json({
-            success: false,
-            error: "Error obteniendo estadísticas",
-            details: error.message,
-          });
+        res.status(500).json({
+          success: false,
+          error: "Error obteniendo estadísticas",
+          details: error.message,
+        });
       }
     });
 
