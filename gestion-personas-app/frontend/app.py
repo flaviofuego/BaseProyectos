@@ -6,12 +6,6 @@ import json
 import os
 import io
 from dotenv import load_dotenv
-import base64
-from io import BytesIO
-from PIL import Image
-import plotly
-import plotly.express as px
-import plotly.graph_objects as go
 
 load_dotenv(dotenv_path='../.env')
 load_dotenv() 
@@ -317,13 +311,6 @@ def register():
 @app.route('/logout')
 @login_required
 def logout():
-    try:
-        make_request('PUT', '/api/auth/preferences/consulta-service', {
-            'enabled': True
-        })
-    except Exception as e:
-        print(f"Error al reactivar servicio de consulta en logout: {e}")
-    
     make_request('POST', '/api/auth/logout')
     
     return render_template('logout_cleanup.html')
@@ -1419,45 +1406,7 @@ def consultar_logs():
     app.logger.info(f"Final logs count: {len(logs)}, stats: {bool(stats)}")
     return render_template('consultar_logs.html', logs=logs, stats=stats, pagination=pagination_info, current_filters=request.args)
 
-@app.route('/api/chart/<chart_type>')
-@login_required
-def get_chart_data(chart_type):
-    response = make_request('GET', '/api/consulta/stats')
-    
-    if response is None or response.status_code != 200:
-        return jsonify({'error': 'No data available'}), 404
-    
-    stats = response.json()
-    
-    if chart_type == 'gender':
-        data = list(stats.get('por_genero', {}).items())
-        fig = px.pie(
-            values=[item[1] for item in data],
-            names=[item[0] for item in data],
-            title='DistribuciÃ³n por GÃ©nero'
-        )
-        return jsonify(fig.to_json())
-    
-    elif chart_type == 'document':
-        data = list(stats.get('por_tipo_documento', {}).items())
-        fig = px.bar(
-            x=[item[0] for item in data],
-            y=[item[1] for item in data],
-            title='DistribuciÃ³n por Tipo de Documento'
-        )
-        return jsonify(fig.to_json())
-    
-    elif chart_type == 'age':
-        data = list(stats.get('por_grupo_edad', {}).items())
-        fig = px.bar(
-            x=[item[0] for item in data],
-            y=[item[1] for item in data],
-            title='DistribuciÃ³n por Grupo de Edad'
-        )
-        return jsonify(fig.to_json())
-    
-    return jsonify({'error': 'Chart type not found'}), 404
-
+# Error handlers
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
