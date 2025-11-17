@@ -13,11 +13,52 @@ const {
   createServiceRegistryClient,
 } = require("./shared/service-registry-client");
 require("dotenv").config();
+const express = require("express");
+const { Pool } = require("pg");
+const Joi = require("joi");
+const multer = require("multer");
+const sharp = require("sharp");
+const path = require("path");
+const fs = require("fs").promises;
+const helmet = require("helmet");
+const cors = require("cors");
+const axios = require("axios");
+const { parse } = require("csv-parse/sync");
+const {
+  createServiceRegistryClient,
+} = require("./shared/service-registry-client");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 
 // Middleware
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Disable CSP to allow image serving
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false,
+  })
+);
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5000", // Frontend
+      "http://localhost:8001", // Gateway
+      "http://localhost:3000", // Por si se usa otro puerto
+      "http://127.0.0.1:5000", // Alternativo para localhost
+      "http://127.0.0.1:8001", // Alternativo para gateway
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "x-user-id",
+    ],
+  })
+);
 app.use(
   helmet({
     contentSecurityPolicy: false, // Disable CSP to allow image serving
@@ -56,10 +97,21 @@ app.use(
   },
   express.static("/uploads")
 );
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  },
+  express.static("/uploads")
+);
 
 // Ensure uploads directory exists
 const ensureUploadsDirectory = async () => {
   try {
+    await fs.mkdir("/uploads", { recursive: true });
+    console.log("Uploads directory ensured");
     await fs.mkdir("/uploads", { recursive: true });
     console.log("Uploads directory ensured");
   } catch (error) {
@@ -70,9 +122,12 @@ const ensureUploadsDirectory = async () => {
 // Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL,
 });
 
 // NLP Service URL configuration
+const NLP_SERVICE_URL =
+  process.env.NLP_SERVICE_URL || "http://nlp-service:3004";
 const NLP_SERVICE_URL =
   process.env.NLP_SERVICE_URL || "http://nlp-service:3004";
 
@@ -83,9 +138,14 @@ const NLP_SERVICE_URL =
  * @returns {Promise<void>}
  */
 const syncEmbedding = async (personaId, operation = "UPDATE") => {
+const syncEmbedding = async (personaId, operation = "UPDATE") => {
   try {
     if (operation === "DELETE") {
+    if (operation === "DELETE") {
       // Para DELETE, el trigger CASCADE en la DB eliminará el embedding automáticamente
+      console.log(
+        `🗑️ Embedding eliminado automáticamente por CASCADE para persona ${personaId}`
+      );
       console.log(
         `🗑️ Embedding eliminado automáticamente por CASCADE para persona ${personaId}`
       );
@@ -96,16 +156,26 @@ const syncEmbedding = async (personaId, operation = "UPDATE") => {
       `🔄 Sincronizando embedding para persona ${personaId} (${operation})...`
     );
 
+    console.log(
+      `🔄 Sincronizando embedding para persona ${personaId} (${operation})...`
+    );
+
     const response = await axios.post(
       `${NLP_SERVICE_URL}/update-embedding`,
       { persona_id: personaId },
       {
+      {
         timeout: 10000,
+        headers: { "Content-Type": "application/json" },
         headers: { "Content-Type": "application/json" },
       }
     );
 
+
     if (response.data.success) {
+      console.log(
+        `✅ Embedding sincronizado exitosamente para persona ${personaId}`
+      );
       console.log(
         `✅ Embedding sincronizado exitosamente para persona ${personaId}`
       );
@@ -113,6 +183,13 @@ const syncEmbedding = async (personaId, operation = "UPDATE") => {
   } catch (error) {
     // No fallar la operación principal si falla la sincronización de embeddings
     // El cronjob automático del NLP service lo sincronizará después
+    console.warn(
+      `⚠️ Error sincronizando embedding para persona ${personaId}:`,
+      error.message
+    );
+    console.log(
+      "ℹ️ El embedding se sincronizará automáticamente en el próximo ciclo del NLP service"
+    );
     console.warn(
       `⚠️ Error sincronizando embedding para persona ${personaId}:`,
       error.message
@@ -129,19 +206,26 @@ const upload = multer({
   storage: storage,
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB limit
+    fileSize: 2 * 1024 * 1024, // 2MB limit
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(
       path.extname(file.originalname).toLowerCase()
     );
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
     const mimetype = allowedTypes.test(file.mimetype);
+
 
     if (mimetype && extname) {
       return cb(null, true);
     } else {
       cb(new Error("Solo se permiten imágenes (jpeg, jpg, png, gif)"));
+      cb(new Error("Solo se permiten imágenes (jpeg, jpg, png, gif)"));
     }
+  },
   },
 });
 
@@ -149,6 +233,7 @@ const upload = multer({
 const uploadCSV = multer({
   storage: multer.memoryStorage(),
   limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit for CSV files
     fileSize: 5 * 1024 * 1024, // 5MB limit for CSV files
   },
   fileFilter: (req, file, cb) => {
@@ -161,11 +246,21 @@ const uploadCSV = multer({
       file.mimetype === "application/vnd.ms-excel" ||
       file.mimetype === "text/plain";
 
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimetype =
+      file.mimetype === "text/csv" ||
+      file.mimetype === "application/vnd.ms-excel" ||
+      file.mimetype === "text/plain";
+
     if (mimetype || extname) {
       return cb(null, true);
     } else {
       cb(new Error("Solo se permiten archivos CSV"));
+      cb(new Error("Solo se permiten archivos CSV"));
     }
+  },
   },
 });
 
@@ -180,15 +275,24 @@ const personaSchema = Joi.object({
         "El número de documento debe contener solo números",
       "string.max":
         "El número de documento no puede tener más de 10 caracteres",
+      "string.pattern.base":
+        "El número de documento debe contener solo números",
+      "string.max":
+        "El número de documento no puede tener más de 10 caracteres",
     }),
 
+
   tipo_documento: Joi.string()
+    .valid("Tarjeta de identidad", "Cédula")
     .valid("Tarjeta de identidad", "Cédula")
     .required()
     .messages({
       "any.only":
         'El tipo de documento debe ser "Tarjeta de identidad" o "Cédula"',
+      "any.only":
+        'El tipo de documento debe ser "Tarjeta de identidad" o "Cédula"',
     }),
+
 
   primer_nombre: Joi.string()
     .pattern(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
@@ -197,16 +301,23 @@ const personaSchema = Joi.object({
     .messages({
       "string.pattern.base": "El primer nombre no puede contener números",
       "string.max": "El primer nombre no puede tener más de 30 caracteres",
+      "string.pattern.base": "El primer nombre no puede contener números",
+      "string.max": "El primer nombre no puede tener más de 30 caracteres",
     }),
+
 
   segundo_nombre: Joi.string()
     .pattern(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
     .max(30)
     .allow("", null)
+    .allow("", null)
     .messages({
       "string.pattern.base": "El segundo nombre no puede contener números",
       "string.max": "El segundo nombre no puede tener más de 30 caracteres",
+      "string.pattern.base": "El segundo nombre no puede contener números",
+      "string.max": "El segundo nombre no puede tener más de 30 caracteres",
     }),
+
 
   apellidos: Joi.string()
     .pattern(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
@@ -215,7 +326,14 @@ const personaSchema = Joi.object({
     .messages({
       "string.pattern.base": "Los apellidos no pueden contener números",
       "string.max": "Los apellidos no pueden tener más de 60 caracteres",
+      "string.pattern.base": "Los apellidos no pueden contener números",
+      "string.max": "Los apellidos no pueden tener más de 60 caracteres",
     }),
+
+  fecha_nacimiento: Joi.date().max("now").required().messages({
+    "date.max": "La fecha de nacimiento no puede ser futura",
+  }),
+
 
   fecha_nacimiento: Joi.date().max("now").required().messages({
     "date.max": "La fecha de nacimiento no puede ser futura",
@@ -223,10 +341,17 @@ const personaSchema = Joi.object({
 
   genero: Joi.string()
     .valid("Masculino", "Femenino", "No binario", "Prefiero no reportar")
+    .valid("Masculino", "Femenino", "No binario", "Prefiero no reportar")
     .required()
     .messages({
       "any.only": "El género debe ser uno de los valores permitidos",
+      "any.only": "El género debe ser uno de los valores permitidos",
     }),
+
+  correo_electronico: Joi.string().email().required().messages({
+    "string.email": "Debe ser un correo electrónico válido",
+  }),
+
 
   correo_electronico: Joi.string().email().required().messages({
     "string.email": "Debe ser un correo electrónico válido",
@@ -236,6 +361,9 @@ const personaSchema = Joi.object({
     .pattern(/^[0-9]{10}$/)
     .required()
     .messages({
+      "string.pattern.base":
+        "El celular debe tener exactamente 10 dígitos numéricos",
+    }),
       "string.pattern.base":
         "El celular debe tener exactamente 10 dígitos numéricos",
     }),
@@ -252,23 +380,40 @@ async function logTransaction(
   responseData = null,
   error = null
 ) {
+async function logTransaction(
+  type,
+  entityId,
+  numeroDocumento,
+  userId,
+  status,
+  req,
+  responseData = null,
+  error = null
+) {
   try {
+    const logServiceUrl =
+      process.env.LOG_SERVICE_URL || "http://log-service:3005";
     const logServiceUrl =
       process.env.LOG_SERVICE_URL || "http://log-service:3005";
     await axios.post(`${logServiceUrl}/log`, {
       transaction_type: type,
       entity_type: "PERSONA",
+      entity_type: "PERSONA",
       entity_id: entityId,
       numero_documento: numeroDocumento,
       user_id: userId || req.headers["x-user-id"],
+      user_id: userId || req.headers["x-user-id"],
       ip_address: req.ip,
+      user_agent: req.headers["user-agent"],
       user_agent: req.headers["user-agent"],
       request_data: req.body,
       response_data: responseData,
       status: status,
       error_message: error,
+      error_message: error,
     });
   } catch (error) {
+    console.error("Error logging transaction:", error);
     console.error("Error logging transaction:", error);
   }
 }
@@ -278,14 +423,27 @@ async function logTransaction(
 // Health check
 app.get("/health", (req, res) => {
   res.json({ status: "OK", service: "personas-service" });
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", service: "personas-service" });
 });
 
 // Create persona
+app.post("/", upload.single("foto"), async (req, res) => {
 app.post("/", upload.single("foto"), async (req, res) => {
   try {
     // Validate input
     const { error } = personaSchema.validate(req.body);
     if (error) {
+      await logTransaction(
+        "CREATE",
+        null,
+        req.body.numero_documento,
+        null,
+        "ERROR",
+        req,
+        null,
+        error.details[0].message
+      );
       await logTransaction(
         "CREATE",
         null,
@@ -309,6 +467,7 @@ app.post("/", upload.single("foto"), async (req, res) => {
       genero,
       correo_electronico,
       celular,
+      celular,
     } = req.body;
 
     // Process photo if uploaded
@@ -318,6 +477,7 @@ app.post("/", upload.single("foto"), async (req, res) => {
         // Resize and optimize image
         const optimizedImage = await sharp(req.file.buffer)
           .resize(300, 300, { fit: "cover" })
+          .resize(300, 300, { fit: "cover" })
           .jpeg({ quality: 80 })
           .toBuffer();
 
@@ -325,9 +485,11 @@ app.post("/", upload.single("foto"), async (req, res) => {
         // For now, we'll save it locally
         const filename = `${numero_documento}_${Date.now()}.jpg`;
         const filepath = path.join("/uploads", filename);
+        const filepath = path.join("/uploads", filename);
         await fs.writeFile(filepath, optimizedImage);
         foto_url = `/uploads/${filename}`;
       } catch (photoError) {
+        console.error("Error processing photo:", photoError);
         console.error("Error processing photo:", photoError);
         // Continue without photo
       }
@@ -336,10 +498,24 @@ app.post("/", upload.single("foto"), async (req, res) => {
     // Check if persona already exists
     const existing = await pool.query(
       "SELECT id FROM personas WHERE numero_documento = $1",
+      "SELECT id FROM personas WHERE numero_documento = $1",
       [numero_documento]
     );
 
     if (existing.rows.length > 0) {
+      await logTransaction(
+        "CREATE",
+        null,
+        numero_documento,
+        null,
+        "ERROR",
+        req,
+        null,
+        "Persona ya existe"
+      );
+      return res
+        .status(409)
+        .json({ error: "Ya existe una persona con ese número de documento" });
       await logTransaction(
         "CREATE",
         null,
@@ -375,12 +551,33 @@ app.post("/", upload.single("foto"), async (req, res) => {
         celular,
         foto_url,
         req.headers["x-user-id"],
+        numero_documento,
+        tipo_documento,
+        primer_nombre,
+        segundo_nombre || null,
+        apellidos,
+        fecha_nacimiento,
+        genero,
+        correo_electronico,
+        celular,
+        foto_url,
+        req.headers["x-user-id"],
       ]
     );
 
     const persona = result.rows[0];
 
+
     // Log successful creation
+    await logTransaction(
+      "CREATE",
+      persona.id,
+      numero_documento,
+      null,
+      "SUCCESS",
+      req,
+      persona
+    );
     await logTransaction(
       "CREATE",
       persona.id,
@@ -394,13 +591,29 @@ app.post("/", upload.single("foto"), async (req, res) => {
     // Sincronizar embedding con NLP service (no bloqueante)
     syncEmbedding(persona.id, "CREATE").catch((err) =>
       console.error("Error en sincronización async:", err.message)
+    syncEmbedding(persona.id, "CREATE").catch((err) =>
+      console.error("Error en sincronización async:", err.message)
     );
 
     res.status(201).json({
       message: "Persona creada exitosamente",
       persona,
+      message: "Persona creada exitosamente",
+      persona,
     });
   } catch (error) {
+    console.error("Error creating persona:", error);
+    await logTransaction(
+      "CREATE",
+      null,
+      req.body?.numero_documento,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
     console.error("Error creating persona:", error);
     await logTransaction(
       "CREATE",
@@ -418,14 +631,18 @@ app.post("/", upload.single("foto"), async (req, res) => {
 
 // Bulk upload personas from CSV
 app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
+app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
   try {
     if (!req.file) {
+      return res.status(400).json({ error: "No se proporcionó archivo CSV" });
       return res.status(400).json({ error: "No se proporcionó archivo CSV" });
     }
 
     // Parse CSV
     const csvContent = req.file.buffer.toString("utf-8");
+    const csvContent = req.file.buffer.toString("utf-8");
     let records;
+
 
     try {
       records = parse(csvContent, {
@@ -433,8 +650,12 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
         skip_empty_lines: true,
         trim: true,
         bom: true, // Handle BOM for UTF-8
+        bom: true, // Handle BOM for UTF-8
       });
     } catch (parseError) {
+      return res.status(400).json({
+        error: "Error al parsear el archivo CSV",
+        details: parseError.message,
       return res.status(400).json({
         error: "Error al parsear el archivo CSV",
         details: parseError.message,
@@ -442,6 +663,7 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
     }
 
     if (records.length === 0) {
+      return res.status(400).json({ error: "El archivo CSV está vacío" });
       return res.status(400).json({ error: "El archivo CSV está vacío" });
     }
 
@@ -452,6 +674,7 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
       duplicates: [],
       validation_errors: [],
       created_ids: [], // Para sincronizar embeddings
+      created_ids: [], // Para sincronizar embeddings
     };
 
     // Process each record
@@ -460,13 +683,30 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
       const rowNumber = i + 2; // +2 because: +1 for header, +1 for 1-based index
 
       try {
+        // Parse and convert fecha_nacimiento from dd-mm-yyyy to yyyy-mm-dd
+        if (record.fecha_nacimiento) {
+          const parsedDate = parseDateDDMMYYYY(record.fecha_nacimiento);
+          if (!parsedDate) {
+            results.validation_errors.push({
+              row: rowNumber,
+              data: record,
+              error:
+                "Fecha de nacimiento inválida. Debe estar en formato dd-mm-yyyy (ej: 25-11-2025)",
+            });
+            continue;
+          }
+          record.fecha_nacimiento = parsedDate;
+        }
+
         // Validate record structure
         const { error } = personaSchema.validate(record);
+
 
         if (error) {
           results.validation_errors.push({
             row: rowNumber,
             data: record,
+            error: error.details[0].message,
             error: error.details[0].message,
           });
           continue;
@@ -474,6 +714,7 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
 
         // Check if persona already exists
         const checkResult = await pool.query(
+          "SELECT numero_documento FROM personas WHERE numero_documento = $1",
           "SELECT numero_documento FROM personas WHERE numero_documento = $1",
           [record.numero_documento]
         );
@@ -483,11 +724,13 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
             row: rowNumber,
             numero_documento: record.numero_documento,
             data: record,
+            data: record,
           });
           continue;
         }
 
         // Insert persona (without photo)
+        const userId = req.headers["x-user-id"];
         const userId = req.headers["x-user-id"];
         const insertResult = await pool.query(
           `INSERT INTO personas (
@@ -508,11 +751,13 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
             record.celular,
             userId,
             userId,
+            userId,
           ]
         );
 
         results.created++;
         results.created_ids.push(insertResult.rows[0].id); // Guardar ID para sincronizar embedding
+
 
         // Log successful creation
         await logTransaction(
@@ -528,11 +773,21 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
           row: rowNumber,
           data: record,
           error: dbError.message,
+          error: dbError.message,
         });
       }
     }
 
     // Log bulk upload transaction
+    await logTransaction(
+      "BULK_UPLOAD",
+      null,
+      null,
+      null,
+      "SUCCESS",
+      req,
+      results
+    );
     await logTransaction(
       "BULK_UPLOAD",
       null,
@@ -548,8 +803,17 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
       console.log(
         `🔄 Iniciando sincronización de ${results.created} embeddings en background...`
       );
+      console.log(
+        `🔄 Iniciando sincronización de ${results.created} embeddings en background...`
+      );
       // Sincronizar en background sin bloquear la respuesta
       Promise.all(
+        results.created_ids.map((personaId) =>
+          syncEmbedding(personaId, "CREATE").catch((err) =>
+            console.error(
+              `Error sincronizando persona ${personaId}:`,
+              err.message
+            )
         results.created_ids.map((personaId) =>
           syncEmbedding(personaId, "CREATE").catch((err) =>
             console.error(
@@ -567,13 +831,36 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
         .catch((err) => {
           console.error("Error en sincronización masiva:", err.message);
         });
+      )
+        .then(() => {
+          console.log(
+            `✅ Sincronización de embeddings completada para bulk upload`
+          );
+        })
+        .catch((err) => {
+          console.error("Error en sincronización masiva:", err.message);
+        });
     }
 
     res.status(200).json({
       message: "Carga masiva completada",
       results,
+      message: "Carga masiva completada",
+      results,
     });
   } catch (error) {
+    console.error("Error in bulk upload:", error);
+    await logTransaction(
+      "BULK_UPLOAD",
+      null,
+      null,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
     console.error("Error in bulk upload:", error);
     await logTransaction(
       "BULK_UPLOAD",
@@ -591,10 +878,12 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
 
 // Get persona by documento
 app.get("/:numero_documento", async (req, res) => {
+app.get("/:numero_documento", async (req, res) => {
   try {
     const { numero_documento } = req.params;
 
     const result = await pool.query(
+      "SELECT * FROM personas WHERE numero_documento = $1",
       "SELECT * FROM personas WHERE numero_documento = $1",
       [numero_documento]
     );
@@ -609,11 +898,30 @@ app.get("/:numero_documento", async (req, res) => {
         req
       );
       return res.status(404).json({ error: "Persona no encontrada" });
+      await logTransaction(
+        "QUERY",
+        null,
+        numero_documento,
+        null,
+        "NOT_FOUND",
+        req
+      );
+      return res.status(404).json({ error: "Persona no encontrada" });
     }
 
     const persona = result.rows[0];
 
+
     // Log successful query
+    await logTransaction(
+      "QUERY",
+      persona.id,
+      numero_documento,
+      null,
+      "SUCCESS",
+      req,
+      persona
+    );
     await logTransaction(
       "QUERY",
       persona.id,
@@ -626,6 +934,9 @@ app.get("/:numero_documento", async (req, res) => {
 
     // Add headers to prevent caching
     res.set({
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
       "Cache-Control": "no-cache, no-store, must-revalidate",
       Pragma: "no-cache",
       Expires: "0",
@@ -645,10 +956,23 @@ app.get("/:numero_documento", async (req, res) => {
       error.message
     );
     res.status(500).json({ error: "Error interno del servidor" });
+    console.error("Error getting persona:", error);
+    await logTransaction(
+      "QUERY",
+      null,
+      req.params.numero_documento,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 // Update persona
+app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
 app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
   try {
     const { numero_documento } = req.params;
@@ -656,10 +980,20 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
     // Check if persona exists
     const existing = await pool.query(
       "SELECT * FROM personas WHERE numero_documento = $1",
+      "SELECT * FROM personas WHERE numero_documento = $1",
       [numero_documento]
     );
 
     if (existing.rows.length === 0) {
+      await logTransaction(
+        "UPDATE",
+        null,
+        numero_documento,
+        null,
+        "NOT_FOUND",
+        req
+      );
+      return res.status(404).json({ error: "Persona no encontrada" });
       await logTransaction(
         "UPDATE",
         null,
@@ -675,8 +1009,21 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
     const updateSchema = personaSchema.fork(["numero_documento"], (schema) =>
       schema.optional()
     );
+    const updateSchema = personaSchema.fork(["numero_documento"], (schema) =>
+      schema.optional()
+    );
     const { error } = updateSchema.validate(req.body);
     if (error) {
+      await logTransaction(
+        "UPDATE",
+        existing.rows[0].id,
+        numero_documento,
+        null,
+        "ERROR",
+        req,
+        null,
+        error.details[0].message
+      );
       await logTransaction(
         "UPDATE",
         existing.rows[0].id,
@@ -704,8 +1051,17 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
       "genero",
       "correo_electronico",
       "celular",
+      "tipo_documento",
+      "primer_nombre",
+      "segundo_nombre",
+      "apellidos",
+      "fecha_nacimiento",
+      "genero",
+      "correo_electronico",
+      "celular",
     ];
 
+    updateableFields.forEach((field) => {
     updateableFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         fields.push(`${field} = $${paramCount}`);
@@ -719,23 +1075,28 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
       try {
         const optimizedImage = await sharp(req.file.buffer)
           .resize(300, 300, { fit: "cover" })
+          .resize(300, 300, { fit: "cover" })
           .jpeg({ quality: 80 })
           .toBuffer();
 
         const filename = `${numero_documento}_${Date.now()}.jpg`;
         const filepath = path.join("/uploads", filename);
+        const filepath = path.join("/uploads", filename);
         await fs.writeFile(filepath, optimizedImage);
+
 
         fields.push(`foto_url = $${paramCount}`);
         values.push(`/uploads/${filename}`);
         paramCount++;
       } catch (photoError) {
         console.error("Error processing photo:", photoError);
+        console.error("Error processing photo:", photoError);
       }
     }
 
     // Add updated_by
     fields.push(`updated_by = $${paramCount}`);
+    values.push(req.headers["x-user-id"]);
     values.push(req.headers["x-user-id"]);
     paramCount++;
 
@@ -744,6 +1105,7 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
 
     const updateQuery = `
       UPDATE personas 
+      SET ${fields.join(", ")}
       SET ${fields.join(", ")}
       WHERE numero_documento = $${paramCount}
       RETURNING *
@@ -762,8 +1124,19 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
       req,
       persona
     );
+    await logTransaction(
+      "UPDATE",
+      persona.id,
+      numero_documento,
+      null,
+      "SUCCESS",
+      req,
+      persona
+    );
 
     // Sincronizar embedding con NLP service (no bloqueante)
+    syncEmbedding(persona.id, "UPDATE").catch((err) =>
+      console.error("Error en sincronización async:", err.message)
     syncEmbedding(persona.id, "UPDATE").catch((err) =>
       console.error("Error en sincronización async:", err.message)
     );
@@ -773,13 +1146,30 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
       "Cache-Control": "no-cache, no-store, must-revalidate",
       Pragma: "no-cache",
       Expires: "0",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     });
 
     res.json({
       message: "Persona actualizada exitosamente",
       persona,
+      message: "Persona actualizada exitosamente",
+      persona,
     });
   } catch (error) {
+    console.error("Error updating persona:", error);
+    await logTransaction(
+      "UPDATE",
+      null,
+      req.params.numero_documento,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
     console.error("Error updating persona:", error);
     await logTransaction(
       "UPDATE",
@@ -797,16 +1187,27 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
 
 // Delete persona
 app.delete("/:numero_documento", async (req, res) => {
+app.delete("/:numero_documento", async (req, res) => {
   try {
     const { numero_documento } = req.params;
 
     // Check if persona exists
     const existing = await pool.query(
       "SELECT id FROM personas WHERE numero_documento = $1",
+      "SELECT id FROM personas WHERE numero_documento = $1",
       [numero_documento]
     );
 
     if (existing.rows.length === 0) {
+      await logTransaction(
+        "DELETE",
+        null,
+        numero_documento,
+        null,
+        "NOT_FOUND",
+        req
+      );
+      return res.status(404).json({ error: "Persona no encontrada" });
       await logTransaction(
         "DELETE",
         null,
@@ -824,6 +1225,9 @@ app.delete("/:numero_documento", async (req, res) => {
     await pool.query("DELETE FROM personas WHERE numero_documento = $1", [
       numero_documento,
     ]);
+    await pool.query("DELETE FROM personas WHERE numero_documento = $1", [
+      numero_documento,
+    ]);
 
     // Log successful deletion
     await logTransaction(
@@ -834,9 +1238,30 @@ app.delete("/:numero_documento", async (req, res) => {
       "SUCCESS",
       req
     );
+    await logTransaction(
+      "DELETE",
+      personaId,
+      numero_documento,
+      null,
+      "SUCCESS",
+      req
+    );
 
     res.json({ message: "Persona eliminada exitosamente" });
+    res.json({ message: "Persona eliminada exitosamente" });
   } catch (error) {
+    console.error("Error deleting persona:", error);
+    await logTransaction(
+      "DELETE",
+      null,
+      req.params.numero_documento,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
     console.error("Error deleting persona:", error);
     await logTransaction(
       "DELETE",
@@ -854,15 +1279,18 @@ app.delete("/:numero_documento", async (req, res) => {
 
 // List all personas (with pagination)
 app.get("/", async (req, res) => {
+app.get("/", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
     const countResult = await pool.query("SELECT COUNT(*) FROM personas");
+    const countResult = await pool.query("SELECT COUNT(*) FROM personas");
     const totalCount = parseInt(countResult.rows[0].count);
 
     const result = await pool.query(
+      "SELECT * FROM personas ORDER BY created_at DESC LIMIT $1 OFFSET $2",
       "SELECT * FROM personas ORDER BY created_at DESC LIMIT $1 OFFSET $2",
       [limit, offset]
     );
@@ -871,9 +1299,15 @@ app.get("/", async (req, res) => {
     await logTransaction("QUERY_ALL", null, null, null, "SUCCESS", req, {
       count: result.rows.length,
     });
+    await logTransaction("QUERY_ALL", null, null, null, "SUCCESS", req, {
+      count: result.rows.length,
+    });
 
     // Add headers to prevent caching
     res.set({
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
       "Cache-Control": "no-cache, no-store, must-revalidate",
       Pragma: "no-cache",
       Expires: "0",
@@ -887,8 +1321,22 @@ app.get("/", async (req, res) => {
         total: totalCount,
         totalPages: Math.ceil(totalCount / limit),
       },
+        totalPages: Math.ceil(totalCount / limit),
+      },
     });
   } catch (error) {
+    console.error("Error listing personas:", error);
+    await logTransaction(
+      "QUERY_ALL",
+      null,
+      null,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
     console.error("Error listing personas:", error);
     await logTransaction(
       "QUERY_ALL",
@@ -911,9 +1359,14 @@ app.use((err, req, res, next) => {
       return res
         .status(400)
         .json({ error: "El archivo es demasiado grande. Máximo 2MB" });
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res
+        .status(400)
+        .json({ error: "El archivo es demasiado grande. Máximo 2MB" });
     }
   }
   console.error(err.stack);
+  res.status(500).json({ error: "Error interno del servidor" });
   res.status(500).json({ error: "Error interno del servidor" });
 });
 

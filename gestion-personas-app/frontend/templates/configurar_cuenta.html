@@ -1,102 +1,18 @@
 {% extends "base.html" %} {% block title %}Configurar Cuenta - Sistema de
 Gestión de Personas{% endblock %} {% block extra_css %}
-<style>
-  .config-card {
-    margin-bottom: 2rem;
-    border: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .config-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
-  .config-card .card-header {
-    background: linear-gradient(
-      135deg,
-      var(--bs-primary) 0%,
-      var(--bs-primary-dark, #0a58ca) 100%
-    );
-    color: white;
-    font-weight: 600;
-    padding: 1rem 1.5rem;
-  }
-
-  .config-card .card-header i {
-    margin-right: 0.5rem;
-  }
-
-  .form-section {
-    padding: 1.5rem;
-  }
-
-  .password-strength {
-    height: 5px;
-    border-radius: 3px;
-    margin-top: 0.5rem;
-    background: var(--bs-gray-300);
-    transition: all 0.3s;
-  }
-
-  .password-strength.weak {
-    width: 33%;
-    background: var(--bs-danger);
-  }
-
-  .password-strength.medium {
-    width: 66%;
-    background: var(--bs-warning);
-  }
-
-  .password-strength.strong {
-    width: 100%;
-    background: var(--bs-success);
-  }
-
-  .password-requirements {
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
-  }
-
-  .password-requirements li {
-    color: var(--bs-secondary);
-  }
-
-  .password-requirements li.valid {
-    color: var(--bs-success);
-  }
-
-  .password-requirements li.valid i {
-    color: var(--bs-success);
-  }
-
-  .current-info {
-    background: var(--bs-light);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .current-info .info-label {
-    font-weight: 600;
-    color: var(--bs-secondary);
-    margin-bottom: 0.25rem;
-  }
-
-  .current-info .info-value {
-    font-size: 1.1rem;
-    color: var(--bs-dark);
-  }
-</style>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/configurar_cuenta.css') }}"
+/>
 {% endblock %} {% block content %}
-<main id="main-content" class="container my-5">
+<main id="main-content" class="container my-5 account-page">
   <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb">
+  <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
       <li class="breadcrumb-item">
-        <a href="{{ url_for('dashboard') }}">Inicio</a>
+        <a href="{{ url_for('dashboard') }}">
+          <i class="fas fa-home"></i> Inicio
+        </a>
       </li>
       <li class="breadcrumb-item active" aria-current="page">
         Configurar Cuenta
@@ -105,80 +21,83 @@ Gestión de Personas{% endblock %} {% block extra_css %}
   </nav>
 
   <!-- Título -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h2">
-      <i class="fas fa-cog text-primary" aria-hidden="true"></i>
+  <div class="page-header mb-4">
+    <h1 class="page-title">
+      <i class="fas fa-cog"></i>
       Configurar Cuenta
     </h1>
   </div>
 
   <!-- Información actual -->
-  <div class="current-info">
+  <div class="current-info mb-4">
     <div class="row">
-      <div class="col-md-6">
-        <div class="info-label">Usuario actual</div>
-        <div class="info-value">
-          <i class="fas fa-user text-primary"></i>
-          {{ session.user.username }}
-        </div>
+      <div class="col-md-6 mb-3 mb-md-0">
+        <div class="info-label"><i class="fas fa-user"></i> Usuario actual</div>
+        <div class="info-value">{{ session.user.username }}</div>
       </div>
       <div class="col-md-6">
-        <div class="info-label">Correo electrónico</div>
-        <div class="info-value">
-          <i class="fas fa-envelope text-primary"></i>
-          {{ session.user.email }}
+        <div class="info-label">
+          <i class="fas fa-envelope"></i> Correo electrónico
         </div>
+        <div class="info-value">{{ session.user.email }}</div>
       </div>
     </div>
   </div>
 
-  <div class="row">
-    <!-- Control de Servicio de Consulta -->
+  <!-- Control de Servicio de Consulta -->
+  <div class="row mb-4">
     <div class="col-12">
-      <div class="card config-card">
+      <div class="card account-card">
         <div class="card-header">
           <i class="fas fa-server"></i>
           Servicio de Consulta
         </div>
-        <div class="card-body form-section">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="mb-1">Estado del Servicio de Consulta</h5>
-              <p class="text-muted mb-0">
+        <div class="card-body">
+          <div class="service-toggle-section">
+            <div class="service-info">
+              <h5 class="service-title mb-2">
+                Estado del Servicio de Consulta
+              </h5>
+              <div class="alert alert-info mb-3">
                 <i class="fas fa-info-circle"></i>
                 <strong>Atención:</strong> Este toggle afecta a
-                <strong>TODOS los usuarios</strong>:
-              </p>
-              <ul class="text-muted small mb-0 mt-2">
+                <strong>TODOS los usuarios</strong>
+              </div>
+              <ul class="service-details">
                 <li>
+                  <i class="fas fa-check-circle text-success"></i>
                   <strong>Activar:</strong> Inicia el contenedor y habilita el
                   servicio para todos
                 </li>
                 <li>
+                  <i class="fas fa-times-circle text-danger"></i>
                   <strong>Desactivar:</strong> Detiene el contenedor y
                   deshabilita el servicio para todos
                 </li>
               </ul>
-              <p class="text-muted small mb-0 mt-2">
+              <p class="service-note">
+                <i class="fas fa-lightbulb"></i>
                 La función "Consulta IA" permanece independiente. Cualquier
                 usuario puede cambiar el estado del servicio.
               </p>
             </div>
-            <div class="form-check form-switch" style="font-size: 2rem">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="consulta-service-toggle"
-                role="switch"
-                checked
-                aria-label="Activar o desactivar servicio de consulta"
-              />
-              <label
-                class="form-check-label visually-hidden"
-                for="consulta-service-toggle"
-              >
-                Servicio de Consulta
-              </label>
+            <div class="service-toggle">
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="consulta-service-toggle"
+                  role="switch"
+                  checked
+                  aria-label="Activar o desactivar servicio de consulta"
+                />
+                <label
+                  class="form-check-label visually-hidden"
+                  for="consulta-service-toggle"
+                >
+                  Servicio de Consulta
+                </label>
+              </div>
             </div>
           </div>
           <div id="consulta-service-status" class="mt-3">
@@ -191,15 +110,16 @@ Gestión de Personas{% endblock %} {% block extra_css %}
     </div>
   </div>
 
-  <div class="row mt-4">
+  <!-- Formularios de Cambio de Email y Contraseña -->
+  <div class="row">
     <!-- Cambiar correo electrónico -->
-    <div class="col-lg-6">
-      <div class="card config-card">
+    <div class="col-lg-6 mb-4">
+      <div class="card account-card">
         <div class="card-header">
           <i class="fas fa-envelope"></i>
           Cambiar Correo Electrónico
         </div>
-        <div class="card-body form-section">
+        <div class="card-body">
           <form id="form-cambiar-email" method="POST">
             <div class="mb-3">
               <label for="nuevo_email" class="form-label">
@@ -227,7 +147,7 @@ Gestión de Personas{% endblock %} {% block extra_css %}
               </div>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
               <label for="password_confirm_email" class="form-label">
                 Confirma tu contraseña actual
                 <span class="text-danger" aria-label="requerido">*</span>
@@ -264,7 +184,7 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                 <i class="fas fa-check-circle"></i>
                 Cambiar Correo Electrónico
               </button>
-              <button type="reset" class="btn btn-outline-secondary">
+              <button type="reset" class="btn btn-secondary">
                 <i class="fas fa-times-circle"></i>
                 Cancelar
               </button>
@@ -275,13 +195,13 @@ Gestión de Personas{% endblock %} {% block extra_css %}
     </div>
 
     <!-- Cambiar contraseña -->
-    <div class="col-lg-6">
-      <div class="card config-card">
+    <div class="col-lg-6 mb-4">
+      <div class="card account-card">
         <div class="card-header">
           <i class="fas fa-key"></i>
           Cambiar Contraseña
         </div>
-        <div class="card-body form-section">
+        <div class="card-body">
           <form id="form-cambiar-password" method="POST">
             <div class="mb-3">
               <label for="password_actual" class="form-label">
@@ -385,7 +305,7 @@ Gestión de Personas{% endblock %} {% block extra_css %}
               </ul>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
               <label for="password_confirmar" class="form-label">
                 Confirmar nueva contraseña
                 <span class="text-danger" aria-label="requerido">*</span>
@@ -422,7 +342,7 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                 <i class="fas fa-check-circle"></i>
                 Cambiar Contraseña
               </button>
-              <button type="reset" class="btn btn-outline-secondary">
+              <button type="reset" class="btn btn-secondary">
                 <i class="fas fa-times-circle"></i>
                 Cancelar
               </button>
@@ -576,29 +496,35 @@ Gestión de Personas{% endblock %} {% block extra_css %}
           // Mostrar modal de confirmación con mensaje apropiado
           if (newState) {
               modalBodyContent.innerHTML = `
-                  <p class="mb-3">
-                      <i class="fas fa-check-circle text-success fa-2x mb-2 d-block"></i>
-                      ¿Estás seguro de que deseas <strong>activar</strong> el servicio de consulta?
-                  </p>
+                  <div class="text-center mb-3">
+                      <i class="fas fa-check-circle fa-2x mb-2 d-block" style="color: var(--success-color);"></i>
+                      <p class="mb-0">
+                          ¿Estás seguro de que deseas <strong>activar</strong> el servicio de consulta?
+                      </p>
+                  </div>
                   <div class="alert alert-success mb-0">
-                      <i class="fas fa-info-circle"></i>
-                      <strong>:</strong>
-                      <p class="mb-2">Se activará el servicio para TODOS los usuarios conectados.</p>
+                      <div class="d-flex align-items-start mb-2">
+                          <i class="fas fa-info-circle me-2 mt-1"></i>
+                          <div>
+                              <strong>Acción Global:</strong>
+                              <p class="mb-0 mt-1">Se activará el servicio para TODOS los usuarios conectados.</p>
+                          </div>
+                      </div>
 
-                      <div class="accordion accordion-flush" id="accordionActivar">
+                      <div class="accordion accordion-flush mt-3" id="accordionActivar">
                           <div class="accordion-item">
                               <h2 class="accordion-header">
                                   <button class="accordion-button collapsed bg-success bg-opacity-10" type="button" data-bs-toggle="collapse" data-bs-target="#collapseActivar" aria-expanded="false">
-                                      <i class="fas fa-info-circle me-2"></i> Ver detalles de la acción
+                                      <i class="fas fa-list-ul me-2"></i> Ver detalles de la acción
                                   </button>
                               </h2>
                               <div id="collapseActivar" class="accordion-collapse collapse">
                                   <div class="accordion-body">
-                                      <ul class="mb-2">
-                                          <li>Se iniciará el contenedor Docker del servicio de consulta</li>
-                                          <li>Todos podrán consultar datos de personas desde "Personas" → "Consultar Datos"</li>
-                                          <li>El servicio se registrará automáticamente en el service registry</li>
-                                          <li>Cualquier usuario puede desactivar el servicio desde su configuración</li>
+                                      <ul class="mb-0">
+                                          <li><i class="fas fa-docker me-1"></i> Se iniciará el contenedor Docker del servicio de consulta</li>
+                                          <li><i class="fas fa-users me-1"></i> Todos podrán consultar datos de personas desde "Personas" → "Consultar Datos"</li>
+                                          <li><i class="fas fa-network-wired me-1"></i> El servicio se registrará automáticamente en el service registry</li>
+                                          <li><i class="fas fa-user-cog me-1"></i> Cualquier usuario puede desactivar el servicio desde su configuración</li>
                                       </ul>
                                   </div>
                               </div>
@@ -610,30 +536,36 @@ Gestión de Personas{% endblock %} {% block extra_css %}
               confirmActionBtn.innerHTML = '<i class="fas fa-check"></i> Activar para Todos';
           } else {
               modalBodyContent.innerHTML = `
-                  <p class="mb-3">
-                      <i class="fas fa-exclamation-triangle text-warning fa-2x mb-2 d-block"></i>
-                      ¿Estás seguro de que deseas <strong>desactivar</strong> el servicio de consulta?
-                  </p>
+                  <div class="text-center mb-3">
+                      <i class="fas fa-exclamation-triangle fa-2x mb-2 d-block" style="color: var(--warning-color);"></i>
+                      <p class="mb-0">
+                          ¿Estás seguro de que deseas <strong>desactivar</strong> el servicio de consulta?
+                      </p>
+                  </div>
                   <div class="alert alert-danger mb-0">
-                      <i class="fas fa-exclamation-circle"></i>
-                      <strong>:</strong>
-                      <p class="mb-2">Se desactivará el servicio para TODOS los usuarios conectados.</p>
+                      <div class="d-flex align-items-start mb-2">
+                          <i class="fas fa-exclamation-circle me-2 mt-1"></i>
+                          <div>
+                              <strong>Advertencia:</strong>
+                              <p class="mb-0 mt-1">Se desactivará el servicio para TODOS los usuarios conectados.</p>
+                          </div>
+                      </div>
 
-                      <div class="accordion accordion-flush" id="accordionDesactivar">
+                      <div class="accordion accordion-flush mt-3" id="accordionDesactivar">
                           <div class="accordion-item">
                               <h2 class="accordion-header">
                                   <button class="accordion-button collapsed bg-danger bg-opacity-10" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDesactivar" aria-expanded="false">
-                                      <i class="fas fa-exclamation-triangle me-2"></i> Ver detalles de la acción
+                                      <i class="fas fa-list-ul me-2"></i> Ver detalles de la acción
                                   </button>
                               </h2>
                               <div id="collapseDesactivar" class="accordion-collapse collapse">
                                   <div class="accordion-body">
-                                      <ul class="mb-2">
-                                          <li>Se detendrá el contenedor Docker del servicio de consulta</li>
-                                          <li>La opción "Consultar Datos" se deshabilitará para todos</li>
-                                          <li>El servicio se desregistrará del service registry</li>
-                                          <li>La función "Consulta IA" permanecerá activa (servicio independiente)</li>
-                                          <li>Cualquier usuario puede reactivar el servicio desde su configuración</li>
+                                      <ul class="mb-0">
+                                          <li><i class="fas fa-docker me-1"></i> Se detendrá el contenedor Docker del servicio de consulta</li>
+                                          <li><i class="fas fa-ban me-1"></i> La opción "Consultar Datos" se deshabilitará para todos</li>
+                                          <li><i class="fas fa-unlink me-1"></i> El servicio se desregistrará del service registry</li>
+                                          <li><i class="fas fa-robot me-1"></i> La función "Consulta IA" permanecerá activa (servicio independiente)</li>
+                                          <li><i class="fas fa-user-cog me-1"></i> Cualquier usuario puede reactivar el servicio desde su configuración</li>
                                       </ul>
                                   </div>
                               </div>
@@ -755,29 +687,39 @@ Gestión de Personas{% endblock %} {% block extra_css %}
       if (formCambiarEmail) {
           formCambiarEmail.addEventListener('submit', async function(e) {
               e.preventDefault();
+              e.stopPropagation();
+
+              const submitBtn = this.querySelector('button[type="submit"]');
+              const originalBtnText = submitBtn.innerHTML;
 
               const nuevoEmail = document.getElementById('nuevo_email').value.trim();
               const passwordConfirm = document.getElementById('password_confirm_email').value;
 
-              // Validación básica
               if (!nuevoEmail || !passwordConfirm) {
                   window.showError('Por favor, completa todos los campos');
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
                   return;
               }
 
-              // Validar formato de email
               const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               if (!emailRegex.test(nuevoEmail)) {
                   window.showError('Por favor, ingresa un correo electrónico válido');
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
                   return;
               }
 
-              // Verificar que el email sea diferente al actual
               const emailActual = '{{ session.user.email }}';
               if (nuevoEmail === emailActual) {
                   window.showError('El nuevo correo debe ser diferente al actual');
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
                   return;
               }
+
+              submitBtn.disabled = true;
+              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando correo...';
 
               try {
                   const response = await fetch('/api/auth/cambiar-email', {
@@ -803,23 +745,55 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                       }, 2000);
                   } else {
                       window.showError(data.message || 'Error al cambiar el correo electrónico');
+                      // Restaurar botón en caso de error
+                      submitBtn.disabled = false;
+                      submitBtn.innerHTML = originalBtnText;
                   }
               } catch (error) {
                   console.error('Error:', error);
                   window.showError('Error de conexión al servidor');
+                  // Restaurar botón en caso de error
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
               }
           });
       }
 
       // ===== FORMULARIO: CAMBIAR CONTRASEÑA =====
       const formCambiarPassword = document.getElementById('form-cambiar-password');
-      const passwordNueva = document.getElementById('password_nueva');
+      const passwordNuevaInput = document.getElementById('password_nueva');
+      const passwordConfirmarInput = document.getElementById('password_confirmar');
       const passwordStrength = document.getElementById('password-strength');
       const passwordStrengthText = document.getElementById('password-strength-text');
 
+      // Función para verificar si las contraseñas coinciden
+      function checkPasswordMatch() {
+          const passwordNueva = passwordNuevaInput.value;
+          const passwordConfirmar = passwordConfirmarInput.value;
+          const passwordConfirmarHelp = document.getElementById('password-confirmar-help');
+
+          if (passwordConfirmar.length > 0) {
+              if (passwordNueva === passwordConfirmar) {
+                  passwordConfirmarInput.classList.remove('is-invalid');
+                  passwordConfirmarInput.classList.add('is-valid');
+                  passwordConfirmarHelp.textContent = '✓ Las contraseñas coinciden';
+                  passwordConfirmarHelp.className = 'form-text text-success';
+              } else {
+                  passwordConfirmarInput.classList.remove('is-valid');
+                  passwordConfirmarInput.classList.add('is-invalid');
+                  passwordConfirmarHelp.textContent = '✗ Las contraseñas no coinciden';
+                  passwordConfirmarHelp.className = 'form-text text-danger';
+              }
+          } else {
+              passwordConfirmarInput.classList.remove('is-valid', 'is-invalid');
+              passwordConfirmarHelp.textContent = 'Repite la nueva contraseña.';
+              passwordConfirmarHelp.className = 'form-text';
+          }
+      }
+
       // Validación en tiempo real de la contraseña
-      if (passwordNueva) {
-          passwordNueva.addEventListener('input', function() {
+      if (passwordNuevaInput) {
+          passwordNuevaInput.addEventListener('input', function() {
               const password = this.value;
               const requirements = {
                   length: password.length >= 8,
@@ -853,12 +827,24 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                   passwordStrengthText.textContent = 'Contraseña fuerte';
                   passwordStrengthText.className = 'form-text text-success';
               }
+
+              // Verificar coincidencia cuando se escribe la nueva contraseña
+              checkPasswordMatch();
           });
+      }
+
+      // Validación en tiempo real de coincidencia de contraseñas
+      if (passwordConfirmarInput) {
+          passwordConfirmarInput.addEventListener('input', checkPasswordMatch);
       }
 
       if (formCambiarPassword) {
           formCambiarPassword.addEventListener('submit', async function(e) {
               e.preventDefault();
+              e.stopPropagation();
+
+              const submitBtn = this.querySelector('button[type="submit"]');
+              const originalBtnText = submitBtn.innerHTML;
 
               const passwordActual = document.getElementById('password_actual').value;
               const passwordNueva = document.getElementById('password_nueva').value;
@@ -889,6 +875,10 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                   return;
               }
 
+              // Solo deshabilitar botón si pasaron todas las validaciones
+              submitBtn.disabled = true;
+              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cambiando contraseña...';
+
               try {
                   const response = await fetch('/api/auth/cambiar-password', {
                       method: 'POST',
@@ -914,10 +904,16 @@ Gestión de Personas{% endblock %} {% block extra_css %}
                       }, 2000);
                   } else {
                       window.showError(data.message || 'Error al cambiar la contraseña');
+                      // Restaurar botón en caso de error
+                      submitBtn.disabled = false;
+                      submitBtn.innerHTML = originalBtnText;
                   }
               } catch (error) {
                   console.error('Error:', error);
                   window.showError('Error de conexión al servidor');
+                  // Restaurar botón en caso de error
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalBtnText;
               }
           });
       }

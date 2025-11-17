@@ -137,10 +137,18 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Node.js / JavaScript
-node_modules/
-**/node_modules/
+# ==========================================
+# Monorepo test artifacts (Node/Python/E2E)
+# ==========================================
+# JS/Jest coverage directories
 coverage/
-coverage-integration/
-.nyc_output/
-*.log
+
+# Frontend JS coverage
+coverage_js/
+
+# Playwright reports
+playwright-report/
+
+# Aggregated test results
+tests/results/
+test-results/

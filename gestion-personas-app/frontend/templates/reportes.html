@@ -1,0 +1,782 @@
+{% extends "base.html" %} {% block title %}Reportes y Analíticas - Sistema de
+Gestión de Personas{% endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/reportes.css') }}"
+/>
+{% endblock %} {% block content %}
+<div class="container mt-4">
+  <!-- Page Header -->
+  <div class="page-title">
+    <div>
+      <i class="fas fa-chart-line"></i>
+      <span>Reportes y Analíticas</span>
+    </div>
+
+    <!-- Auto-refresh controls -->
+    <div class="refresh-controls">
+      <button
+        type="button"
+        class="btn btn-success-custom"
+        id="start-refresh"
+        title="Activar actualización automática"
+      >
+        <i class="fas fa-play"></i> Auto
+      </button>
+      <button
+        type="button"
+        class="btn btn-danger-custom"
+        id="stop-refresh"
+        style="display: none"
+        title="Detener actualización automática"
+      >
+        <i class="fas fa-stop"></i> Stop
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary-custom"
+        id="manual-refresh"
+        title="Actualizar manualmente"
+      >
+        <i class="fas fa-sync-alt"></i>
+      </button>
+      <button
+        type="button"
+        class="btn btn-warning-custom"
+        id="force-refresh"
+        title="Forzar actualización (limpia cache)"
+      >
+        <i class="fas fa-sync"></i> Forzar
+      </button>
+    </div>
+  </div>
+
+  {% if stats %}
+  <!-- KPI Cards -->
+  <div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="kpi-card total">
+        <div class="card-body">
+          <i class="fas fa-users kpi-icon"></i>
+          <div
+            class="kpi-value counter"
+            data-target="{{ stats.total_personas or 0 }}"
+            data-type="total"
+          >
+            0
+          </div>
+          <div class="kpi-label">Total Personas</div>
+        </div>
+      </div>
+    </div>
+
+    {% if stats.estadisticas_edad %}
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="kpi-card average">
+        <div class="card-body">
+          <i class="fas fa-birthday-cake kpi-icon"></i>
+          <div
+            class="kpi-value counter"
+            data-target="{{ stats.estadisticas_edad.promedio }}"
+            data-type="average"
+          >
+            0
+          </div>
+          <div class="kpi-label">Edad Promedio</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="kpi-card minimum">
+        <div class="card-body">
+          <i class="fas fa-arrow-down kpi-icon"></i>
+          <div
+            class="kpi-value counter"
+            data-target="{{ stats.estadisticas_edad.minima }}"
+            data-type="minimum"
+          >
+            0
+          </div>
+          <div class="kpi-label">Edad Mínima</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="kpi-card maximum">
+        <div class="card-body">
+          <i class="fas fa-arrow-up kpi-icon"></i>
+          <div
+            class="kpi-value counter"
+            data-target="{{ stats.estadisticas_edad.maxima }}"
+            data-type="maximum"
+          >
+            0
+          </div>
+          <div class="kpi-label">Edad Máxima</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="row">
+    {% if stats.por_genero %}
+    <div class="col-lg-6 mb-4">
+      <div class="chart-card">
+        <div class="card-header">
+          <h5 class="card-title">
+            <i class="fas fa-chart-pie"></i> Distribución por Género
+          </h5>
+        </div>
+        <div class="card-body">
+          <div id="genderChart" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+    {% endif %} {% if stats.por_tipo_documento %}
+    <div class="col-lg-6 mb-4">
+      <div class="chart-card">
+        <div class="card-header">
+          <h5 class="card-title">
+            <i class="fas fa-chart-bar"></i> Distribución por Tipo de Documento
+          </h5>
+        </div>
+        <div class="card-body">
+          <div id="documentChart" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Charts Row 2 -->
+  {% if stats.por_grupo_edad %}
+  <div class="row">
+    <div class="col-12 mb-4">
+      <div class="chart-card">
+        <div class="card-header">
+          <h5 class="card-title">
+            <i class="fas fa-chart-bar"></i> Distribución por Grupo de Edad
+          </h5>
+        </div>
+        <div class="card-body">
+          <div id="ageChart" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Youngest Person Card -->
+  {% if stats.persona_mas_joven %}
+  <div class="row">
+    <div class="col-12 mb-4">
+      <div class="info-card">
+        <div class="card-header">
+          <h5><i class="fas fa-star"></i> Persona más joven registrada</h5>
+        </div>
+        <div class="card-body">
+          <h6>
+            {{ stats.persona_mas_joven.primer_nombre }} {{
+            stats.persona_mas_joven.apellidos }}
+          </h6>
+          <p>Edad: {{ stats.persona_mas_joven.edad }} años</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %} {% else %}
+  <!-- No Data Message -->
+  <div class="row">
+    <div class="col-12">
+      <div class="no-data-alert">
+        <i class="fas fa-info-circle fa-3x mb-3"></i>
+        <h4>No hay datos disponibles</h4>
+        <p>Comienza agregando personas al sistema para ver las estadísticas.</p>
+        <a href="{{ url_for('crear_persona') }}" class="btn">
+          <i class="fas fa-plus"></i> Crear Primera Persona
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %} {% block extra_js %}
+<!-- ECharts CDN -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+<script>
+  {% if stats %}
+  // Global chart instances
+  let genderChart, documentChart, ageChart;
+
+  // Detectar tema actual
+  function getCurrentTheme() {
+      return document.documentElement.getAttribute('data-theme') || 'light';
+  }
+
+  // Obtener colores según el tema
+  function getThemeColors() {
+      const isDark = getCurrentTheme() === 'dark';
+
+      return {
+          background: isDark ? '#2D3748' : '#ffffff',
+          textColor: isDark ? '#E2E8F0' : '#2D3748',
+          axisColor: isDark ? '#4A5568' : '#E2E8F0',
+          splitLineColor: isDark ? 'rgba(74, 85, 104, 0.3)' : 'rgba(226, 232, 240, 0.5)',
+          tooltipBg: isDark ? '#1A202C' : '#ffffff',
+          tooltipBorder: isDark ? '#4A5568' : '#E2E8F0',
+          tooltipText: isDark ? '#F7FAFC' : '#1A202C',
+          colors: [
+              '#5B4FC5', '#10B981', '#3B82F6', '#F59E0B', '#EF4444',
+              '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6366F1'
+          ]
+      };
+  }
+
+  // Inicializar gráfico de género (Donut)
+  function initGenderChart() {
+      {% if stats.por_genero %}
+      const chartDom = document.getElementById('genderChart');
+      if (!chartDom) return;
+
+      genderChart = echarts.init(chartDom, getCurrentTheme());
+
+      const data = [
+          {% for genero, count in stats.por_genero.items() %}
+          { value: {{ count }}, name: '{{ genero }}' },
+          {% endfor %}
+      ];
+
+      const colors = getThemeColors();
+
+      const option = {
+          tooltip: {
+              trigger: 'item',
+              formatter: '{b}: {c} ({d}%)',
+              backgroundColor: colors.tooltipBg,
+              borderColor: colors.tooltipBorder,
+              borderWidth: 1,
+              textStyle: {
+                  color: colors.tooltipText,
+                  fontSize: 13
+              },
+              padding: [8, 12],
+              extraCssText: 'box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border-radius: 6px;'
+          },
+          legend: {
+              orient: 'vertical',
+              left: 'left',
+              textStyle: {
+                  color: colors.textColor
+              }
+          },
+          series: [
+              {
+                  name: 'Género',
+                  type: 'pie',
+                  radius: ['40%', '70%'],
+                  avoidLabelOverlap: false,
+                  itemStyle: {
+                      borderRadius: 10,
+                      borderColor: colors.background,
+                      borderWidth: 2
+                  },
+                  label: {
+                      show: false,
+                      position: 'center'
+                  },
+                  emphasis: {
+                      label: {
+                          show: true,
+                          fontSize: 20,
+                          fontWeight: 'bold',
+                          color: colors.textColor
+                      }
+                  },
+                  labelLine: {
+                      show: false
+                  },
+                  data: data,
+                  color: colors.colors
+              }
+          ]
+      };
+
+      genderChart.setOption(option);
+      {% endif %}
+  }
+
+  // Inicializar gráfico de documentos (Barras verticales)
+  function initDocumentChart() {
+      {% if stats.por_tipo_documento %}
+      const chartDom = document.getElementById('documentChart');
+      if (!chartDom) return;
+
+      documentChart = echarts.init(chartDom, getCurrentTheme());
+
+      const labels = [{% for tipo in stats.por_tipo_documento.keys() %}'{{ tipo }}',{% endfor %}];
+      const values = [{% for count in stats.por_tipo_documento.values() %}{{ count }},{% endfor %}];
+
+      const colors = getThemeColors();
+
+      const option = {
+          tooltip: {
+              trigger: 'axis',
+              axisPointer: {
+                  type: 'shadow'
+              },
+              backgroundColor: colors.tooltipBg,
+              borderColor: colors.tooltipBorder,
+              borderWidth: 1,
+              textStyle: {
+                  color: colors.tooltipText,
+                  fontSize: 13
+              },
+              padding: [8, 12],
+              extraCssText: 'box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border-radius: 6px;'
+          },
+          grid: {
+              left: '3%',
+              right: '4%',
+              bottom: '3%',
+              containLabel: true
+          },
+          xAxis: {
+              type: 'category',
+              data: labels,
+              axisLine: {
+                  lineStyle: {
+                      color: colors.axisColor
+                  }
+              },
+              axisLabel: {
+                  color: colors.textColor
+              }
+          },
+          yAxis: {
+              type: 'value',
+              axisLine: {
+                  lineStyle: {
+                      color: colors.axisColor
+                  }
+              },
+              axisLabel: {
+                  color: colors.textColor
+              },
+              splitLine: {
+                  lineStyle: {
+                      color: colors.splitLineColor
+                  }
+              }
+          },
+          series: [
+              {
+                  name: 'Cantidad',
+                  type: 'bar',
+                  data: values,
+                  itemStyle: {
+                      color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                          { offset: 0, color: '#10B981' },
+                          { offset: 1, color: '#059669' }
+                      ]),
+                      borderRadius: [8, 8, 0, 0]
+                  },
+                  emphasis: {
+                      itemStyle: {
+                          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                              { offset: 0, color: '#34D399' },
+                              { offset: 1, color: '#10B981' }
+                          ])
+                      }
+                  }
+              }
+          ]
+      };
+
+      documentChart.setOption(option);
+      {% endif %}
+  }
+
+  // Inicializar gráfico de edad (Barras horizontales)
+  function initAgeChart() {
+      {% if stats.por_grupo_edad %}
+      const chartDom = document.getElementById('ageChart');
+      if (!chartDom) return;
+
+      ageChart = echarts.init(chartDom, getCurrentTheme());
+
+      const labels = [{% for grupo in stats.por_grupo_edad.keys() %}'{{ grupo }}',{% endfor %}];
+      const values = [{% for count in stats.por_grupo_edad.values() %}{{ count }},{% endfor %}];
+
+      const colors = getThemeColors();
+
+      const option = {
+          tooltip: {
+              trigger: 'axis',
+              axisPointer: {
+                  type: 'shadow'
+              },
+              backgroundColor: colors.tooltipBg,
+              borderColor: colors.tooltipBorder,
+              borderWidth: 1,
+              textStyle: {
+                  color: colors.tooltipText,
+                  fontSize: 13
+              },
+              padding: [8, 12],
+              extraCssText: 'box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border-radius: 6px;'
+          },
+          grid: {
+              left: '3%',
+              right: '4%',
+              bottom: '3%',
+              containLabel: true
+          },
+          xAxis: {
+              type: 'value',
+              axisLine: {
+                  lineStyle: {
+                      color: colors.axisColor
+                  }
+              },
+              axisLabel: {
+                  color: colors.textColor
+              },
+              splitLine: {
+                  lineStyle: {
+                      color: colors.splitLineColor
+                  }
+              }
+          },
+          yAxis: {
+              type: 'category',
+              data: labels,
+              axisLine: {
+                  lineStyle: {
+                      color: colors.axisColor
+                  }
+              },
+              axisLabel: {
+                  color: colors.textColor
+              }
+          },
+          series: [
+              {
+                  name: 'Cantidad',
+                  type: 'bar',
+                  data: values,
+                  itemStyle: {
+                      color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                          { offset: 0, color: '#5B4FC5' },
+                          { offset: 1, color: '#7C70DB' }
+                      ]),
+                      borderRadius: [0, 8, 8, 0]
+                  },
+                  emphasis: {
+                      itemStyle: {
+                          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                              { offset: 0, color: '#6B5FD5' },
+                              { offset: 1, color: '#8B7DE5' }
+                          ])
+                      }
+                  }
+              }
+          ]
+      };
+
+      ageChart.setOption(option);
+      {% endif %}
+  }
+
+  // Actualizar tema de todos los gráficos
+  function updateChartsTheme() {
+      const theme = getCurrentTheme();
+
+      if (genderChart) {
+          genderChart.dispose();
+          initGenderChart();
+      }
+
+      if (documentChart) {
+          documentChart.dispose();
+          initDocumentChart();
+      }
+
+      if (ageChart) {
+          ageChart.dispose();
+          initAgeChart();
+      }
+  }
+
+  // Observar cambios de tema
+  const themeObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+              console.log('Theme changed to:', getCurrentTheme());
+              updateChartsTheme();
+          }
+      });
+  });
+
+  // Inicializar todos los gráficos
+  function initAllCharts() {
+      initGenderChart();
+      initDocumentChart();
+      initAgeChart();
+
+      // Hacer responsive
+      window.addEventListener('resize', () => {
+          if (genderChart) genderChart.resize();
+          if (documentChart) documentChart.resize();
+          if (ageChart) ageChart.resize();
+      });
+  }
+
+  // Auto-refresh functionality
+  let refreshInterval;
+
+  function refreshDashboard() {
+      showLoadingIndicator();
+
+      fetch('/api/dashboard/stats', {
+          method: 'GET',
+          headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+          }
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+      })
+      .then(stats => {
+          console.log('Stats received:', stats);
+          updateAllKPIs(stats);
+          updateAllCharts(stats);
+          updateYoungestPerson(stats);
+          hideLoadingIndicator();
+          console.log('Dashboard refreshed successfully at', new Date().toLocaleTimeString());
+      })
+      .catch(error => {
+          console.error('Error refreshing dashboard:', error);
+          hideLoadingIndicator();
+          showRefreshError();
+      });
+  }
+
+  function showLoadingIndicator() {
+      const kpiCards = document.querySelectorAll('.kpi-card');
+      kpiCards.forEach(card => {
+          if (!card.querySelector('.refresh-spinner')) {
+              const spinner = document.createElement('div');
+              spinner.className = 'refresh-spinner position-absolute top-0 end-0 mt-2 me-2';
+              spinner.innerHTML = '<i class="fas fa-spinner fa-spin" style="color: #5B4FC5;"></i>';
+              card.style.position = 'relative';
+              card.appendChild(spinner);
+          }
+      });
+  }
+
+  function hideLoadingIndicator() {
+      const spinners = document.querySelectorAll('.refresh-spinner');
+      spinners.forEach(spinner => spinner.remove());
+  }
+
+  function showRefreshError() {
+      // Toast notification for error
+      console.error('Error refreshing dashboard');
+  }
+
+  function updateAllKPIs(stats) {
+      const counters = document.querySelectorAll('.counter');
+      counters.forEach(counter => {
+          const type = counter.dataset.type;
+          let newValue = 0;
+
+          if (type === 'total') {
+              newValue = stats.total_personas || 0;
+          } else if (type === 'average' && stats.estadisticas_edad) {
+              newValue = Math.round(stats.estadisticas_edad.promedio || 0);
+          } else if (type === 'minimum' && stats.estadisticas_edad) {
+              newValue = stats.estadisticas_edad.minima || 0;
+          } else if (type === 'maximum' && stats.estadisticas_edad) {
+              newValue = stats.estadisticas_edad.maxima || 0;
+          }
+
+          const currentValue = parseInt(counter.textContent) || 0;
+          if (currentValue !== newValue) {
+              animateCounter(counter, newValue);
+          }
+      });
+  }
+
+  function updateAllCharts(stats) {
+      // Update gender chart
+      if (stats.por_genero && genderChart) {
+          const data = Object.keys(stats.por_genero).map(key => ({
+              value: stats.por_genero[key],
+              name: key
+          }));
+          genderChart.setOption({
+              series: [{ data: data }]
+          });
+      }
+
+      // Update document chart
+      if (stats.por_tipo_documento && documentChart) {
+          const labels = Object.keys(stats.por_tipo_documento);
+          const values = Object.values(stats.por_tipo_documento);
+          documentChart.setOption({
+              xAxis: { data: labels },
+              series: [{ data: values }]
+          });
+      }
+
+      // Update age chart
+      if (stats.por_grupo_edad && ageChart) {
+          const labels = Object.keys(stats.por_grupo_edad);
+          const values = Object.values(stats.por_grupo_edad);
+          ageChart.setOption({
+              yAxis: { data: labels },
+              series: [{ data: values }]
+          });
+      }
+  }
+
+  function updateYoungestPerson(stats) {
+      if (stats.persona_mas_joven) {
+          const card = document.querySelector('.info-card .card-body');
+          if (card) {
+              const nameElement = card.querySelector('h6');
+              const ageElement = card.querySelector('p');
+
+              if (nameElement && ageElement) {
+                  nameElement.textContent = `${stats.persona_mas_joven.primer_nombre} ${stats.persona_mas_joven.apellidos}`;
+                  ageElement.textContent = `Edad: ${stats.persona_mas_joven.edad} años`;
+              }
+          }
+      }
+  }
+
+  function animateCounter(element, target, duration = 1000) {
+      const start = parseInt(element.textContent) || 0;
+      const increment = (target - start) / (duration / 16);
+      let current = start;
+
+      const timer = setInterval(() => {
+          current += increment;
+          if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
+              current = target;
+              clearInterval(timer);
+          }
+          element.textContent = Math.round(current);
+      }, 16);
+  }
+
+  // Control buttons
+  function startAutoRefresh() {
+      if (refreshInterval) return;
+
+      refreshInterval = setInterval(refreshDashboard, 10000);
+
+      const indicator = document.createElement('div');
+      indicator.id = 'refresh-indicator';
+      indicator.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Actualizando cada 10s';
+      indicator.style.cssText = 'position: fixed; top: 70px; right: 10px; background: #10B981; color: white; padding: 8px 12px; border-radius: 20px; z-index: 1000; font-size: 11px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);';
+      document.body.appendChild(indicator);
+
+      document.getElementById('start-refresh').style.display = 'none';
+      document.getElementById('stop-refresh').style.display = 'inline-block';
+
+      refreshDashboard();
+  }
+
+  function stopAutoRefresh() {
+      if (refreshInterval) {
+          clearInterval(refreshInterval);
+          refreshInterval = null;
+      }
+
+      const indicator = document.getElementById('refresh-indicator');
+      if (indicator) indicator.remove();
+
+      document.getElementById('start-refresh').style.display = 'inline-block';
+      document.getElementById('stop-refresh').style.display = 'none';
+  }
+
+  function manualRefresh() {
+      refreshDashboard();
+
+      const btn = document.getElementById('manual-refresh');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      btn.disabled = true;
+
+      setTimeout(() => {
+          btn.innerHTML = originalHTML;
+          btn.disabled = false;
+      }, 1000);
+  }
+
+  function forceRefresh() {
+      showLoadingIndicator();
+
+      fetch('/api/dashboard/refresh', {
+          method: 'POST',
+          headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Content-Type': 'application/json'
+          }
+      })
+      .then(response => response.json())
+      .then(stats => {
+          console.log('Force refresh completed:', stats);
+          updateAllKPIs(stats);
+          updateAllCharts(stats);
+          updateYoungestPerson(stats);
+          hideLoadingIndicator();
+      })
+      .catch(error => {
+          console.error('Error force refreshing:', error);
+          hideLoadingIndicator();
+          showRefreshError();
+      });
+  }
+
+  // Initialize on load
+  document.addEventListener('DOMContentLoaded', function() {
+      // Inicializar gráficos
+      initAllCharts();
+
+      // Observar cambios de tema
+      themeObserver.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-theme']
+      });
+
+      // Animar contadores iniciales
+      const counters = document.querySelectorAll('.counter');
+      counters.forEach(counter => {
+          const target = parseInt(counter.dataset.target) || 0;
+          animateCounter(counter, target, 1500);
+      });
+
+      // Auto-start refresh
+      startAutoRefresh();
+
+      // Event listeners para botones
+      document.getElementById('start-refresh').addEventListener('click', startAutoRefresh);
+      document.getElementById('stop-refresh').addEventListener('click', stopAutoRefresh);
+      document.getElementById('manual-refresh').addEventListener('click', manualRefresh);
+      document.getElementById('force-refresh').addEventListener('click', forceRefresh);
+  });
+  {% endif %}
+</script>
+{% endblock %}

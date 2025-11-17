@@ -1,708 +1,447 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block title %}Dashboard - Sistema de Gestión de
+Personas{% endblock %} {% block extra_css %}
+<style>
+  /* Paleta de colores inspirada en Skillo - Modo Claro */
+  :root {
+    --primary-purple: #5b4fc5;
+    --primary-purple-light: #6b5fd5;
+    --primary-purple-dark: #4b3fb5;
+    --text-dark: #2d3748;
+    --text-muted: #718096;
+    --canvas-bg: #f7f9fc;
+    --card-bg: #ffffff;
+    --shadow-sm: 0 2px 8px rgba(91, 79, 197, 0.08);
+    --shadow-md: 0 4px 16px rgba(91, 79, 197, 0.12);
+    --shadow-lg: 0 8px 24px rgba(91, 79, 197, 0.16);
+  }
 
-{% block title %}Dashboard - Sistema de Gestión de Personas{% endblock %}
+  /* Paleta de colores - Modo Oscuro */
+  [data-theme="dark"] {
+    --primary-purple: #7c70db;
+    --primary-purple-light: #8c80eb;
+    --primary-purple-dark: #6c60cb;
+    --text-dark: #e2e8f0;
+    --text-muted: #a0aec0;
+    --canvas-bg: #1a202c;
+    --card-bg: #2d3748;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
 
-{% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">
-            <i class="fas fa-tachometer-alt"></i> Dashboard
-            <small class="text-muted">Bienvenido, {{ user.username }}</small>
-            
-            <!-- Auto-refresh controls -->
-            <div class="float-end">
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-outline-success" id="start-refresh" onclick="startAutoRefresh()" title="Activar actualización automática">
-                        <i class="fas fa-play"></i> Auto
-                    </button>
-                    <button type="button" class="btn btn-outline-danger" id="stop-refresh" onclick="stopAutoRefresh()" style="display:none;" title="Detener actualización automática">
-                        <i class="fas fa-stop"></i> Stop
-                    </button>
-                    <button type="button" class="btn btn-outline-primary" id="manual-refresh" onclick="manualRefresh()" title="Actualizar manualmente">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button type="button" class="btn btn-outline-warning" id="force-refresh" onclick="forceRefresh()" title="Forzar actualización (limpia cache)">
-                        <i class="fas fa-sync"></i> Forzar
-                    </button>
-                </div>
-            </div>
-        </h1>
-        {% if session.token and session.token.startswith('temp-') %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i>
-            <strong>Modo Temporal Activado:</strong> La autenticación está funcionando en modo temporal mientras se resuelven problemas de conectividad con el backend.
-        </div>
-        {% endif %}
-    </div>
+  /* Fondo del body (lienzo) */
+  body {
+    background-color: var(--canvas-bg);
+  }
+
+  /* Hero Section */
+  .hero-welcome {
+    background: linear-gradient(
+      135deg,
+      var(--primary-purple) 0%,
+      var(--primary-purple-light) 100%
+    );
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-welcome::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+  }
+
+  .hero-welcome h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-welcome p {
+    font-size: 1.1rem;
+    opacity: 0.95;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Section Titles */
+  .section-title {
+    color: var(--primary-purple);
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-title i {
+    font-size: 1.1rem;
+  }
+
+  /* Action Cards Styling */
+  .action-card {
+    background: var(--card-bg);
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .action-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .action-card:hover::before {
+    opacity: 1;
+  }
+
+  /* Border colors for cards based on icon color */
+  .action-card.border-primary::before {
+    background: #0d6efd;
+  }
+  .action-card.border-success::before {
+    background: #198754;
+  }
+  .action-card.border-info::before {
+    background: #0dcaf0;
+  }
+  .action-card.border-warning::before {
+    background: #ffc107;
+  }
+  .action-card.border-danger::before {
+    background: #dc3545;
+  }
+
+  .action-card .card-body {
+    padding: 2rem 1.5rem;
+  }
+
+  .action-card .card-title {
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .action-card .card-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .action-card i {
+    transition: transform 0.3s ease;
+  }
+
+  .action-card:hover i {
+    transform: scale(1.1);
+  }
+
+  /* Secondary action cards (smaller) */
+  .action-card-sm .card-body {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .action-card-sm .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /* Stats Summary Card */
+  .stats-summary {
+    background: var(--card-bg);
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+  }
+
+  .stats-summary h5 {
+    color: var(--primary-purple);
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+  }
+
+  .stats-summary strong {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .stats-summary small {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .stats-summary .btn {
+    border-color: var(--primary-purple);
+    color: var(--primary-purple);
+    font-weight: 500;
+  }
+
+  .stats-summary .btn:hover {
+    background-color: var(--primary-purple);
+    border-color: var(--primary-purple);
+    color: white;
+  }
+
+  /* Alert styling */
+  .alert-info {
+    background-color: #e0e7ff;
+    border-color: var(--primary-purple-light);
+    color: var(--primary-purple-dark);
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-purple);
+  }
+
+  [data-theme="dark"] .alert-info {
+    background-color: rgba(124, 112, 219, 0.2);
+    border-color: var(--primary-purple);
+    color: var(--primary-purple-light);
+  }
+
+  /* Container adjustments */
+  .container {
+    max-width: 1400px;
+  }
+
+  /* Ajustes adicionales para modo oscuro */
+  [data-theme="dark"] .hero-welcome {
+    background: linear-gradient(
+      135deg,
+      var(--primary-purple-dark) 0%,
+      var(--primary-purple) 100%
+    );
+  }
+
+  [data-theme="dark"] .hero-welcome::before {
+    background: rgba(255, 255, 255, 0.05);
+  }
+</style>
+{% endblock %} {% block content %}
+<!-- Hero Welcome Section -->
+<div class="hero-welcome">
+  <h1>
+    <i class="fas fa-hand-wave me-2"></i>
+    ¡Hola de nuevo, {{ user.username }}!
+  </h1>
+  <p>¿Qué te gustaría hacer hoy?</p>
 </div>
 
-{% if stats %}
-<!-- Key Metrics -->
-<div class="row mb-4" data-animate="fade-in">
-    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="0">
-        <div class="card border-primary stats-card">
-            <div class="card-body text-center">
-                <i class="fas fa-users fa-2x text-primary mb-2"></i>
-                <h3 class="card-title counter" data-target="{{ stats.total_personas or 0 }}">0</h3>
-                <p class="card-text text-muted">Total Personas</p>
-            </div>
-        </div>
-    </div>
-    
-    {% if stats.estadisticas_edad %}
-    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="100">
-        <div class="card border-success stats-card">
-            <div class="card-body text-center">
-                <i class="fas fa-birthday-cake fa-2x text-success mb-2"></i>
-                <h3 class="card-title counter" data-target="{{ stats.estadisticas_edad.promedio }}">0</h3>
-                <p class="card-text text-muted">Edad Promedio</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="200">
-        <div class="card border-info stats-card">
-            <div class="card-body text-center">
-                <i class="fas fa-arrow-down fa-2x text-info mb-2"></i>
-                <h3 class="card-title counter" data-target="{{ stats.estadisticas_edad.minima }}">0</h3>
-                <p class="card-text text-muted">Edad Mínima</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6 mb-3" data-animate="slide-in-left" data-delay="300">
-        <div class="card border-warning stats-card">
-            <div class="card-body text-center">
-                <i class="fas fa-arrow-up fa-2x text-warning mb-2"></i>
-                <h3 class="card-title counter" data-target="{{ stats.estadisticas_edad.maxima }}">0</h3>
-                <p class="card-text text-muted">Edad Máxima</p>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
-
-<!-- Charts -->
-<div class="row" data-animate="slide-in-right" data-delay="400">
-    {% if stats.por_genero %}
-    <div class="col-lg-6 mb-4">
-        <div class="card" data-loading="fade">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-pie"></i> Distribución por Género
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="genderChart" class="chart-container"></div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    
-    {% if stats.por_tipo_documento %}
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-bar"></i> Distribución por Tipo de Documento
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="documentChart"></div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
-
-{% if stats.por_grupo_edad %}
-<div class="row">
-    <div class="col-12 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-bar"></i> Distribución por Grupo de Edad
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="ageChart"></div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<!-- Youngest Person -->
-{% if stats.persona_mas_joven %}
-<div class="row">
-    <div class="col-12">
-        <div class="card border-success">
-            <div class="card-header bg-success text-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-star"></i> Persona más joven registrada
-                </h5>
-            </div>
-            <div class="card-body">
-                <h6>{{ stats.persona_mas_joven.primer_nombre }} {{ stats.persona_mas_joven.apellidos }}</h6>
-                <p class="mb-0">Edad: {{ stats.persona_mas_joven.edad }} años</p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-{% else %}
-<!-- No Data Message -->
-<div class="row">
-    <div class="col-12">
-        <div class="alert alert-info text-center">
-            <i class="fas fa-info-circle fa-2x mb-3"></i>
-            <h4>No hay datos disponibles</h4>
-            <p>Comienza agregando personas al sistema para ver las estadísticas.</p>
-            <a href="{{ url_for('crear_persona') }}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Crear Primera Persona
-            </a>
-        </div>
-    </div>
+{% if session.token and session.token.startswith('temp-') %}
+<div class="alert alert-info mb-4">
+  <i class="fas fa-info-circle me-2"></i>
+  <strong>Modo Temporal Activado:</strong> La autenticación está funcionando en
+  modo temporal mientras se resuelven problemas de conectividad con el backend.
 </div>
 {% endif %}
 
 <!-- Quick Actions -->
-<div class="row mt-4">
-    <div class="col-12">
-        <h4>Acciones Rápidas</h4>
-        <div class="row">
-            <div class="col-lg-3 col-md-6 mb-3">
-                <a href="{{ url_for('crear_persona') }}" class="card text-decoration-none">
-                    <div class="card-body text-center">
-                        <i class="fas fa-plus fa-2x text-primary mb-2"></i>
-                        <h6 class="card-title">Crear Persona</h6>
-                        <p class="card-text text-muted small">Agregar nueva persona al sistema</p>
-                    </div>
-                </a>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-3">
-                <a href="{{ url_for('consultar_personas') }}" class="card text-decoration-none">
-                    <div class="card-body text-center">
-                        <i class="fas fa-search fa-2x text-success mb-2"></i>
-                        <h6 class="card-title">Consultar</h6>
-                        <p class="card-text text-muted small">Buscar y consultar personas</p>
-                    </div>
-                </a>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-3">
-                <a href="{{ url_for('consulta_nlp') }}" class="card text-decoration-none">
-                    <div class="card-body text-center">
-                        <i class="fas fa-robot fa-2x text-info mb-2"></i>
-                        <h6 class="card-title">Consulta IA</h6>
-                        <p class="card-text text-muted small">Preguntas en lenguaje natural</p>
-                    </div>
-                </a>
-            </div>
-            
-            <div class="col-lg-3 col-md-6 mb-3">
-                <a href="{{ url_for('consultar_logs') }}" class="card text-decoration-none">
-                    <div class="card-body text-center">
-                        <i class="fas fa-clipboard-list fa-2x text-warning mb-2"></i>
-                        <h6 class="card-title">Ver Logs</h6>
-                        <p class="card-text text-muted small">Auditoría y registro de actividades</p>
-                    </div>
-                </a>
-            </div>
+<div class="mb-5">
+  <h4 class="section-title">
+    <i class="fas fa-bolt"></i>
+    Acciones Rápidas
+  </h4>
+  <div class="row">
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('crear_persona') }}"
+        class="card text-decoration-none action-card border-primary"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-plus fa-3x text-primary mb-3"></i>
+          <h5 class="card-title">Crear Persona</h5>
+          <p class="card-text">Agregar nueva persona al sistema</p>
         </div>
+      </a>
     </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('consultar_personas') }}"
+        class="card text-decoration-none action-card border-success"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-search fa-3x text-success mb-3"></i>
+          <h5 class="card-title">Consultar</h5>
+          <p class="card-text">Buscar y consultar personas</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('consulta_nlp') }}"
+        class="card text-decoration-none action-card border-info"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-robot fa-3x text-info mb-3"></i>
+          <h5 class="card-title">Consulta IA</h5>
+          <p class="card-text">Preguntas en lenguaje natural</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('reportes') }}"
+        class="card text-decoration-none action-card border-warning"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
+          <h5 class="card-title">Ver Reportes</h5>
+          <p class="card-text">Estadísticas y analíticas</p>
+        </div>
+      </a>
+    </div>
+  </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Otras acciones -->
+<div class="mb-5">
+  <h4 class="section-title">
+    <i class="fas fa-tools"></i>
+    Otras Opciones
+  </h4>
+  <div class="row">
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('modificar_persona') }}"
+        class="card text-decoration-none action-card action-card-sm border-primary"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-edit fa-2x text-primary mb-2"></i>
+          <h6 class="card-title">Modificar Datos</h6>
+          <p class="card-text small">Editar información de personas</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('bulk_upload_personas') }}"
+        class="card text-decoration-none action-card action-card-sm border-success"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-file-upload fa-2x text-success mb-2"></i>
+          <h6 class="card-title">Carga Masiva CSV</h6>
+          <p class="card-text small">Importar múltiples personas</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('borrar_persona') }}"
+        class="card text-decoration-none action-card action-card-sm border-danger"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-trash fa-2x text-danger mb-2"></i>
+          <h6 class="card-title">Borrar Persona</h6>
+          <p class="card-text small">Eliminar registros del sistema</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <a
+        href="{{ url_for('consultar_logs') }}"
+        class="card text-decoration-none action-card action-card-sm border-info"
+      >
+        <div class="card-body text-center">
+          <i class="fas fa-clipboard-list fa-2x text-info mb-2"></i>
+          <h6 class="card-title">Ver Logs</h6>
+          <p class="card-text small">Auditoría y registro de actividades</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+{% if stats and stats.total_personas %}
+<!-- Quick Stats Summary -->
+<div class="stats-summary">
+  <h5>
+    <i class="fas fa-chart-bar me-2"></i>
+    Resumen Rápido
+  </h5>
+  <div class="row align-items-center">
+    <div class="col-md-3 text-center mb-3 mb-md-0">
+      <strong class="d-block" style="color: var(--primary-purple)">
+        {{ stats.total_personas or 0 }}
+      </strong>
+      <small>Total Personas</small>
+    </div>
+    {% if stats.estadisticas_edad %}
+    <div class="col-md-3 text-center mb-3 mb-md-0">
+      <strong class="d-block text-success">
+        {{ "%.1f"|format(stats.estadisticas_edad.promedio|float) }}
+      </strong>
+      <small>Edad Promedio</small>
+    </div>
+    <div class="col-md-3 text-center mb-3 mb-md-0">
+      <strong class="d-block text-info">
+        {{ stats.estadisticas_edad.minima }} - {{ stats.estadisticas_edad.maxima
+        }}
+      </strong>
+      <small>Rango de Edad</small>
+    </div>
+    {% endif %}
+    <div class="col-md-3 text-center">
+      <a
+        href="{{ url_for('reportes') }}"
+        class="btn btn-sm btn-outline-primary px-4"
+      >
+        <i class="fas fa-chart-line me-2"></i>
+        Ver Reportes Completos
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %} {% endblock %} {% block extra_js %}
 <script>
-{% if stats %}
-// Gender Chart
-{% if stats.por_genero %}
-var genderData = [
-    {% for genero, count in stats.por_genero.items() %}
-    { values: [{{ count }}], labels: ['{{ genero }}'], type: 'pie', name: '{{ genero }}' },
-    {% endfor %}
-];
+  document.addEventListener("DOMContentLoaded", function () {
+    const actionCards = document.querySelectorAll(".action-card");
 
-var genderLayout = {
-    height: 300,
-    showlegend: true,
-    margin: { t: 0, b: 0, l: 0, r: 0 }
-};
+    actionCards.forEach((card, index) => {
+      card.style.opacity = "0";
+      card.style.transform = "translateY(20px)";
 
-Plotly.newPlot('genderChart', [
-    {
-        values: [{% for count in stats.por_genero.values() %}{{ count }},{% endfor %}],
-        labels: [{% for genero in stats.por_genero.keys() %}'{{ genero }}',{% endfor %}],
-        type: 'pie'
-    }
-], genderLayout);
-{% endif %}
-
-// Document Chart
-{% if stats.por_tipo_documento %}
-Plotly.newPlot('documentChart', [
-    {
-        x: [{% for tipo in stats.por_tipo_documento.keys() %}'{{ tipo }}',{% endfor %}],
-        y: [{% for count in stats.por_tipo_documento.values() %}{{ count }},{% endfor %}],
-        type: 'bar',
-        marker: { color: '#28a745' }
-    }
-], {
-    height: 300,
-    margin: { t: 20, b: 40, l: 40, r: 20 },
-    xaxis: { title: 'Tipo de Documento' },
-    yaxis: { title: 'Cantidad' }
-});
-{% endif %}
-
-// Age Chart
-{% if stats.por_grupo_edad %}
-Plotly.newPlot('ageChart', [
-    {
-        x: [{% for grupo in stats.por_grupo_edad.keys() %}'{{ grupo }}',{% endfor %}],
-        y: [{% for count in stats.por_grupo_edad.values() %}{{ count }},{% endfor %}],
-        type: 'bar',
-        marker: { color: '#17a2b8' }
-    }
-], {
-    height: 300,
-    margin: { t: 20, b: 60, l: 40, r: 20 },
-    xaxis: { title: 'Grupo de Edad' },
-    yaxis: { title: 'Cantidad' }
-});
-{% endif %}
-
-// Auto-refresh functionality
-let refreshInterval;
-
-function refreshDashboard() {
-    // Mostrar indicador de carga
-    showLoadingIndicator();
-    
-    fetch('/api/dashboard/stats', {
-        method: 'GET',
-        headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(stats => {
-        console.log('Stats received:', stats);
-        
-        // Update all stats cards
-        updateAllStatsCards(stats);
-        
-        // Update all charts
-        updateAllCharts(stats);
-        
-        // Update youngest person card if exists
-        updateYoungestPerson(stats);
-        
-        hideLoadingIndicator();
-        console.log('Dashboard refreshed successfully at', new Date().toLocaleTimeString());
-    })
-    .catch(error => {
-        console.error('Error refreshing dashboard:', error);
-        hideLoadingIndicator();
-        showRefreshError();
+      setTimeout(() => {
+        card.style.transition = "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)";
+        card.style.opacity = "1";
+        card.style.transform = "translateY(0)";
+      }, index * 80);
     });
-}
-
-function showLoadingIndicator() {
-    // Agregar indicador visual de carga en las tarjetas
-    const statsCards = document.querySelectorAll('.stats-card .card-body');
-    statsCards.forEach(card => {
-        if (!card.querySelector('.refresh-spinner')) {
-            const spinner = document.createElement('div');
-            spinner.className = 'refresh-spinner position-absolute top-0 end-0 mt-2 me-2';
-            spinner.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i>';
-            card.style.position = 'relative';
-            card.appendChild(spinner);
-        }
-    });
-}
-
-function hideLoadingIndicator() {
-    const spinners = document.querySelectorAll('.refresh-spinner');
-    spinners.forEach(spinner => spinner.remove());
-}
-
-function showRefreshError() {
-    const errorToast = document.createElement('div');
-    errorToast.className = 'toast position-fixed top-0 end-0 mt-3 me-3';
-    errorToast.style.zIndex = '9999';
-    errorToast.innerHTML = `
-        <div class="toast-header bg-danger text-white">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong class="me-auto">Error de actualización</strong>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">
-            No se pudieron actualizar las estadísticas. Intenta de nuevo.
-        </div>
-    `;
-    document.body.appendChild(errorToast);
-    
-    const bsToast = new bootstrap.Toast(errorToast);
-    bsToast.show();
-    
-    // Remover después de que se oculte
-    errorToast.addEventListener('hidden.bs.toast', () => {
-        errorToast.remove();
-    });
-}
-
-function updateAllStatsCards(stats) {
-    // Update total personas
-    const totalElements = document.querySelectorAll('[data-target]');
-    totalElements.forEach(element => {
-        const target = element.dataset.target;
-        let newValue = 0;
-        
-        // Determinar qué estadística actualizar basado en el contenido de la card
-        const cardBody = element.closest('.card-body');
-        const cardText = cardBody ? cardBody.textContent.toLowerCase() : '';
-        
-        if (cardText.includes('total personas')) {
-            newValue = stats.total_personas || 0;
-        } else if (cardText.includes('edad promedio') && stats.estadisticas_edad) {
-            newValue = Math.round(stats.estadisticas_edad.promedio || 0);
-        } else if (cardText.includes('edad mínima') && stats.estadisticas_edad) {
-            newValue = stats.estadisticas_edad.minima || 0;
-        } else if (cardText.includes('edad máxima') && stats.estadisticas_edad) {
-            newValue = stats.estadisticas_edad.maxima || 0;
-        }
-        
-        // Actualizar si el valor cambió
-        const currentValue = parseInt(element.textContent) || 0;
-        if (currentValue !== newValue) {
-            // Animar el cambio
-            if (window.contentManager) {
-                window.contentManager.animateCounter(element, newValue, 800);
-            } else {
-                element.textContent = newValue;
-            }
-            highlightChange(element.closest('.card'));
-        }
-    });
-}
-
-function updateAllCharts(stats) {
-    // Update gender chart
-    if (stats.por_genero && document.getElementById('genderChart')) {
-        const labels = Object.keys(stats.por_genero);
-        const values = Object.values(stats.por_genero);
-        
-        try {
-            Plotly.redraw('genderChart', [{
-                values: values,
-                labels: labels,
-                type: 'pie',
-                marker: {
-                    colors: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1']
-                }
-            }]);
-        } catch (error) {
-            console.error('Error updating gender chart:', error);
-        }
-    }
-    
-    // Update document type chart
-    if (stats.por_tipo_documento && document.getElementById('documentChart')) {
-        const labels = Object.keys(stats.por_tipo_documento);
-        const values = Object.values(stats.por_tipo_documento);
-        
-        try {
-            Plotly.redraw('documentChart', [{
-                x: labels,
-                y: values,
-                type: 'bar',
-                marker: { 
-                    color: '#28a745',
-                    line: {
-                        color: '#1e7e34',
-                        width: 1
-                    }
-                }
-            }]);
-        } catch (error) {
-            console.error('Error updating document chart:', error);
-        }
-    }
-    
-    // Update age group chart
-    if (stats.por_grupo_edad && document.getElementById('ageChart')) {
-        const labels = Object.keys(stats.por_grupo_edad);
-        const values = Object.values(stats.por_grupo_edad);
-        
-        try {
-            Plotly.redraw('ageChart', [{
-                x: labels,
-                y: values,
-                type: 'bar',
-                marker: { 
-                    color: '#17a2b8',
-                    line: {
-                        color: '#117a8b',
-                        width: 1
-                    }
-                }
-            }]);
-        } catch (error) {
-            console.error('Error updating age chart:', error);
-        }
-    }
-}
-
-function updateYoungestPerson(stats) {
-    if (stats.persona_mas_joven) {
-        const youngestCard = document.querySelector('.border-success .card-body');
-        if (youngestCard) {
-            const nameElement = youngestCard.querySelector('h6');
-            const ageElement = youngestCard.querySelector('p');
-            
-            if (nameElement && ageElement) {
-                const newName = `${stats.persona_mas_joven.primer_nombre} ${stats.persona_mas_joven.apellidos}`;
-                const newAge = `Edad: ${stats.persona_mas_joven.edad} años`;
-                
-                if (nameElement.textContent !== newName || ageElement.textContent !== newAge) {
-                    nameElement.textContent = newName;
-                    ageElement.textContent = newAge;
-                    highlightChange(youngestCard.closest('.card'));
-                }
-            }
-        }
-    }
-}
-
-function updateStatsCards(stats) {
-    // Función legacy - ahora usa updateAllStatsCards
-    updateAllStatsCards(stats);
-}
-
-function updateCharts(stats) {
-    // Función legacy - ahora usa updateAllCharts
-    updateAllCharts(stats);
-}
-
-function highlightChange(element) {
-    element.style.backgroundColor = '#d4edda';
-    setTimeout(() => {
-        element.style.backgroundColor = '';
-    }, 1000);
-}
-
-// Control buttons for auto-refresh
-function startAutoRefresh() {
-    if (refreshInterval) return;
-    
-    // Refresh más frecuente: cada 10 segundos en lugar de 30
-    refreshInterval = setInterval(refreshDashboard, 10000);
-    
-    // Add indicator
-    const indicator = document.createElement('div');
-    indicator.id = 'refresh-indicator';
-    indicator.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Actualizando cada 10s';
-    indicator.style.cssText = 'position: fixed; top: 70px; right: 10px; background: #28a745; color: white; padding: 8px 12px; border-radius: 20px; z-index: 1000; font-size: 11px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); backdrop-filter: blur(10px);';
-    document.body.appendChild(indicator);
-    
-    document.getElementById('start-refresh').style.display = 'none';
-    document.getElementById('stop-refresh').style.display = 'inline-block';
-    
-    // Hacer un refresh inmediato al activar
-    refreshDashboard();
-}
-
-function stopAutoRefresh() {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-    }
-    
-    const indicator = document.getElementById('refresh-indicator');
-    if (indicator) {
-        indicator.remove();
-    }
-    
-    document.getElementById('start-refresh').style.display = 'inline-block';
-    document.getElementById('stop-refresh').style.display = 'none';
-}
-
-// Manual refresh
-function manualRefresh() {
-    refreshDashboard();
-    
-    // Show temporary feedback
-    const btn = document.getElementById('manual-refresh');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
-    btn.disabled = true;
-    
-    setTimeout(() => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }, 1000);
-}
-
-// Force refresh (invalidates cache)
-function forceRefresh() {
-    showLoadingIndicator();
-    
-    fetch('/api/dashboard/refresh', {
-        method: 'POST',
-        headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(stats => {
-        console.log('Force refresh completed:', stats);
-        
-        // Update all components
-        updateAllStatsCards(stats);
-        updateAllCharts(stats);
-        updateYoungestPerson(stats);
-        
-        hideLoadingIndicator();
-        
-        // Show success toast
-        showSuccessToast('Dashboard actualizado con datos frescos!');
-        
-        console.log('Dashboard force refreshed successfully at', new Date().toLocaleTimeString());
-    })
-    .catch(error => {
-        console.error('Error force refreshing dashboard:', error);
-        hideLoadingIndicator();
-        showRefreshError();
-    });
-}
-
-function showSuccessToast(message) {
-    const successToast = document.createElement('div');
-    successToast.className = 'toast position-fixed top-0 end-0 mt-3 me-3';
-    successToast.style.zIndex = '9999';
-    successToast.innerHTML = `
-        <div class="toast-header bg-success text-white">
-            <i class="fas fa-check-circle me-2"></i>
-            <strong class="me-auto">Actualización exitosa</strong>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">
-            ${message}
-        </div>
-    `;
-    document.body.appendChild(successToast);
-    
-    const bsToast = new bootstrap.Toast(successToast);
-    bsToast.show();
-    
-    // Remover después de que se oculte
-    successToast.addEventListener('hidden.bs.toast', () => {
-        successToast.remove();
-    });
-}
-
-// Animar contadores cuando la página cargue
-document.addEventListener('DOMContentLoaded', function() {
-    // Configurar localStorage listener para refresh entre ventanas
-    setupCrossWindowRefresh();
-    
-    // Auto-iniciar el refresh si hay datos
-    if (document.querySelector('.stats-card')) {
-        startAutoRefresh();
-    }
-    
-    // Animar contadores numéricos
-    const counters = document.querySelectorAll('.counter');
-    
-    // Configurar intersection observer para animar cuando entren en viewport
-    const observerOptions = {
-        threshold: 0.5,
-        rootMargin: '0px 0px -50px 0px'
-    };
-    
-    const counterObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
-                entry.target.classList.add('animated');
-                const target = parseInt(entry.target.dataset.target) || 0;
-                
-                // Usar el ContentManager para animar
-                if (window.contentManager) {
-                    window.contentManager.animateCounter(entry.target, target, 1500);
-                }
-                
-                counterObserver.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-    
-    counters.forEach(counter => {
-        counterObserver.observe(counter);
-    });
-    
-    // Animar tarjetas en secuencia
-    const cards = document.querySelectorAll('.stats-card');
-    if (window.contentManager && cards.length > 0) {
-        setTimeout(() => {
-            window.contentManager.animateCardsSequence(Array.from(cards), 150);
-        }, 500);
-    }
-});
-
-// Sistema de comunicación entre ventanas para actualizaciones inmediatas
-function setupCrossWindowRefresh() {
-    // Escuchar eventos de localStorage para actualizaciones entre ventanas
-    window.addEventListener('storage', function(e) {
-        if (e.key === 'dashboard_refresh_trigger') {
-            console.log('Refresh triggered from another window');
-            refreshDashboard();
-            // Limpiar el trigger
-            localStorage.removeItem('dashboard_refresh_trigger');
-        }
-    });
-    
-    // Escuchar eventos de focus para refresh automático
-    window.addEventListener('focus', function() {
-        // Hacer refresh cuando la ventana vuelve a tener foco
-        console.log('Window gained focus, refreshing dashboard');
-        refreshDashboard();
-    });
-}
-
-// Función para disparar refresh desde otras páginas
-function triggerDashboardRefresh() {
-    // Disparar refresh en esta ventana si es el dashboard
-    if (window.location.pathname === '/dashboard' || window.location.pathname === '/') {
-        refreshDashboard();
-    }
-    
-    // Disparar refresh en otras ventanas del dashboard
-    localStorage.setItem('dashboard_refresh_trigger', Date.now().toString());
-    
-    // Limpiar después de un momento
-    setTimeout(() => {
-        localStorage.removeItem('dashboard_refresh_trigger');
-    }, 1000);
-}
-
+  });
 </script>
-{% endif %}
 {% endblock %}

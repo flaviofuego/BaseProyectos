@@ -1,5 +1,83 @@
 {% extends "base.html" %} {% block title %}Registro - Sistema de Gestión de
-Personas{% endblock %} {% block content %}
+Personas{% endblock %} {% block extra_css %}
+<style>
+  .requirement-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    transition: color 0.2s ease;
+  }
+
+  .requirement-item.valid {
+    color: #28a745 !important;
+  }
+
+  .requirement-item.invalid {
+    color: #dc3545 !important;
+  }
+
+  .requirement-item i {
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .requirement-item.valid i::before {
+    content: "\f058" !important; /* fa-check-circle */
+    color: #28a745 !important;
+  }
+
+  .requirement-item.invalid i::before {
+    content: "\f057" !important; /* fa-times-circle */
+    color: #dc3545 !important;
+  }
+
+  /* Modo oscuro - colores más brillantes y visibles */
+  [data-theme="dark"] .requirement-item {
+    color: #adb5bd;
+  }
+
+  [data-theme="dark"] .requirement-item.valid {
+    color: #6ee7b7 !important;
+  }
+
+  [data-theme="dark"] .requirement-item.valid i::before {
+    color: #6ee7b7 !important;
+  }
+
+  [data-theme="dark"] .requirement-item.invalid {
+    color: #fb7185 !important;
+  }
+
+  [data-theme="dark"] .requirement-item.invalid i::before {
+    color: #fb7185 !important;
+  }
+
+  /* Bordes personalizados para inputs validados */
+  .is-valid-custom {
+    border-color: #28a745 !important;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+  }
+
+  .is-invalid-custom {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+  }
+
+  [data-theme="dark"] .is-valid-custom {
+    border-color: #6ee7b7 !important;
+    box-shadow: 0 0 0 0.2rem rgba(110, 231, 183, 0.25) !important;
+  }
+
+  [data-theme="dark"] .is-invalid-custom {
+    border-color: #fb7185 !important;
+    box-shadow: 0 0 0 0.2rem rgba(251, 113, 133, 0.25) !important;
+  }
+</style>
+{% endblock %} {% block content %}
 <div
   class="min-vh-100 d-flex align-items-center justify-content-center bg-light"
 >

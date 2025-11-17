@@ -6,12 +6,6 @@ import json
 import os
 import io
 from dotenv import load_dotenv
-import base64
-from io import BytesIO
-from PIL import Image
-import plotly
-import plotly.express as px
-import plotly.graph_objects as go
 import markdown
 import bleach
 
@@ -97,6 +91,11 @@ def make_request(method, endpoint, data=None, files=None, params=None, timeout_s
         else:
             app.logger.info(f"DEBUG: Response success")
         
+        # Manejar expiración de token
+        if response.status_code == 401:
+            app.logger.warning("DEBUG: Token expired or invalid - clearing session")
+            session.clear()
+        
         return response
     except requests.exceptions.ConnectionError as e:
         app.logger.error(f"DEBUG: Connection error: {e}")
@@ -131,14 +130,12 @@ def login():
         login_method = request.form.get('login_method')
         
         app.logger.info(f"DEBUG: Login attempt - method: {login_method}")
-        flash(f'DEBUG: Método de login: {login_method}', 'info')
         
         if login_method == 'local':
             username = request.form.get('username')
             password = request.form.get('password')
             
             app.logger.info(f"DEBUG: Local login - username: {username}")
-            flash(f'DEBUG: Intentando login con usuario: {username}', 'info')
             
             if username and password:
                 response = make_request('POST', '/api/auth/login', {
@@ -160,7 +157,7 @@ def login():
                         return redirect(url_for('dashboard'))
                     except Exception as e:
                         app.logger.error(f"Error processing login response: {e}")
-                        flash('Error al procesar la respuesta del servidor. Por favor, intenta nuevamente.', 'error')
+                        flash('Error al procesar respuesta. Intenta nuevamente.', 'error')
                 else:
                     app.logger.info(f"DEBUG: Login failed - status: {response.status_code if response is not None else 'None'}")
                     if response is not None:
@@ -170,7 +167,7 @@ def login():
                                 error_message = error_data.get('error', 'Error de validación en los datos proporcionados')
                                 flash(error_message, 'error')
                             except:
-                                flash('Error de validación. Verifica que los datos sean correctos.', 'error')
+                                flash('Error de validación. Verifica los datos.', 'error')
                         elif response.status_code == 429:
                             try:
                                 error_data = response.json()
@@ -180,34 +177,34 @@ def login():
                                     'retry_after': retry_after,
                                     'message': error_data.get('message', 'Demasiados intentos de inicio de sesión')
                                 }
-                                flash(f'⏱️ {error_data.get("message", "Demasiados intentos de inicio de sesión")}', 'warning')
+                                flash(f'{error_data.get("message", "Demasiados intentos de inicio de sesión")}', 'warning')
                             except Exception as e:
                                 app.logger.error(f"Error processing rate limit response: {e}")
-                                flash('⏱️ Demasiados intentos de inicio de sesión. Por favor, espera antes de intentar nuevamente.', 'warning')
+                                flash('Demasiados intentos. Espera antes de reintentar.', 'warning')
                         elif response.status_code == 401:
                             try:
                                 error_data = response.json()
                                 error_msg = error_data.get('error', error_data.get('message', ''))
                                 if 'password' in error_msg.lower() or 'contraseña' in error_msg.lower():
-                                    flash('Contraseña incorrecta. Por favor, verifica tus credenciales.', 'error')
+                                    flash('Contraseña incorrecta.', 'error')
                                 elif 'user' in error_msg.lower() or 'usuario' in error_msg.lower():
-                                    flash('Usuario no encontrado. Por favor, verifica el nombre de usuario.', 'error')
+                                    flash('Usuario no encontrado.', 'error')
                                 else:
-                                    flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+                                    flash('Credenciales inválidas.', 'error')
                             except:
-                                flash('Credenciales inválidas. Verifica tu usuario y contraseña.', 'error')
+                                flash('Credenciales inválidas.', 'error')
                         elif response.status_code == 500:
-                            flash('Error en el servidor. Por favor, intenta nuevamente en unos momentos.', 'error')
+                            flash('Error del servidor. Intenta en unos momentos.', 'error')
                         else:
                             try:
                                 error_data = response.json()
                                 flash(f'Error: {error_data.get("message", error_data.get("error", "Error desconocido"))}', 'error')
                             except:
-                                flash('Ocurrió un error inesperado. Por favor, intenta nuevamente.', 'error')
+                                flash('Error inesperado. Intenta nuevamente.', 'error')
                     else:
-                        flash('No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente.', 'error')
+                        flash('Error de conexión. Verifica tu red.', 'error')
             else:
-                flash('Por favor, completa todos los campos', 'warning')
+                flash('Completa todos los campos', 'warning')
         
         elif login_method == 'microsoft':
             return redirect(f'{get_browser_api_url()}/api/auth/login/microsoft')
@@ -276,12 +273,12 @@ def register():
                         'retry_after': retry_after,
                         'message': error_data.get('message', 'Demasiados intentos de registro')
                     }
-                    flash(f'⏱️ {error_data.get("message", "Demasiados intentos de registro")}', 'warning')
+                    flash(f'{error_data.get("message", "Demasiados intentos de registro")}', 'warning')
                     if from_login_page:
                         return redirect(url_for('login', mode='register', error='rate_limit'))
                 except Exception as e:
                     app.logger.error(f"Error processing rate limit response: {e}")
-                    flash('⏱️ Demasiados intentos de registro. Por favor, espera antes de intentar nuevamente.', 'warning')
+                    flash('Demasiados intentos de registro. Por favor, espera antes de intentar nuevamente.', 'warning')
                     if from_login_page:
                         return redirect(url_for('login', mode='register', error='rate_limit'))
             elif response is not None and response.status_code == 409:
@@ -316,13 +313,6 @@ def register():
 @app.route('/logout')
 @login_required
 def logout():
-    try:
-        make_request('PUT', '/api/auth/preferences/consulta-service', {
-            'enabled': True
-        })
-    except Exception as e:
-        print(f"Error al reactivar servicio de consulta en logout: {e}")
-    
     make_request('POST', '/api/auth/logout')
     
     return render_template('logout_cleanup.html')
@@ -330,7 +320,7 @@ def logout():
 @app.route('/logout/complete')
 def logout_complete():
     session.clear()
-    flash('Sesión cerrada exitosamente', 'success')
+    flash('Sesión cerrada', 'success')
     return redirect(url_for('login'))
 
 @app.route('/configurar-cuenta')
@@ -434,6 +424,31 @@ def dashboard():
     
     return render_template('dashboard.html', stats=stats, user=session.get('user'))
 
+@app.route('/reportes')
+@login_required
+def reportes():
+    response = make_request('GET', '/api/consulta/stats')
+
+    stats = None
+    if response is not None and response.status_code == 200:
+        stats_data = response.json()
+        # Solo pasar stats si realmente tiene datos
+        if stats_data and stats_data.get('total_personas', 0) > 0:
+            stats = stats_data
+        else:
+            flash('No hay personas registradas en el sistema todavía.', 'info')
+    elif response is not None and response.status_code == 401:
+        # Token expirado - redirigir al login
+        flash('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'warning')
+        return redirect(url_for('login'))
+    else:
+        if response is None:
+            flash('El servicio de estadísticas está lento o no disponible. Por favor, intenta de nuevo en unos momentos.', 'warning')
+        else:
+            flash('Error al cargar las estadísticas. Por favor, recarga la página.', 'error')
+    
+    return render_template('reportes.html', stats=stats, user=session.get('user'))
+
 @app.route('/api/dashboard/stats')
 @login_required
 def dashboard_stats_api():
@@ -533,7 +548,7 @@ def crear_persona():
                 
             if response.status_code == 201:
                 invalidate_stats_cache()
-                success_msg = '✅ Persona creada exitosamente'
+                success_msg = 'Persona creada exitosamente'
                 if is_ajax:
                     return jsonify({'message': success_msg}), 201
                 flash(success_msg, 'success')
@@ -680,7 +695,7 @@ def bulk_upload_personas():
                     print(f"DEBUG: Stats - total:{total}, created:{created}, errors:{len(validation_errors)}, dups:{len(duplicates)}, failed:{len(failed)}")
                     
                     if created > 0:
-                        flash(f'✅ Se crearon {created} de {total} personas exitosamente', 'success')
+                        flash(f'Se crearon {created} de {total} personas exitosamente', 'success')
                     
                     total_errors = len(validation_errors) + len(duplicates) + len(failed)
                     if total_errors > 0:
@@ -913,6 +928,9 @@ def consultar_personas():
         
         if response is not None and response.status_code == 200:
             personas = [response.json()]
+        elif response is not None and response.status_code == 401:
+            flash('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'warning')
+            return redirect(url_for('login'))
         elif response is not None and response.status_code == 403:
             try:
                 error_data = response.json()
@@ -968,6 +986,9 @@ def consultar_personas():
                 flash(f'Se encontraron {total_results} personas (mostrando {len(personas)})', 'success')
             else:
                 flash('No se encontraron personas con los criterios especificados', 'info')
+        elif response is not None and response.status_code == 401:
+            flash('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'warning')
+            return redirect(url_for('login'))
         elif response is not None and response.status_code == 403:
             try:
                 error_data = response.json()
@@ -1092,24 +1113,19 @@ def consulta_nlp():
     resultado = None
     
     if request.method == 'POST':
+        resultado = None
         pregunta = request.form.get('pregunta')
         
         if pregunta:
             try:
-                # Llamar al nuevo endpoint del servicio NLP v2
-                # Timeout aumentado a 90 segundos debido al procesamiento de IA (Gemini puede tardar 30-40s)
-                # El servicio NLP hace 3-4 llamadas a Gemini AI que pueden tardar 8-12s cada una
                 response = make_request('POST', '/api/nlp/query', {'query': pregunta}, timeout_seconds=90.0)
                 
                 if response is not None and response.status_code == 200:
                     data = response.json()
                     
-                    # Verificar si la respuesta es exitosa
                     if data.get('success'):
-                        # Renderizar Markdown a HTML en el servidor
                         markdown_text = data['data']['markdown']
                         
-                        # Configurar markdown con extensiones
                         md = markdown.Markdown(extensions=[
                             'extra',        # Tablas, listas, etc.
                             'nl2br',        # Saltos de línea automáticos
@@ -1118,10 +1134,8 @@ def consulta_nlp():
                             'fenced_code'   # Bloques de código
                         ])
                         
-                        # Renderizar markdown a HTML
                         html_content = md.convert(markdown_text)
                         
-                        # Sanitizar HTML para prevenir XSS
                         allowed_tags = [
                             'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
                             'p', 'br', 'strong', 'em', 'u', 'a',
@@ -1144,12 +1158,12 @@ def consulta_nlp():
                             strip=True
                         )
                         
-                        # Extraer información relevante
+                        # Solo mostramos la respuesta de la IA, sin raw_results
                         resultado = {
                             'pregunta': pregunta,
                             'markdown_raw': markdown_text,  # Markdown original (por si se necesita)
                             'html': safe_html,  # HTML pre-renderizado y sanitizado
-                            'datos': data['data']['raw_results'],  # Datos crudos de la consulta
+                            'datos': None,  # No mostramos datos crudos, solo la respuesta de la IA
                             'sql': data['data'].get('sql'),  # SQL generado (opcional)
                             'metadata': data.get('metadata', {}),  # Metadata adicional
                             'respuesta': safe_html  # HTML para compatibilidad
@@ -1160,20 +1174,18 @@ def consulta_nlp():
                         intent = data['metadata'].get('intent', 'GENERAL')
                         processing_time = data['metadata'].get('processing_time_ms', 0)
                         
-                        flash(f'✅ Consulta procesada: {results_count} resultado(s) en {processing_time}ms', 'success')
+                        flash(f'Consulta procesada en {processing_time}ms', 'success')
                         
-                        # Log adicional para debugging
                         print(f"NLP Query processed - Intent: {intent}, Results: {results_count}, Time: {processing_time}ms")
                     else:
-                        # Error en el procesamiento de la consulta
                         error_msg = data.get('error', 'Error desconocido')
-                        flash(f'❌ Error al procesar la consulta: {error_msg}', 'error')
+                        flash(f'Error: {error_msg}', 'error')
                         print(f"NLP Query error: {error_msg}")
                         
                 elif response is not None:
-                    flash(f'Error al procesar la pregunta (Código: {response.status_code}). Verifica que el servicio de NLP esté configurado correctamente.', 'error')
+                    flash(f'Error del servicio (código {response.status_code})', 'error')
                 else:
-                    flash('Error de conexión: No se pudo contactar con el servicio de NLP. Verifica tu conexión.', 'error')
+                    flash('Error de conexión con el servicio', 'error')
                     
             except Exception as e:
                 print(f"Exception in consulta_nlp: {str(e)}")
@@ -1222,6 +1234,8 @@ def borrar_persona():
                     flash('Error de conexión: No se pudo contactar con el servidor', 'error')
             else:
                 flash('Debe confirmar la eliminaciÃ³n', 'warning')
+    else:
+        session.pop('persona_to_delete', None)
     
     if 'persona_to_delete' in session:
         persona = session['persona_to_delete']
@@ -1459,45 +1473,7 @@ def consultar_logs():
     app.logger.info(f"Final logs count: {len(logs)}, stats: {bool(stats)}")
     return render_template('consultar_logs.html', logs=logs, stats=stats, pagination=pagination_info, current_filters=request.args)
 
-@app.route('/api/chart/<chart_type>')
-@login_required
-def get_chart_data(chart_type):
-    response = make_request('GET', '/api/consulta/stats')
-    
-    if response is None or response.status_code != 200:
-        return jsonify({'error': 'No data available'}), 404
-    
-    stats = response.json()
-    
-    if chart_type == 'gender':
-        data = list(stats.get('por_genero', {}).items())
-        fig = px.pie(
-            values=[item[1] for item in data],
-            names=[item[0] for item in data],
-            title='DistribuciÃ³n por GÃ©nero'
-        )
-        return jsonify(fig.to_json())
-    
-    elif chart_type == 'document':
-        data = list(stats.get('por_tipo_documento', {}).items())
-        fig = px.bar(
-            x=[item[0] for item in data],
-            y=[item[1] for item in data],
-            title='DistribuciÃ³n por Tipo de Documento'
-        )
-        return jsonify(fig.to_json())
-    
-    elif chart_type == 'age':
-        data = list(stats.get('por_grupo_edad', {}).items())
-        fig = px.bar(
-            x=[item[0] for item in data],
-            y=[item[1] for item in data],
-            title='DistribuciÃ³n por Grupo de Edad'
-        )
-        return jsonify(fig.to_json())
-    
-    return jsonify({'error': 'Chart type not found'}), 404
-
+# Error handlers
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404
