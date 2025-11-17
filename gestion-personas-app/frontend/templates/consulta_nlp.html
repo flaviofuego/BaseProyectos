@@ -1,991 +1,344 @@
-{% extends "base.html" %}
-
-{% block title %}Consulta en Lenguaje Natural - Sistema de Gestión de Personas{% endblock %}
-
-{% block extra_head %}
-<!-- HTML pre-renderizado en el servidor - no se necesitan librerías de Markdown en el cliente -->
-<!-- Estilos personalizados para el renderizado de Markdown -->
-<style>
-    .markdown-response {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border: 1px solid #e9ecef;
-        border-left: 5px solid #0d47a1;
-        border-radius: 12px;
-        padding: 40px;
-        margin: 0;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.08);
-        min-height: 200px;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            border: 1px solid #404040;
-            border-left: 5px solid #0d6efd;
-            color: #e9ecef;
-        }
-    }
-    
-    .markdown-response h1 {
-        color: #0d47a1;
-        font-size: 2rem;
-        font-weight: 700;
-        margin-top: 0;
-        margin-bottom: 25px;
-        padding-bottom: 15px;
-        border-bottom: 3px solid #0d47a1;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response h1 {
-            color: #42a5f5;
-            border-bottom: 3px solid #42a5f5;
-        }
-    }
-    
-    .markdown-response h2 {
-        color: #1565c0;
-        font-size: 1.65rem;
-        font-weight: 600;
-        margin-top: 35px;
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #1565c0;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response h2 {
-            color: #64b5f6;
-            border-bottom: 2px solid #64b5f6;
-        }
-    }
-    
-    .markdown-response h3 {
-        color: #1976d2;
-        font-size: 1.4rem;
-        font-weight: 600;
-        margin-top: 28px;
-        margin-bottom: 15px;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response h3 {
-            color: #90caf9;
-        }
-    }
-    
-    .markdown-response h4,
-    .markdown-response h5,
-    .markdown-response h6 {
-        color: #495057;
-        margin-top: 22px;
-        margin-bottom: 12px;
-        font-weight: 600;
-    }
-    
-    .markdown-response p {
-        line-height: 1.9;
-        margin-bottom: 18px;
-        color: #212529;
-        font-size: 1.08rem;
-    }
-    
-    .markdown-response table {
-        width: 100%;
-        margin: 35px auto;
-        border-collapse: separate;
-        border-spacing: 0;
-        background: white;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-        border-radius: 12px;
-        overflow: visible;
-        font-size: 1.05rem;
-        border: 3px solid #000000;
-    }
-    
-    /* Modo oscuro para tablas */
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table {
-            border: 3px solid #0d6efd;
-            background: #1a1a1a;
-        }
-    }
-    
-    .markdown-response table thead {
-        background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
-        color: white;
-        border-bottom: 4px solid #000000;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table thead {
-            background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
-            border-bottom: 4px solid #0d6efd;
-        }
-    }
-    
-    .markdown-response table th {
-        padding: 24px 32px;
-        text-align: left;
-        font-weight: 700;
-        font-size: 1.05rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        border-right: 3px solid rgba(0, 0, 0, 0.3);
-        white-space: nowrap;
-        min-width: 120px;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table th {
-            border-right: 3px solid rgba(13, 110, 253, 0.4);
-        }
-    }
-    
-    .markdown-response table th:last-child {
-        border-right: none;
-    }
-    
-    .markdown-response table td {
-        padding: 22px 32px;
-        border-bottom: 2px solid #000000;
-        border-right: 2px solid #000000;
-        color: #212529;
-        font-size: 1.02rem;
-        vertical-align: middle;
-        line-height: 1.6;
-        min-width: 100px;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table td {
-            border-bottom: 2px solid #0d6efd;
-            border-right: 2px solid #0d6efd;
-            color: #e9ecef;
-        }
-    }
-    
-    .markdown-response table td:last-child {
-        border-right: none;
-    }
-    
-    .markdown-response table tbody tr:nth-child(even) {
-        background-color: #f8f9fa;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table tbody tr:nth-child(even) {
-            background-color: #212529;
-        }
-    }
-    
-    .markdown-response table tbody tr:hover {
-        background-color: #e3f2fd;
-        transition: background-color 0.3s ease;
-        transform: scale(1.002);
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table tbody tr:hover {
-            background-color: #1e3a5f;
-        }
-    }
-    
-    .markdown-response table tbody tr:last-child td {
-        border-bottom: 3px solid #000000;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table tbody tr:last-child td {
-            border-bottom: 3px solid #0d6efd;
-        }
-    }
-    
-    /* Mejoras adicionales para las tablas */
-    .markdown-response table tbody tr {
-        transition: all 0.3s ease;
-    }
-    
-    .markdown-response table td:first-child {
-        font-weight: 600;
-        color: #000000;
-        background: linear-gradient(90deg, rgba(13, 110, 253, 0.05) 0%, transparent 100%);
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table td:first-child {
-            color: #e9ecef;
-            background: linear-gradient(90deg, rgba(13, 110, 253, 0.15) 0%, transparent 100%);
-        }
-    }
-    
-    /* Estilo especial para la fila de totales */
-    .markdown-response table tbody tr:last-child {
-        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(25, 118, 210, 0.1) 100%);
-        font-weight: 600;
-        border-top: 3px solid #000000;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table tbody tr:last-child {
-            background: linear-gradient(135deg, rgba(13, 110, 253, 0.2) 0%, rgba(25, 118, 210, 0.2) 100%);
-            border-top: 3px solid #0d6efd;
-        }
-    }
-    
-    .markdown-response table tbody tr:last-child td {
-        font-weight: 700;
-        color: #0d47a1;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response table tbody tr:last-child td {
-            color: #42a5f5;
-        }
-    }
-    
-    .markdown-response ul,
-    .markdown-response ol {
-        margin: 20px 0;
-        padding-left: 35px;
-        line-height: 2;
-    }
-    
-    .markdown-response li {
-        margin: 12px 0;
-        color: #495057;
-        font-size: 1.05rem;
-    }
-    
-    .markdown-response li::marker {
-        color: #198754;
-        font-weight: bold;
-    }
-    
-    .markdown-response strong {
-        color: #0d47a1;
-        font-weight: 700;
-        font-size: 1.05em;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-        .markdown-response strong {
-            color: #42a5f5;
-        }
-    }
-    
-    .markdown-response em {
-        color: #6c757d;
-        font-style: italic;
-    }
-    
-    .markdown-response code {
-        background: linear-gradient(135deg, #f1f3f5 0%, #e9ecef 100%);
-        color: #d63384;
-        padding: 4px 10px;
-        border-radius: 5px;
-        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-        font-size: 0.92em;
-        border: 1px solid #dee2e6;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    
-    .markdown-response pre {
-        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
-        color: #f8f8f2;
-        padding: 25px;
-        border-radius: 10px;
-        overflow-x: auto;
-        margin: 25px 0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        border: 1px solid #404040;
-    }
-    
-    .markdown-response pre code {
-        background: transparent;
-        color: inherit;
-        padding: 0;
-        border: none;
-        font-size: 0.92rem;
-        box-shadow: none;
-    }
-    
-    .markdown-response blockquote {
-        border-left: 5px solid #198754;
-        padding: 20px 25px;
-        margin: 25px 0;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        color: #495057;
-        font-style: italic;
-        border-radius: 0 10px 10px 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        font-size: 1.05rem;
-        line-height: 1.8;
-    }
-    
-    .markdown-response hr {
-        border: none;
-        border-top: 2px solid #dee2e6;
-        margin: 40px 0;
-        opacity: 0.5;
-    }
-    
-    .markdown-response a {
-        color: #198754;
-        text-decoration: none;
-        border-bottom: 2px dotted #198754;
-        transition: all 0.3s ease;
-        font-weight: 500;
-    }
-    
-    .markdown-response a:hover {
-        color: #20c997;
-        border-bottom-style: solid;
-        border-bottom-width: 2px;
-    }
-    
-    /* Estilos para elementos de resumen y detalles */
-    .markdown-response .summary-box {
-        background: linear-gradient(135deg, #e7f5ef 0%, #d4edda 100%);
-        border: 2px solid #198754;
-        border-radius: 10px;
-        padding: 25px;
-        margin: 25px 0;
-        box-shadow: 0 4px 10px rgba(25, 135, 84, 0.15);
-    }
-    
-    .markdown-response .summary-box h4 {
-        color: #198754;
-        margin-top: 0;
-        margin-bottom: 15px;
-        font-size: 1.25rem;
-    }
-    
-    /* Estilos para totales y métricas destacadas */
-    .markdown-response p strong {
-        display: inline-block;
-        padding: 2px 6px;
-        background: rgba(25, 135, 84, 0.1);
-        border-radius: 4px;
-    }
-    
-    .metadata-badge {
-        display: inline-block;
-        padding: 8px 16px;
-        margin: 5px;
-        border-radius: 25px;
-        font-size: 0.88rem;
-        font-weight: 600;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-    }
-    
-    .metadata-badge:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    }
-    
-    .loading-spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 3px solid rgba(255,255,255,.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s ease-in-out infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    /* Contenedor con scroll horizontal para tablas grandes */
-    .table-responsive-wrapper {
-        width: 100%;
-        overflow-x: auto;
-        overflow-y: visible;
-    }
-    
-    .table-responsive-wrapper::-webkit-scrollbar {
-        height: 10px;
-    }
-    
-    .table-responsive-wrapper::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-    }
-    
-    .table-responsive-wrapper::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #198754 0%, #20c997 100%);
-        border-radius: 10px;
-    }
-    
-    .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(135deg, #0d6832 0%, #17a085 100%);
-    }
-    
-    /* Responsive para tablas en móviles */
-    @media (max-width: 768px) {
-        .markdown-response table {
-            font-size: 0.95rem;
-        }
-        
-        .markdown-response table th {
-            padding: 16px 20px;
-            font-size: 0.95rem;
-            min-width: 100px;
-        }
-        
-        .markdown-response table td {
-            padding: 14px 20px;
-            font-size: 0.92rem;
-            min-width: 90px;
-        }
-        
-        .markdown-response {
-            padding: 25px 20px;
-        }
-    }
-    
-    /* Para pantallas extra grandes, aumentar aún más el espaciado */
-    @media (min-width: 1400px) {
-        .markdown-response table th {
-            padding: 26px 40px;
-            font-size: 1.1rem;
-        }
-        
-        .markdown-response table td {
-            padding: 24px 40px;
-            font-size: 1.05rem;
-        }
-    }
-    
-    /* Animación suave de aparición */
-    .markdown-response {
-        animation: fadeInUp 0.5s ease-out;
-    }
-    
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Estilos para consultas estructuradas */
-    .example-query-structured {
-        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
-        border-left: 4px solid #198754;
-        padding: 15px 20px;
-        margin: 12px 0;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-    
-    .example-query-structured:hover {
-        background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(32, 201, 151, 0.15));
-        transform: translateX(5px);
-        box-shadow: 0 4px 10px rgba(25, 135, 84, 0.2);
-    }
-    
-    .example-query-structured strong {
-        color: #198754;
-        font-size: 0.95rem;
-        line-height: 1.6;
-    }
-    
-    .example-query-structured i {
-        font-size: 1.1rem;
-        margin-right: 8px;
-    }
-    
-    /* Estilos para la sección de ejemplos */
-    .example-question {
-        transition: all 0.3s ease;
-    }
-    
-    /* Mejoras para el formulario */
-    textarea#pregunta:focus {
-        border-color: #20c997 !important;
-        box-shadow: 0 0 0 0.2rem rgba(32, 201, 151, 0.25) !important;
-    }
-    
-    /* Badge de resultados con animación */
-    .badge.bg-success {
-        animation: pulse 2s ease-in-out infinite;
-    }
-    
-    @keyframes pulse {
-        0%, 100% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.85;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="row">
+{% extends "base.html" %} {% block title %}Consulta en Lenguaje Natural -
+Sistema de Gestión de Personas{% endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/consulta_nlp.css') }}"
+/>
+{% endblock %} {% block content %}
+<div class="container mt-4">
+  <div class="row">
     <div class="col-12">
-        <h1 class="mb-4">
-            <i class="fas fa-robot"></i> Consulta en Lenguaje Natural
-            <small class="text-muted">Utiliza inteligencia artificial para hacer preguntas</small>
+      <div class="mb-4">
+        <div class="ai-icon-container">
+          <i class="fas fa-robot"></i>
+        </div>
+        <h1 class="page-title d-inline-block align-middle">
+          Consulta en Lenguaje Natural
         </h1>
-    </div>
-</div>
-
-<!-- Ejemplos de preguntas -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-info">
-            <div class="card-header bg-info text-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-lightbulb"></i> Ejemplos de preguntas
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <ul class="list-unstyled">
-                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
-                                <i class="fas fa-chevron-right text-info"></i>
-                                <span class="ms-2">¿Cuál es el empleado más joven que se ha registrado?</span>
-                            </li>
-                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
-                                <i class="fas fa-chevron-right text-info"></i>
-                                <span class="ms-2">¿Cuántas personas de género femenino hay en el sistema?</span>
-                            </li>
-                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
-                                <i class="fas fa-chevron-right text-info"></i>
-                                <span class="ms-2">Muéstrame las estadísticas generales del sistema</span>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <ul class="list-unstyled">
-                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
-                                <i class="fas fa-chevron-right text-info"></i>
-                                <span class="ms-2">¿Quién es la persona más vieja registrada?</span>
-                            </li>
-                            <li class="mb-3 p-2 rounded example-question" style="cursor: pointer; transition: all 0.3s ease;">
-                                <i class="fas fa-chevron-right text-info"></i>
-                                <span class="ms-2">¿Cuántas personas hay con cédula?</span>
-                            </li>
-                        </ul>
-                        
-                        <!-- Ejemplos de consultas estructuradas -->
-                        <h6 class="mt-3 mb-2">
-                            <i class="fas fa-star text-warning"></i> Consultas Estructuradas Avanzadas
-                        </h6>
-                        <div class="example-query-structured">
-                            <i class="fas fa-table text-success"></i>
-                            <strong>Dame un listado ordenado por edad de empleados cuyo nombre contenga "García", mayores de 18 años, con nombre, cédula y edad</strong>
-                        </div>
-                        <div class="example-query-structured">
-                            <i class="fas fa-sort-numeric-down text-success"></i>
-                            <strong>Lista las personas con apellido "quisa" mayores de 2 años, ordenadas por edad, mostrando solo nombre, documento y edad, incluye el total</strong>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Nota informativa sobre consultas estructuradas -->
-                <div class="alert alert-info mt-3">
-                    <h6><i class="fas fa-lightbulb"></i> ¿Sabías que puedes hacer consultas muy específicas?</h6>
-                    <p class="mb-1">
-                        El sistema puede generar <strong>listados estructurados</strong> con campos específicos, ordenamiento y filtros complejos.
-                        Solo describe lo que necesitas de forma natural y el sistema interpretará tu solicitud.
-                    </p>
-                    <small class="text-muted">
-                        Ejemplo: "Dame una lista de mujeres entre 25 y 40 años, ordenada por apellido, mostrando nombre, edad y email, incluye el total al final"
-                    </small>
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-chevron-right text-info"></i>
-                                ¿Cuál es la edad promedio de las personas registradas?
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+        <div class="page-subtitle mt-2">
+          Utiliza inteligencia artificial para hacer preguntas sobre las
+          personas registradas
         </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<!-- Formulario de consulta -->
-<div class="row justify-content-center">
+  <!-- Ejemplos de preguntas -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card-custom">
+        <div
+          class="card-header-custom accordion-header-custom"
+          id="headingExamples"
+        >
+          <button
+            class="accordion-button-custom collapsed"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#collapseExamples"
+            aria-expanded="false"
+            aria-controls="collapseExamples"
+          >
+            <i class="fas fa-lightbulb"></i>
+            <span>Ejemplos de preguntas</span>
+            <i class="fas fa-chevron-down accordion-icon"></i>
+          </button>
+        </div>
+        <div
+          id="collapseExamples"
+          class="collapse"
+          aria-labelledby="headingExamples"
+        >
+          <div class="card-body-custom">
+            <div class="row">
+              <div class="col-md-6">
+                <ul class="examples-list">
+                  <li>
+                    <i class="fas fa-circle"></i>
+                    <span
+                      >¿Cuál es el empleado más joven que se ha
+                      registrado?</span
+                    >
+                  </li>
+                  <li>
+                    <i class="fas fa-circle"></i>
+                    <span
+                      >¿Cuántas personas de género femenino hay en el
+                      sistema?</span
+                    >
+                  </li>
+                  <li>
+                    <i class="fas fa-circle"></i>
+                    <span
+                      >Muéstrame las estadísticas generales del sistema</span
+                    >
+                  </li>
+                </ul>
+              </div>
+              <div class="col-md-6">
+                <ul class="examples-list">
+                  <li>
+                    <i class="fas fa-circle"></i>
+                    <span>¿Quién es la persona más vieja registrada?</span>
+                  </li>
+                  <li>
+                    <i class="fas fa-circle"></i>
+                    <span>¿Cuántas personas hay con cédula?</span>
+                  </li>
+                  <li>
+                    <i class="fas fa-circle"></i>
+                    <span
+                      >¿Cuál es la edad promedio de las personas
+                      registradas?</span
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario de consulta -->
+  <div class="row justify-content-center">
     <div class="col-lg-8">
-        <div class="card shadow-lg border-0">
-            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #198754 0%, #20c997 100%);">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-comment-dots"></i> Hacer una pregunta
-                </h5>
-            </div>
-            <div class="card-body p-4">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="pregunta" class="form-label fw-bold text-success">
-                            <i class="fas fa-pen"></i> Escribe tu pregunta:
-                        </label>
-                        <textarea class="form-control shadow-sm" id="pregunta" name="pregunta" rows="5" 
-                                  placeholder="Ejemplo: ¿Cuál es el empleado más joven que se ha registrado?"
-                                  style="font-size: 1.05rem; border: 2px solid #e9ecef; border-radius: 8px; resize: vertical;"
-                                  required>{{ request.form.pregunta if request.form.pregunta }}</textarea>
-                        <div class="form-text mt-2">
-                            <i class="fas fa-info-circle text-success"></i>
-                            Puedes hacer preguntas en español sobre las personas registradas en el sistema.
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary shadow-sm">
-                            <i class="fas fa-arrow-left"></i> Volver
-                        </a>
-                        <button type="submit" class="btn btn-success shadow-sm px-4" style="font-weight: 600;">
-                            <i class="fas fa-paper-plane"></i> Enviar Pregunta
-                        </button>
-                    </div>
-                </form>
-            </div>
+      <div class="card-custom">
+        <div class="card-header-custom">
+          <h5 class="card-title-custom">
+            <i class="fas fa-comment-dots"></i> Hacer una pregunta
+          </h5>
         </div>
-    </div>
-</div>
+        <div class="card-body-custom">
+          <form method="POST">
+            <div class="mb-3">
+              <label for="pregunta" class="form-label-custom"
+                >Escribe tu pregunta:</label
+              >
+              <textarea
+                class="form-control-custom"
+                id="pregunta"
+                name="pregunta"
+                rows="4"
+                placeholder="Ejemplo: ¿Cuál es el empleado más joven que se ha registrado?"
+                required
+              >
+{{ request.form.pregunta if request.form.pregunta }}</textarea
+              >
+              <div class="form-text-custom">
+                Puedes hacer preguntas en español sobre las personas registradas
+                en el sistema.
+              </div>
+            </div>
 
-<!-- Resultado de la consulta -->
-{% if resultado %}
-<div class="row mt-4">
+            <div class="action-container d-flex justify-content-between">
+              <a href="{{ url_for('dashboard') }}" class="btn-secondary-custom">
+                <i class="fas fa-arrow-left"></i> Volver
+              </a>
+              <button type="submit" class="btn-primary-custom">
+                <i class="fas fa-paper-plane"></i> Enviar Pregunta
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resultado de la consulta -->
+  {% if resultado %}
+  <div class="row mt-4">
     <div class="col-12">
-        <div class="card border-success">
-            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-check-circle"></i> Respuesta de la IA
-                </h5>
-                {% if resultado.metadata %}
-                <div class="d-flex gap-2">
-                    <span class="metadata-badge bg-light text-dark">
-                        <i class="fas fa-brain"></i> {{ resultado.metadata.intent or 'GENERAL' }}
-                    </span>
-                    {% if resultado.metadata.used_semantic_search %}
-                    <span class="metadata-badge bg-warning text-dark">
-                        <i class="fas fa-search"></i> Búsqueda Semántica
-                    </span>
-                    {% endif %}
-                    <span class="metadata-badge bg-light text-dark">
-                        <i class="fas fa-clock"></i> {{ resultado.metadata.processing_time_ms or 0 }}ms
-                    </span>
-                </div>
-                {% endif %}
-            </div>
-            <div class="card-body">
-                <!-- Sección 1: Pregunta del usuario -->
-                <div class="alert alert-success mb-4">
-                    <h6 class="alert-heading"><i class="fas fa-question-circle"></i> Pregunta:</h6>
-                    <p class="mb-0"><em>"{{ resultado.pregunta }}"</em></p>
-                </div>
-
-                <!-- Sección 2: Respuesta HTML generada por la IA (pre-renderizada en el servidor) -->
-                <div class="mb-4">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h5 class="mb-0">
-                            <i class="fas fa-magic text-success"></i> Respuesta de la IA
-                        </h5>
-                        {% if resultado.metadata and resultado.metadata.results_count %}
-                        <span class="badge bg-success" style="font-size: 0.9rem; padding: 8px 16px;">
-                            <i class="fas fa-database"></i> {{ resultado.metadata.results_count }} resultados
-                        </span>
-                        {% endif %}
-                    </div>
-                    <div class="table-responsive-wrapper">
-                        <div class="markdown-response shadow">
-                            <!-- Contenido HTML pre-renderizado y sanitizado desde el servidor -->
-                            {{ resultado.html | safe }}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- HTML pre-renderizado en el servidor - no necesita JavaScript -->
-
-                <!-- Metadata -->
-                {% if resultado.metadata %}
-                <div class="mt-3">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" 
-                            data-bs-target="#metadata" aria-expanded="false">
-                        <i class="fas fa-cog"></i> Ver detalles técnicos
-                    </button>
-                    <div class="collapse mt-2" id="metadata">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <small><pre>{{ resultado.metadata | tojson(indent=2) }}</pre></small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
+      <div class="result-card">
+        <div class="result-header">
+          <h5><i class="fas fa-check-circle"></i> Respuesta de la IA</h5>
         </div>
+        <div class="result-body">
+          <div class="question-highlight">
+            <h6>Pregunta:</h6>
+            <p><em>"{{ resultado.pregunta }}"</em></p>
+          </div>
+
+          <div class="answer-section mb-3">
+            <h6>Respuesta:</h6>
+            <div class="lead">{{ resultado.respuesta | safe }}</div>
+          </div>
+
+          <!-- Datos encontrados -->
+          {% if resultado.datos %}
+          <div class="mb-3">
+            <h6>Datos encontrados:</h6>
+
+            {% if resultado.datos is mapping and 'primer_nombre' in
+            resultado.datos %}
+            <!-- Single person -->
+            <div class="data-card">
+              <div class="row">
+                <div class="col-md-8">
+                  <h6 class="card-title">
+                    {{ resultado.datos.primer_nombre }} {% if
+                    resultado.datos.segundo_nombre %}{{
+                    resultado.datos.segundo_nombre }}{% endif %} {{
+                    resultado.datos.apellidos }}
+                  </h6>
+                  <div class="row">
+                    <div class="col-sm-6">
+                      <p class="mb-1">
+                        <strong>Documento:</strong> {{
+                        resultado.datos.tipo_documento }} {{
+                        resultado.datos.numero_documento }}
+                      </p>
+                      <p class="mb-1">
+                        <strong>Fecha de Nacimiento:</strong> {{
+                        resultado.datos.fecha_nacimiento.split('T')[0] }}
+                      </p>
+                      <p class="mb-1">
+                        <strong>Género:</strong> {{ resultado.datos.genero }}
+                      </p>
+                    </div>
+                    <div class="col-sm-6">
+                      <p class="mb-1">
+                        <strong>Email:</strong> {{
+                        resultado.datos.correo_electronico }}
+                      </p>
+                      <p class="mb-1">
+                        <strong>Celular:</strong> {{ resultado.datos.celular }}
+                      </p>
+                      {% if resultado.datos.edad %}
+                      <p class="mb-1">
+                        <strong>Edad:</strong> {{ resultado.datos.edad }} años
+                      </p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                {% if resultado.datos.foto_url %}
+                <div class="col-md-4 text-center">
+                  <img
+                    src="{{ build_image_url(resultado.datos.foto_url) }}"
+                    class="img-thumbnail"
+                    alt="Foto"
+                    style="max-width: 120px"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                  />
+                  <div style="display: none">
+                    <i class="fas fa-user-circle fa-3x text-muted"></i
+                    ><br /><small>Sin imagen</small>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            {% elif resultado.datos is iterable and resultado.datos is not
+            string %}
+            <!-- Multiple persons or data -->
+            {% for item in resultado.datos %} {% if item is mapping and
+            'primer_nombre' in item %}
+            <!-- Person card -->
+            <div class="person-card-compact">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <h6 class="mb-1">
+                    {{ item.primer_nombre }} {% if item.segundo_nombre %}{{
+                    item.segundo_nombre }}{% endif %} {{ item.apellidos }}
+                  </h6>
+                  <small class="text-muted">
+                    {{ item.tipo_documento }} {{ item.numero_documento }} | {%
+                    if item.edad %}{{ item.edad }} años{% endif %} | {{
+                    item.genero }}
+                  </small>
+                </div>
+                {% if item.foto_url %}
+                <div class="col-md-4 text-center">
+                  <img
+                    src="{{ item.foto_url }}"
+                    class="img-thumbnail"
+                    alt="Foto"
+                    style="max-width: 60px"
+                  />
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %} {% endfor %} {% else %}
+            <!-- Other data (statistics, counts, etc.) -->
+            <div class="data-card">
+              <pre class="mb-0">{{ resultado.datos | tojson(indent=2) }}</pre>
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <!-- Metadata -->
+          {% if resultado.metadata %}
+          <div class="mt-3">
+            <button
+              class="metadata-toggle"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#metadata"
+              aria-expanded="false"
+            >
+              <i class="fas fa-cog"></i> Ver detalles técnicos
+            </button>
+            <div class="collapse mt-2" id="metadata">
+              <div class="metadata-card">
+                <small>
+                  <pre>{{ resultado.metadata | tojson(indent=2) }}</pre>
+                </small>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
-{% endblock %}
+<!-- Cierre del contenedor principal -->
 
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener("DOMContentLoaded", function () {
     // Auto-focus on textarea
-    const preguntaField = document.getElementById('pregunta');
+    const preguntaField = document.getElementById("pregunta");
     if (preguntaField && !preguntaField.value) {
-        preguntaField.focus();
+      preguntaField.focus();
     }
 
-    // Example questions click handler (tradicionales)
-    const exampleQuestions = document.querySelectorAll('.example-question');
-    exampleQuestions.forEach(function(li) {
-        li.addEventListener('click', function() {
-            const questionText = this.querySelector('span').textContent.trim();
-            preguntaField.value = questionText;
-            preguntaField.focus();
-            
-            // Añadir efecto visual mejorado
-            li.style.background = 'linear-gradient(135deg, rgba(13, 202, 240, 0.2), rgba(13, 110, 253, 0.15))';
-            li.style.transform = 'translateX(5px)';
-            li.style.boxShadow = '0 2px 8px rgba(13, 110, 253, 0.3)';
-            setTimeout(() => {
-                li.style.background = '';
-                li.style.transform = '';
-                li.style.boxShadow = '';
-            }, 400);
-        });
-        
-        // Hover effect
-        li.addEventListener('mouseenter', function() {
-            this.style.background = 'rgba(13, 110, 253, 0.05)';
-            this.style.transform = 'translateX(3px)';
-        });
-        
-        li.addEventListener('mouseleave', function() {
-            this.style.background = '';
-            this.style.transform = '';
-        });
-    });
-
-    // Example structured queries click handler
-    const structuredQueries = document.querySelectorAll('.example-query-structured');
-    structuredQueries.forEach(function(query) {
-        query.addEventListener('click', function() {
-            const questionText = this.textContent.trim();
-            preguntaField.value = questionText;
-            preguntaField.focus();
-            
-            // Añadir efecto visual específico para consultas estructuradas
-            this.style.background = 'linear-gradient(135deg, rgba(40, 167, 69, 0.25), rgba(32, 201, 151, 0.25))';
-            this.style.transform = 'translateX(10px) scale(1.02)';
-            setTimeout(() => {
-                this.style.background = 'linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1))';
-                this.style.transform = 'translateX(0) scale(1)';
-            }, 500);
-        });
-    });
-
-    // Loading state para el formulario
-    const form = document.querySelector('form');
-    const submitButton = form ? form.querySelector('button[type="submit"]') : null;
-    
-    if (form && submitButton) {
-        form.addEventListener('submit', function() {
-            // Mostrar estado de carga
-            submitButton.innerHTML = `
-                <div class="loading-spinner"></div>
-                <span class="ms-2">Procesando consulta...</span>
-            `;
-            submitButton.disabled = true;
-            
-            // Añadir indicador visual al textarea
-            preguntaField.style.borderColor = '#0d6efd';
-            preguntaField.style.boxShadow = '0 0 0 0.2rem rgba(13, 110, 253, 0.25)';
-        });
-    }
-
-    // Contador de caracteres para el textarea
-    if (preguntaField) {
-        const maxLength = 1000;
-        const counterDiv = document.createElement('div');
-        counterDiv.className = 'text-muted small mt-1 text-end';
-        counterDiv.id = 'char-counter';
-        preguntaField.parentNode.appendChild(counterDiv);
-        
-        function updateCounter() {
-            const currentLength = preguntaField.value.length;
-            const remaining = maxLength - currentLength;
-            counterDiv.textContent = `${currentLength}/${maxLength} caracteres`;
-            
-            if (remaining < 100) {
-                counterDiv.className = 'text-warning small mt-1 text-end';
-            } else if (remaining < 50) {
-                counterDiv.className = 'text-danger small mt-1 text-end';
-            } else {
-                counterDiv.className = 'text-muted small mt-1 text-end';
-            }
-        }
-        
-        preguntaField.addEventListener('input', updateCounter);
-        updateCounter(); // Inicializar contador
-    }
-
-    // Mejoras de UX para la tabla estructurada
-    const structuredTable = document.querySelector('.table-structured');
-    if (structuredTable) {
-        // Añadir funcionalidad de ordenamiento visual (solo visual, no funcional)
-        const headers = structuredTable.querySelectorAll('th');
-        headers.forEach(header => {
-            if (header.textContent.includes('Edad') || header.textContent.includes('Nombre')) {
-                header.style.cursor = 'pointer';
-                header.title = 'Columna utilizada para ordenamiento';
-                
-                // Añadir icono de ordenamiento si la columna está ordenada
-                if (header.textContent.includes('Edad')) {
-                    header.innerHTML += ' <i class="fas fa-sort-up text-warning ms-1"></i>';
-                }
-            }
-        });
-        
-        // Efecto hover mejorado para filas
-        const rows = structuredTable.querySelectorAll('tbody tr');
-        rows.forEach(row => {
-            row.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = 'rgba(0, 123, 255, 0.08)';
-                this.style.cursor = 'default';
+    // Example questions click handler
+    const exampleQuestions = document.querySelectorAll(".examples-list li");
+    exampleQuestions.forEach(function (li) {
+      li.addEventListener("click", function () {
+        // Obtener solo el texto del span, no el ícono
+        const questionSpan = this.querySelector("span");
+        if (questionSpan) {
+          // Normalizar el texto: eliminar saltos de línea y múltiples espacios
+          const questionText = questionSpan.textContent
+            .replace(/\s+/g, " ") // Reemplazar cualquier secuencia de espacios/saltos de línea con un solo espacio
+            .trim(); // Eliminar espacios al inicio y final
+          preguntaField.value = questionText;
+          preguntaField.focus();
+          // Cerrar el acordeón después de seleccionar
+          const collapseElement = document.getElementById("collapseExamples");
+          if (collapseElement && collapseElement.classList.contains("show")) {
+            const bsCollapse = new bootstrap.Collapse(collapseElement, {
+              toggle: true,
             });
-            
-            row.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = '';
+          }
+          // Scroll suave al formulario
+          setTimeout(function () {
+            preguntaField.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
             });
-        });
-    }
-
-    // Tooltip para badges de género
-    const genderBadges = document.querySelectorAll('.badge-gender-masculino, .badge-gender-femenino, .badge-gender-nobinario');
-    genderBadges.forEach(badge => {
-        badge.title = `Género: ${badge.textContent}`;
-    });
-
-    // Tooltip para badges de edad
-    const ageBadges = document.querySelectorAll('.badge-edad');
-    ageBadges.forEach(badge => {
-        badge.title = `Edad calculada: ${badge.textContent}`;
-    });
-
-    // Quick action buttons para casos sin resultados
-    const quickActionButtons = document.querySelectorAll('.quick-action-btn');
-    quickActionButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const query = this.getAttribute('data-query');
-            if (query && preguntaField) {
-                preguntaField.value = query;
-                preguntaField.focus();
-                
-                // Efecto visual al hacer click
-                this.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    this.style.transform = 'scale(1)';
-                }, 150);
-            }
-        });
-    });
-    
-    // Indicador de scroll horizontal para tablas
-    const tableWrapper = document.querySelector('.table-responsive-wrapper');
-    if (tableWrapper) {
-        const table = tableWrapper.querySelector('table');
-        
-        function checkTableOverflow() {
-            if (table && table.scrollWidth > tableWrapper.clientWidth) {
-                // Crear indicador de scroll si no existe
-                let scrollIndicator = tableWrapper.querySelector('.scroll-indicator');
-                if (!scrollIndicator) {
-                    scrollIndicator = document.createElement('div');
-                    scrollIndicator.className = 'scroll-indicator';
-                    scrollIndicator.innerHTML = '<i class="fas fa-arrows-alt-h"></i> Desliza para ver más';
-                    scrollIndicator.style.cssText = `
-                        position: absolute;
-                        right: 20px;
-                        top: 10px;
-                        background: linear-gradient(135deg, #198754 0%, #20c997 100%);
-                        color: white;
-                        padding: 8px 16px;
-                        border-radius: 20px;
-                        font-size: 0.85rem;
-                        font-weight: 600;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                        z-index: 10;
-                        animation: pulse 2s ease-in-out infinite;
-                    `;
-                    tableWrapper.style.position = 'relative';
-                    tableWrapper.appendChild(scrollIndicator);
-                    
-                    // Ocultar indicador al hacer scroll
-                    tableWrapper.addEventListener('scroll', function() {
-                        if (scrollIndicator && tableWrapper.scrollLeft > 50) {
-                            scrollIndicator.style.opacity = '0';
-                            scrollIndicator.style.transition = 'opacity 0.3s ease';
-                        } else if (scrollIndicator) {
-                            scrollIndicator.style.opacity = '1';
-                        }
-                    });
-                }
-            }
+          }, 300);
         }
-        
-        // Verificar overflow al cargar y al redimensionar
-        checkTableOverflow();
-        window.addEventListener('resize', checkTableOverflow);
-    }
-});    // Quick action buttons para casos sin resultados
-    const quickActionButtons = document.querySelectorAll('.quick-action-btn');
-    quickActionButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const query = this.getAttribute('data-query');
-            if (query && preguntaField) {
-                preguntaField.value = query;
-                preguntaField.focus();
-                
-                // Efecto visual en el botón
-                this.style.transform = 'scale(0.95)';
-                this.style.opacity = '0.8';
-                setTimeout(() => {
-                    this.style.transform = '';
-                    this.style.opacity = '';
-                }, 150);
-                
-                // Auto-submit después de un breve delay para que el usuario vea el cambio
-                setTimeout(() => {
-                    if (form) {
-                        form.submit();
-                    }
-                }, 800);
-            }
-        });
-        
-        // Hover effect mejorado
-        button.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-        });
-        
-        button.addEventListener('mouseleave', function() {
-            this.style.transform = '';
-        });
+      });
     });
+  });
 </script>
 {% endblock %}
-
-
-

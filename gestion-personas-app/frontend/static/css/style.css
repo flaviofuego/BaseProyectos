@@ -1,103 +1,82 @@
-/* ====================================
-   SISTEMA DE TEMAS - MODO CLARO/OSCURO
-   ====================================*/
 
-/* Variables CSS para el modo claro */
 :root {
-  /* Colores de fondo */
   --bg-primary: #ffffff;
   --bg-secondary: #f8f9fa;
   --bg-tertiary: #e9ecef;
   --bg-card: #ffffff;
-  --bg-navbar: #0d6efd;
+  --bg-navbar: #5B4FC5;
   --bg-footer: #f8f9fa;
   
-  /* Colores de texto */
   --text-primary: #212529;
   --text-secondary: #6c757d;
   --text-muted: #8d9399;
   --text-inverse: #ffffff;
   
-  /* Colores de borde */
   --border-color: #dee2e6;
   --border-light: #e9ecef;
   --border-focus: #86b7fe;
   
-  /* Colores de estado */
   --color-primary: #0d6efd;
   --color-success: #198754;
   --color-danger: #dc3545;
   --color-warning: #ffc107;
   --color-info: #0dcaf0;
   
-  /* Colores de estado con alpha */
   --color-primary-alpha: rgba(13, 110, 253, 0.1);
   --color-success-alpha: rgba(25, 135, 84, 0.1);
   --color-danger-alpha: rgba(220, 53, 69, 0.1);
   --color-warning-alpha: rgba(255, 193, 7, 0.1);
   --color-info-alpha: rgba(13, 202, 240, 0.1);
   
-  /* Sombras */
   --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
   
-  /* Gradientes */
   --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --gradient-card: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
   
-  /* Transiciones */
   --transition-base: all 0.2s ease-in-out;
   --transition-fast: all 0.15s ease-in-out;
   --transition-slow: all 0.3s ease-in-out;
 }
 
-/* Variables CSS para el modo oscuro */
 [data-theme="dark"] {
-  /* Colores de fondo */
   --bg-primary: #0d1117;
   --bg-secondary: #161b22;
   --bg-tertiary: #21262d;
   --bg-card: #161b22;
-  --bg-navbar: #0969da;
+  --bg-navbar: #4B3FB5;
   --bg-footer: #161b22;
   
-  /* Colores de texto */
   --text-primary: #f0f6fc;
   --text-secondary: #8b949e;
   --text-muted: #7d8590;
   --text-inverse: #0d1117;
   
-  /* Colores de borde */
   --border-color: #30363d;
   --border-light: #21262d;
   --border-focus: #1f6feb;
   
-  /* Colores de estado adaptados para modo oscuro */
   --color-primary: #1f6feb;
   --color-success: #238636;
   --color-danger: #da3633;
   --color-warning: #d29922;
   --color-info: #0969da;
   
-  /* Colores de estado con alpha para modo oscuro */
   --color-primary-alpha: rgba(31, 111, 235, 0.15);
   --color-success-alpha: rgba(35, 134, 54, 0.15);
   --color-danger-alpha: rgba(218, 54, 51, 0.15);
   --color-warning-alpha: rgba(210, 153, 34, 0.15);
   --color-info-alpha: rgba(9, 105, 218, 0.15);
   
-  /* Sombras para modo oscuro */
   --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
   --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.5);
   
-  /* Gradientes para modo oscuro */
   --gradient-primary: linear-gradient(135deg, #1f6feb 0%, #8b5cf6 100%);
   --gradient-card: linear-gradient(135deg, #161b22 0%, #21262d 100%);
 }
 
-/* Fuerza colores específicos para modo oscuro */
 [data-theme="dark"] h1,
 [data-theme="dark"] h2,
 [data-theme="dark"] h3,
@@ -128,7 +107,6 @@
   color: var(--text-secondary) !important;
 }
 
-/* Corrige alertas específicas en modo oscuro */
 [data-theme="dark"] .alert-light {
   background-color: var(--bg-tertiary) !important;
   border-color: var(--border-color) !important;
@@ -141,7 +119,6 @@
   color: var(--text-primary) !important;
 }
 
-/* Corrige tablas y contenido en modo oscuro */
 [data-theme="dark"] table,
 [data-theme="dark"] .table {
   color: var(--text-primary) !important;
@@ -179,7 +156,6 @@
   color: var(--text-primary) !important;
 }
 
-/* Mejoras para badges y elementos en tablas de logs */
 [data-theme="dark"] .table .badge {
   color: white !important;
 }
@@ -215,7 +191,6 @@
   border: 1px solid var(--border-color) !important;
 }
 
-/* Botones dentro de tablas en modo oscuro */
 [data-theme="dark"] .table .btn {
   border-color: var(--border-color) !important;
 }
@@ -230,7 +205,6 @@
   color: white !important;
 }
 
-/* Asegura contraste en elementos de estado */
 [data-theme="dark"] .table .text-success {
   color: #2ea043 !important;
 }
@@ -253,7 +227,6 @@
   border: 1px solid var(--border-color) !important;
 }
 
-/* Corrige elementos de paginación */
 [data-theme="dark"] .pagination .page-link {
   background-color: var(--bg-card) !important;
   border-color: var(--border-color) !important;
@@ -272,15 +245,13 @@
   color: var(--text-muted) !important;
 }
 
-/* Configuración automática basada en preferencias del sistema */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* Aplica automáticamente el modo oscuro si no hay preferencia explícita */
     --bg-primary: #0d1117;
     --bg-secondary: #161b22;
     --bg-tertiary: #21262d;
     --bg-card: #161b22;
-    --bg-navbar: #0969da;
+    --bg-navbar: #4B3FB5;
     --bg-footer: #161b22;
     
     --text-primary: #f0f6fc;
@@ -312,7 +283,6 @@
     --gradient-card: linear-gradient(135deg, #161b22 0%, #21262d 100%);
   }
   
-  /* Fuerza colores para elementos de texto en modo automático oscuro */
   :root:not([data-theme="light"]) h1,
   :root:not([data-theme="light"]) h2,
   :root:not([data-theme="light"]) h3,
@@ -343,7 +313,6 @@
     color: var(--text-secondary) !important;
   }
   
-  /* Corrige alertas específicas en modo automático oscuro */
   :root:not([data-theme="light"]) .alert-light {
     background-color: var(--bg-tertiary) !important;
     border-color: var(--border-color) !important;
@@ -356,7 +325,6 @@
     color: var(--text-primary) !important;
   }
   
-  /* Corrige tablas y contenido en modo automático oscuro */
   :root:not([data-theme="light"]) table,
   :root:not([data-theme="light"]) .table {
     color: var(--text-primary) !important;
@@ -393,7 +361,6 @@
     border: 1px solid var(--border-color) !important;
   }
 
-  /* Corrige elementos de paginación en modo automático */
   :root:not([data-theme="light"]) .pagination .page-link {
     background-color: var(--bg-card) !important;
     border-color: var(--border-color) !important;
@@ -413,11 +380,6 @@
   }
 }
 
-/* ====================================
-   ESTILOS BASE DEL SISTEMA
-   ====================================*/
-
-/* Aplicación de variables a elementos base */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--bg-primary);
@@ -425,10 +387,6 @@ body {
   transition: var(--transition-base);
   line-height: 1.6;
 }
-
-/* ====================================
-   NAVEGACIÓN Y HEADER
-   ====================================*/
 
 .navbar-brand {
   font-weight: bold;
@@ -469,10 +427,6 @@ body {
   color: var(--text-primary);
 }
 
-/* ====================================
-   CARDS Y CONTENEDORES
-   ====================================*/
-
 .card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -500,7 +454,6 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
-/* Quick action cards */
 a.card {
   color: inherit;
   transition: var(--transition-base);
@@ -512,10 +465,6 @@ a.card:hover {
   text-decoration: none;
   transform: translateY(-3px);
 }
-
-/* ====================================
-   FORMULARIOS Y CONTROLES
-   ====================================*/
 
 .form-control {
   background-color: var(--bg-primary);
@@ -556,10 +505,6 @@ a.card:hover {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 0.2rem var(--color-primary-alpha);
 }
-
-/* ====================================
-   BOTONES
-   ====================================*/
 
 .btn {
   transition: var(--transition-fast);
@@ -622,10 +567,6 @@ a.card:hover {
   color: var(--text-inverse);
 }
 
-/* ====================================
-   ALERTAS Y NOTIFICACIONES
-   ====================================*/
-
 .alert {
   border: none;
   border-radius: 0.75rem;
@@ -657,14 +598,12 @@ a.card:hover {
   color: var(--color-info);
 }
 
-/* Estilos mejorados para mensajes de error específicos */
 .alert-danger {
   position: relative;
   padding-left: 3rem;
 }
 
 .alert-danger::before {
-  content: "⚠️";
   position: absolute;
   left: 1rem;
   top: 50%;
@@ -678,7 +617,7 @@ a.card:hover {
 }
 
 .alert-success::before {
-  content: "✅";
+
   position: absolute;
   left: 1rem;
   top: 50%;
@@ -686,7 +625,6 @@ a.card:hover {
   font-size: 1.2em;
 }
 
-/* Alertas dismissibles mejoradas */
 .alert-dismissible {
   padding-right: 4rem;
 }
@@ -708,7 +646,6 @@ a.card:hover {
   opacity: 0.75;
 }
 
-/* Animación de entrada para alertas */
 .alert {
   animation: slideInFromTop 0.3s ease-out;
 }
@@ -724,11 +661,6 @@ a.card:hover {
   }
 }
 
-/* ====================================
-   PÁGINAS ESPECIALES
-   ====================================*/
-
-/* Login page styling */
 .min-vh-100 {
   background: var(--gradient-primary);
 }
@@ -739,10 +671,6 @@ a.card:hover {
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-lg);
 }
-
-/* ====================================
-   DASHBOARD Y ESTADÍSTICAS
-   ====================================*/
 
 .stats-card {
   border-left: 4px solid;
@@ -770,10 +698,6 @@ a.card:hover {
 .stats-card.border-warning {
   border-left-color: var(--color-warning) !important;
 }
-
-/* ====================================
-   TABLAS
-   ====================================*/
 
 .table {
   background-color: var(--bg-card);
@@ -803,11 +727,6 @@ a.card:hover {
   border-color: var(--border-light);
 }
 
-/* ====================================
-   ELEMENTOS VISUALES
-   ====================================*/
-
-/* Photo display */
 .person-photo {
   width: 60px;
   height: 60px;
@@ -824,14 +743,12 @@ a.card:hover {
   border: 2px solid var(--border-color);
 }
 
-/* Status badges */
 .badge-status {
   font-size: 0.75em;
   padding: 0.25em 0.5em;
   border-radius: 0.5rem;
 }
 
-/* Icons */
 .success-icon {
   color: var(--color-success);
   font-size: 1.2em;
@@ -852,11 +769,6 @@ a.card:hover {
   font-size: 1.2em;
 }
 
-/* ====================================
-   CONTENEDORES Y LAYOUTS
-   ====================================*/
-
-/* Search form styling */
 .search-form {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -866,7 +778,6 @@ a.card:hover {
   box-shadow: var(--shadow-sm);
 }
 
-/* Results styling */
 .results-container {
   max-height: 600px;
   overflow-y: auto;
@@ -875,7 +786,6 @@ a.card:hover {
   border-radius: 0.75rem;
 }
 
-/* NLP Query styling */
 .nlp-examples {
   background: var(--gradient-card);
   border-radius: 0.75rem;
@@ -895,7 +805,6 @@ a.card:hover {
   transform: translateX(5px);
 }
 
-/* Chart containers */
 .chart-container {
   position: relative;
   height: 300px;
@@ -904,10 +813,6 @@ a.card:hover {
   border-radius: 0.75rem;
   padding: 1rem;
 }
-
-/* ====================================
-   FOOTER
-   ====================================*/
 
 footer {
   margin-top: auto;
@@ -919,11 +824,6 @@ footer {
 footer .text-muted {
   color: var(--text-muted) !important;
 }
-
-/* ====================================
-   SELECTOR DE TEMA
-   ====================================*/
-
 .theme-selector {
   position: relative;
   display: inline-flex;
@@ -969,16 +869,10 @@ footer .text-muted {
   font-size: 1rem;
 }
 
-/* Tooltip para accesibilidad */
 .theme-toggle[title] {
   position: relative;
 }
 
-/* ====================================
-   ANIMACIONES Y TRANSICIONES
-   ====================================*/
-
-/* Animaciones de entrada */
 @keyframes fadeIn {
   from { 
     opacity: 0; 
@@ -1050,7 +944,6 @@ footer .text-muted {
   }
 }
 
-/* Clases de animación */
 .fade-in {
   animation: fadeIn 0.5s ease-in-out;
 }
@@ -1071,7 +964,6 @@ footer .text-muted {
   animation: pulse 2s infinite;
 }
 
-/* Transiciones suaves para cambio de páginas */
 .page-transition {
   transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
@@ -1086,11 +978,6 @@ footer .text-muted {
   transform: scale(1);
 }
 
-/* ====================================
-   LOADERS Y ESTADOS DE CARGA
-   ====================================*/
-
-/* Loader principal */
 .main-loader {
   position: fixed;
   top: 0;
@@ -1111,7 +998,6 @@ footer .text-muted {
   pointer-events: none;
 }
 
-/* Spinner principal */
 .spinner-main {
   width: 60px;
   height: 60px;
@@ -1121,7 +1007,6 @@ footer .text-muted {
   animation: spin 1s linear infinite;
 }
 
-/* Loader de contenido */
 .content-loader {
   position: relative;
   min-height: 200px;
@@ -1139,7 +1024,6 @@ footer .text-muted {
   animation: spin 0.8s linear infinite;
 }
 
-/* Loader de tabla */
 .table-loader {
   position: absolute;
   top: 0;
@@ -1153,7 +1037,6 @@ footer .text-muted {
   z-index: 10;
 }
 
-/* Skeleton loaders */
 .skeleton {
   background: linear-gradient(90deg, 
     var(--bg-secondary) 25%, 
@@ -1189,7 +1072,6 @@ footer .text-muted {
   margin-bottom: 1rem;
 }
 
-/* Loading overlay para cards */
 .card.loading {
   position: relative;
   pointer-events: none;
@@ -1226,7 +1108,6 @@ footer .text-muted {
   z-index: 6;
 }
 
-/* Estados de loading para botones */
 .btn.loading {
   position: relative;
   color: transparent !important;
@@ -1247,7 +1128,6 @@ footer .text-muted {
   animation: spin 0.8s linear infinite;
 }
 
-/* Loading para formularios */
 .form-group.loading {
   position: relative;
 }
@@ -1270,7 +1150,6 @@ footer .text-muted {
   animation: spin 1s linear infinite;
 }
 
-/* Progress bars animados */
 .progress-animated .progress-bar {
   background-image: linear-gradient(
     45deg,
@@ -1292,7 +1171,6 @@ footer .text-muted {
   }
 }
 
-/* Indicador de loading en navegación */
 .nav-loading {
   position: absolute;
   top: 0;
@@ -1316,12 +1194,6 @@ footer .text-muted {
     transform: scaleX(1);
   }
 }
-
-/* ====================================
-   ESTADOS Y VALIDACIÓN
-   ====================================*/
-
-/* Loading states */
 .loading {
   opacity: 0.6;
   pointer-events: none;
@@ -1353,7 +1225,6 @@ footer .text-muted {
   height: 1rem;
 }
 
-/* Validation styling */
 .is-invalid {
   border-color: var(--color-danger) !important;
 }
@@ -1372,7 +1243,6 @@ footer .text-muted {
   color: var(--color-success);
 }
 
-/* File upload styling */
 .file-upload-wrapper {
   position: relative;
   overflow: hidden;
@@ -1384,11 +1254,6 @@ footer .text-muted {
   left: -9999px;
 }
 
-/* ====================================
-   RESPONSIVE DESIGN
-   ====================================*/
-
-/* Tablets y móviles */
 @media (max-width: 768px) {
   .container {
     padding: 0 15px;
@@ -1425,7 +1290,6 @@ footer .text-muted {
   }
 }
 
-/* Móviles pequeños */
 @media (max-width: 576px) {
   .card {
     margin-bottom: 1rem;
@@ -1450,11 +1314,6 @@ footer .text-muted {
   }
 }
 
-/* ====================================
-   PREFERENCIAS DE ACCESIBILIDAD
-   ====================================*/
-
-/* Reduce motion para usuarios que lo prefieren */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1466,7 +1325,6 @@ footer .text-muted {
   }
 }
 
-/* Alto contraste */
 @media (prefers-contrast: high) {
   :root {
     --border-color: #000000;
@@ -1481,11 +1339,6 @@ footer .text-muted {
   }
 }
 
-/* ====================================
-   UTILIDADES Y HELPERS
-   ====================================*/
-
-/* Utilidades de texto */
 .text-primary-custom {
   color: var(--text-primary) !important;
 }
@@ -1498,7 +1351,6 @@ footer .text-muted {
   color: var(--text-muted) !important;
 }
 
-/* Utilidades de fondo */
 .bg-primary-custom {
   background-color: var(--bg-primary) !important;
 }
@@ -1511,7 +1363,6 @@ footer .text-muted {
   background-color: var(--bg-card) !important;
 }
 
-/* Utilidades de borde */
 .border-custom {
   border: 1px solid var(--border-color) !important;
 }
@@ -1520,7 +1371,6 @@ footer .text-muted {
   border: 1px solid var(--border-light) !important;
 }
 
-/* Focus visible para navegación por teclado */
 .btn:focus-visible,
 .form-control:focus-visible,
 .form-select:focus-visible {
@@ -1528,7 +1378,6 @@ footer .text-muted {
   outline-offset: 2px;
 }
 
-/* Skip link para lectores de pantalla */
 .skip-link {
   position: absolute;
   top: -40px;
@@ -1544,10 +1393,6 @@ footer .text-muted {
 .skip-link:focus {
   top: 0;
 }
-
-/* ====================================
-   MODO DE IMPRESIÓN
-   ====================================*/
 
 @media print {
   .navbar,
@@ -1577,11 +1422,6 @@ footer .text-muted {
   }
 }
 
-/* ====================================
-   LEGACY SUPPORT
-   ====================================*/
-
-/* Fallback para navegadores que no soportan variables CSS */
 @supports not (color: var(--color-primary)) {
   body {
     background-color: #ffffff;
@@ -1603,407 +1443,6 @@ footer .text-muted {
   }
 }
 
-/* ==============================
-   NOTIFICATION DROPDOWN STYLES
-   ============================== */
-
-/* Dropdown de notificaciones */
-.notification-dropdown {
-    width: 350px;
-    max-height: 400px;
-    border: 1px solid var(--bs-border-color);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.notification-dropdown .dropdown-header {
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-    background-color: var(--bs-light);
-    border-bottom: 1px solid var(--bs-border-color);
-}
-
-.notification-list {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-/* Item de notificación */
-.notification-item {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--bs-border-color-translucent);
-    cursor: pointer;
-    transition: background-color 0.15s ease-in-out;
-    position: relative;
-}
-
-.notification-item:last-child {
-    border-bottom: none;
-}
-
-.notification-item:hover {
-    background-color: var(--bs-light);
-}
-
-.notification-item.unread {
-    background-color: var(--bs-primary-bg-subtle);
-    border-left: 3px solid var(--bs-primary);
-}
-
-.notification-item.unread::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    right: 0.5rem;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    background-color: var(--bs-primary);
-    border-radius: 50%;
-}
-
-/* Contenido de notificación del dropdown */
-.notification-dropdown .notification-icon {
-    min-width: 20px;
-    text-align: center;
-}
-
-.notification-dropdown .notification-content {
-    min-width: 0; /* Para permitir que el texto se truncue */
-}
-
-.notification-dropdown .notification-title {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: var(--bs-body-color);
-}
-
-.notification-dropdown .notification-message {
-    font-size: 0.875rem;
-    color: var(--bs-body-color);
-    line-height: 1.4;
-    margin-bottom: 0.25rem;
-    word-wrap: break-word;
-    hyphens: auto;
-}
-
-.notification-dropdown .notification-time {
-    margin-top: 0.25rem;
-}
-
-.notification-remove {
-    opacity: 0;
-    transition: opacity 0.15s ease-in-out;
-    padding: 0.25rem;
-    margin: -0.25rem;
-}
-
-.notification-item:hover .notification-remove {
-    opacity: 1;
-}
-
-.notification-remove:hover {
-    color: var(--bs-danger) !important;
-}
-
-/* Badge de notificaciones */
-#notification-badge {
-    font-size: 0.6rem;
-    min-width: 16px;
-    height: 16px;
-    line-height: 1;
-    padding: 2px 4px;
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0% { transform: translate(-50%, -50%) scale(1); }
-    50% { transform: translate(-50%, -50%) scale(1.1); }
-    100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-/* Icono de campana */
-.nav-link .fa-bell {
-    transition: transform 0.15s ease-in-out;
-}
-
-.nav-link:hover .fa-bell {
-    transform: rotate(15deg);
-}
-
-/* Responsive adjustments */
-@media (max-width: 576px) {
-    .notification-dropdown {
-        width: 300px;
-        margin-right: -1rem;
-    }
-    
-    .notification-item {
-        padding: 0.5rem;
-    }
-    
-    .notification-dropdown .notification-message {
-        font-size: 0.8rem;
-    }
-}
-
-/* Tema oscuro */
-[data-bs-theme="dark"] .notification-dropdown {
-    background-color: var(--bs-dark);
-    border-color: var(--bs-border-color);
-}
-
-[data-bs-theme="dark"] .notification-dropdown .dropdown-header {
-    background-color: var(--bs-dark-border-subtle);
-    color: var(--bs-light);
-}
-
-[data-bs-theme="dark"] .notification-item:hover {
-    background-color: var(--bs-dark-border-subtle);
-}
-
-[data-bs-theme="dark"] .notification-item.unread {
-    background-color: rgba(13, 110, 253, 0.15);
-}
-
-/* Scrollbar personalizado para el tema */
-.notification-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.notification-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.notification-list::-webkit-scrollbar-thumb {
-    background: var(--bs-border-color);
-    border-radius: 3px;
-}
-
-.notification-list::-webkit-scrollbar-thumb:hover {
-    background: var(--bs-secondary);
-}
-
-/* Estados vacíos */
-.notification-list .dropdown-item-text {
-    pointer-events: none;
-}
-
-.notification-list .fa-bell-slash {
-    opacity: 0.5;
-}
-
-/* Animación de entrada para nuevas notificaciones */
-.notification-item.new-notification {
-    animation: slideInNotification 0.3s ease-out;
-}
-
-@keyframes slideInNotification {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* ====================================
-   NOTIFICACIONES MEJORADAS
-   ====================================*/
-
-.notification-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    max-width: 400px;
-    width: auto;
-    min-width: 300px;
-}
-
-.notification {
-    margin-bottom: 10px;
-    padding: 15px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border-left: 4px solid;
-    animation: slideInRight 0.3s ease-out;
-    position: relative;
-    background: var(--bs-body-bg);
-    color: var(--bs-body-color);
-    border-color: var(--bs-border-color);
-}
-
-.notification.success {
-    border-left-color: #28a745;
-    background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%);
-}
-
-.notification.error {
-    border-left-color: #dc3545;
-    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%);
-}
-
-.notification.warning {
-    border-left-color: #ffc107;
-    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
-}
-
-.notification.info {
-    border-left-color: #17a2b8;
-    background: linear-gradient(135deg, rgba(23, 162, 184, 0.1) 0%, rgba(23, 162, 184, 0.05) 100%);
-}
-
-.notification-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-.notification-icon {
-    font-size: 20px;
-    line-height: 1;
-    margin-top: 2px;
-    flex-shrink: 0;
-}
-
-.notification-message {
-    flex: 1;
-    font-size: 14px;
-    line-height: 1.4;
-    word-wrap: break-word;
-}
-
-.notification-close {
-    position: absolute;
-    top: 8px;
-    right: 12px;
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: var(--bs-secondary);
-    cursor: pointer;
-    padding: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s ease;
-}
-
-.notification-close:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-    color: var(--bs-body-color);
-}
-
-.notification-progress {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
-    transition: width linear;
-}
-
-.notification.success .notification-progress {
-    background-color: #28a745;
-}
-
-.notification.error .notification-progress {
-    background-color: #dc3545;
-}
-
-.notification.warning .notification-progress {
-    background-color: #ffc107;
-}
-
-.notification.info .notification-progress {
-    background-color: #17a2b8;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-.notification.hiding {
-    animation: slideOutRight 0.3s ease-in forwards;
-}
-
-/* Modo oscuro para notificaciones */
-[data-bs-theme="dark"] .notification {
-    background: var(--bs-dark);
-    color: var(--bs-light);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-[data-bs-theme="dark"] .notification.success {
-    background: linear-gradient(135deg, rgba(40, 167, 69, 0.2) 0%, rgba(40, 167, 69, 0.1) 100%);
-}
-
-[data-bs-theme="dark"] .notification.error {
-    background: linear-gradient(135deg, rgba(220, 53, 69, 0.2) 0%, rgba(220, 53, 69, 0.1) 100%);
-}
-
-[data-bs-theme="dark"] .notification.warning {
-    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 193, 7, 0.1) 100%);
-}
-
-[data-bs-theme="dark"] .notification.info {
-    background: linear-gradient(135deg, rgba(23, 162, 184, 0.2) 0%, rgba(23, 162, 184, 0.1) 100%);
-}
-
-[data-bs-theme="dark"] .notification-close:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Responsive para notificaciones */
-@media (max-width: 768px) {
-    .notification-container {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-        min-width: auto;
-    }
-    
-    .notification {
-        margin-bottom: 8px;
-        padding: 12px 16px;
-    }
-    
-    .notification-message {
-        font-size: 13px;
-    }
-}
-
-/* ====================================
-   FORMULARIOS Y VALIDACIÓN
-   ====================================*/
-
-/* Campos de formulario con error */
 .form-control.is-invalid {
     border-color: #dc3545;
     padding-right: calc(1.5em + 0.75rem);
@@ -2019,14 +1458,12 @@ footer .text-muted {
     box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
 }
 
-/* Animación de sacudida para campos con error */
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
     10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
     20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
-/* Alertas en formularios */
 .alert {
     border-left: 4px solid;
     border-radius: 0.5rem;
@@ -2064,7 +1501,6 @@ footer .text-muted {
     }
 }
 
-/* Estado de carga en botones */
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -2079,7 +1515,6 @@ footer .text-muted {
     to { transform: rotate(360deg); }
 }
 
-/* Feedback visual para campos válidos */
 .form-control.is-valid {
     border-color: #28a745;
     padding-right: calc(1.5em + 0.75rem);

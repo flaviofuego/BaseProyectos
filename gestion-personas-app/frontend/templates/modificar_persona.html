@@ -2,7 +2,12 @@
 
 {% block title %}Modificar Persona - Sistema de Gestión de Personas{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modificar_persona.css') }}">
+{% endblock %}
+
 {% block content %}
+<div class="container mt-4">
 <div class="row">
     <div class="col-12">
         <h1 class="mb-4">
@@ -29,10 +34,10 @@
                         <div class="form-text">Ingresa el número de documento de la persona que deseas modificar</div>
                     </div>
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-secondary-custom">
                             <i class="fas fa-arrow-left"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary btn-primary-custom">
                             <i class="fas fa-search"></i> Buscar Persona
                         </button>
                     </div>
@@ -164,16 +169,16 @@
                                 <div>
                                     <form method="POST" style="display: inline;">
                                         <input type="hidden" name="action" value="limpiar_busqueda">
-                                        <button type="submit" class="btn btn-secondary">
+                                        <button type="submit" class="btn btn-secondary btn-secondary-custom">
                                             <i class="fas fa-arrow-left"></i> Buscar Otra Persona
                                         </button>
                                     </form>
                                 </div>
                                 <div>
-                                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary me-2">
+                                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-secondary-custom me-2">
                                         <i class="fas fa-times"></i> Cancelar
                                     </a>
-                                    <button type="submit" class="btn btn-warning">
+                                    <button type="submit" class="btn btn-warning btn-primary-custom">
                                         <i class="fas fa-save"></i> Actualizar Persona
                                     </button>
                                 </div>
@@ -186,6 +191,7 @@
     </div>
 </div>
 {% endif %}
+</div>
 {% endblock %}
 
 {% block extra_js %}
