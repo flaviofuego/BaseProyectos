@@ -1,163 +1,666 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block title %}Iniciar Sesión - Sistema de Gestión
+de Personas{% endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/login.css') }}"
+/>
+{% endblock %} {% block content %}
+<div class="login-container">
+  <div class="login-panel-left">
+    <div class="login-form-wrapper">
+      <div class="login-logo">
+        <h1><i class="fas fa-users"></i> Sistema de Gestión de Personas</h1>
+        <p>Administra tu información de forma segura</p>
+      </div>
 
-{% block title %}Iniciar Sesión - Sistema de Gestión de Personas{% endblock %}
+      <div class="auth-toggle">
+        <button
+          class="auth-toggle-btn active"
+          id="loginToggle"
+          onclick="showLoginForm()"
+        >
+          Iniciar Sesión
+        </button>
+        <button
+          class="auth-toggle-btn"
+          id="registerToggle"
+          onclick="showRegisterForm()"
+        >
+          Registrarse
+        </button>
+      </div>
 
-{% block content %}
-<div class="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card shadow">
-                    <div class="card-body p-5">
-                        <div class="text-center mb-4">
-                            <i class="fas fa-users fa-3x text-primary mb-3"></i>
-                            <h2 class="card-title">Sistema de Gestión de Personas</h2>
-                            <p class="text-muted">Iniciar Sesión</p>
-                        </div>
+      <h2 class="login-title" id="formTitle">Iniciar Sesión</h2>
 
-                        <form method="POST">
-                            <!-- Login Method Selection -->
-                            <div class="mb-4">
-                                <label class="form-label">Método de autenticación</label>
-                                <div class="btn-group w-100" role="group">
-                                    <input type="radio" class="btn-check" name="login_method" id="local" value="local" checked>
-                                    <label class="btn btn-outline-primary" for="local">
-                                        <i class="fas fa-user"></i> Local
-                                    </label>
-                                    
-                                    <input type="radio" class="btn-check" name="login_method" id="auth0" value="auth0">
-                                    <label class="btn btn-outline-primary" for="auth0">
-                                        <i class="fas fa-shield-alt"></i> Auth0 SSO
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Local Login Form -->
-                            <div id="localForm">
-                                <div class="mb-3">
-                                    <label for="username" class="form-label">Usuario</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                        <input type="text" class="form-control" id="username" name="username" 
-                                               placeholder="Ingresa tu usuario" required>
-                                    </div>
-                                </div>
-
-                                <div class="mb-4">
-                                    <label for="password" class="form-label">Contraseña</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                        <input type="password" class="form-control" id="password" name="password" 
-                                               placeholder="Ingresa tu contraseña" required>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-6">
-                                        <button type="submit" class="btn btn-primary w-100">
-                                            <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-                                        </button>
-                                    </div>
-                                    <div class="col-6">
-                                        <a href="{{ url_for('register') }}" class="btn btn-outline-secondary w-100">
-                                            <i class="fas fa-user-plus"></i> Registrarse
-                                        </a>
-                                    </div>
-                                </div>
-                                
-                                <!-- Quick Login for Development -->
-                                <div class="mt-3">
-                                    <a href="{{ url_for('quick_login') }}" class="btn btn-success w-100">
-                                        <i class="fas fa-bolt"></i> Login Rápido (Desarrollo)
-                                    </a>
-                                </div>
-                            </div>
-
-                            <!-- Auth0 Login Button (hidden by default) -->
-                            <div id="auth0Form" style="display: none;">
-                                <button type="button" class="btn btn-primary w-100" onclick="loginWithAuth0()">
-                                    <i class="fas fa-shield-alt"></i> Iniciar sesión con Auth0
-                                </button>
-                                
-                                <div class="mt-3 p-3 bg-light rounded">
-                                    <small class="text-muted">
-                                        <i class="fas fa-info-circle"></i>
-                                        Auth0 soporta múltiples proveedores: Google, GitHub, Microsoft, Facebook y más.
-                                    </small>
-                                </div>
-                            </div>
-                        </form>
-
-                        <!-- Default Credentials Info -->
-                        <div class="mt-4 p-3 bg-light rounded" id="defaultCredentials">
-                            <small class="text-muted">
-                                <strong>Credenciales por defecto:</strong><br>
-                                Usuario: <code>admin</code><br>
-                                Contraseña: <code>NuevaPassword456!!</code>
-                            </small>
-                        </div>
-
-                        <!-- Error message display -->
-                        {% if request.args.error %}
-                        <div class="mt-3 alert alert-danger">
-                            {% if request.args.error == 'auth_error' %}
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Error en la autenticación con Auth0. Inténtalo de nuevo.
-                            {% elif request.args.error == 'auth_failed' %}
-                                <i class="fas fa-times-circle"></i>
-                                La autenticación con Auth0 falló. Verifica tus credenciales.
-                            {% else %}
-                                <i class="fas fa-exclamation-circle"></i>
-                                {{ request.args.error }}
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+      <form method="POST" id="loginFormContainer" action="/login">
+        <div class="auth-method-selector">
+          <label>Método de autenticación</label>
+          <div class="method-options">
+            <div class="method-option">
+              <input
+                type="radio"
+                name="login_method"
+                id="local"
+                value="local"
+                checked
+              />
+              <label for="local"> <i class="fas fa-user"></i> Local </label>
             </div>
+            <div class="method-option">
+              <input
+                type="radio"
+                name="login_method"
+                id="auth0"
+                value="auth0"
+              />
+              <label for="auth0">
+                <i class="fas fa-shield-alt"></i> Auth0 SSO
+              </label>
+            </div>
+          </div>
         </div>
+
+        <div id="localForm">
+          <div class="form-group">
+            <label for="username">Usuario</label>
+            <input
+              type="text"
+              class="form-control-clean"
+              id="username"
+              name="username"
+              placeholder="Ingresa tu usuario"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Contraseña</label>
+            <input
+              type="password"
+              class="form-control-clean"
+              id="password"
+              name="password"
+              placeholder="Ingresa tu contraseña"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn-primary-clean" id="loginButton">
+            <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+          </button>
+
+          <a href="{{ url_for('quick_login') }}" class="btn-secondary-clean">
+            <i class="fas fa-bolt"></i> Login Rápido (Desarrollo)
+          </a>
+
+          <div
+            id="rateLimitWarning"
+            class="alert-clean alert-danger mt-3"
+            style="display: none"
+          >
+            <div class="d-flex align-items-center">
+              <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+              <div class="flex-grow-1">
+                <strong>⏱️ Demasiados intentos de inicio de sesión</strong>
+                <div id="rateLimitMessage" class="small mt-1"></div>
+                <div class="mt-2">
+                  <strong>Tiempo restante:</strong>
+                  <span
+                    id="rateLimitCountdown"
+                    class="badge bg-danger fs-6"
+                  ></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box" id="defaultCredentials">
+            <small>
+              <strong>Credenciales por defecto:</strong><br />
+              Usuario: <code>admin</code><br />
+              Contraseña: <code>NuevaPassword456!!</code>
+            </small>
+          </div>
+        </div>
+
+        <div id="auth0Form" style="display: none">
+          <button
+            type="button"
+            class="btn-primary-clean"
+            onclick="loginWithAuth0()"
+          >
+            <i class="fas fa-shield-alt"></i> Iniciar sesión con Auth0
+          </button>
+
+          <div class="info-box mt-3">
+            <small>
+              <i class="fas fa-info-circle"></i>
+              Auth0 soporta múltiples proveedores: Google, GitHub, Microsoft,
+              Facebook y más.
+            </small>
+          </div>
+        </div>
+      </form>
+
+      <form
+        method="POST"
+        id="registerFormContainer"
+        action="/register?from_login=true"
+        style="display: none"
+      >
+        <div class="form-group">
+          <label for="reg_username">Usuario</label>
+          <input
+            type="text"
+            class="form-control-clean"
+            id="reg_username"
+            name="username"
+            placeholder="Elige un nombre de usuario"
+            required
+          />
+          <div id="username-requirements" class="mt-2" style="display: none">
+            <div id="username-length" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Mínimo 3 caracteres</span>
+            </div>
+            <div id="username-format" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Solo letras minúsculas, números y guión bajo (_)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg_email">Correo Electrónico</label>
+          <input
+            type="email"
+            class="form-control-clean"
+            id="reg_email"
+            name="email"
+            placeholder="tu@email.com"
+            required
+          />
+          <div id="email-requirements" class="mt-2" style="display: none">
+            <div id="email-format" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Formato de email válido (usuario@dominio.com)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg_password">Contraseña</label>
+          <input
+            type="password"
+            class="form-control-clean"
+            id="reg_password"
+            name="password"
+            placeholder="Mínimo 8 caracteres"
+            required
+          />
+          <div id="password-requirements" class="mt-2" style="display: none">
+            <div id="password-length" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Mínimo 8 caracteres</span>
+            </div>
+            <div id="password-lowercase" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Al menos una letra minúscula</span>
+            </div>
+            <div id="password-uppercase" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Al menos una letra mayúscula</span>
+            </div>
+            <div id="password-number" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Al menos un número</span>
+            </div>
+            <div id="password-special" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Al menos un carácter especial (@$!%*?&)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg_confirm_password">Confirmar Contraseña</label>
+          <input
+            type="password"
+            class="form-control-clean"
+            id="reg_confirm_password"
+            name="confirm_password"
+            placeholder="Repite la contraseña"
+            required
+          />
+          <div id="password-match-indicator" class="mt-2" style="display: none">
+            <div id="password-match" class="requirement-item">
+              <i class="fas fa-circle-notch"></i>
+              <span>Las contraseñas coinciden</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="registerRateLimitWarning"
+          class="alert-clean alert-danger"
+          style="display: none"
+        >
+          <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+            <div class="flex-grow-1">
+              <strong>Demasiados intentos de registro</strong>
+              <div id="registerRateLimitMessage" class="small mt-1"></div>
+              <div class="mt-2">
+                <strong>Tiempo restante:</strong>
+                <span
+                  id="registerRateLimitCountdown"
+                  class="badge bg-danger fs-6"
+                ></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary-clean" id="registerButton">
+          <i class="fas fa-user-plus"></i> Registrarse
+        </button>
+
+        <button
+          type="button"
+          class="btn-secondary-clean"
+          onclick="showLoginForm()"
+        >
+          <i class="fas fa-arrow-left"></i> Volver
+        </button>
+      </form>
     </div>
+  </div>
+
+  <div class="login-panel-right">
+    <div class="bg-decoration bg-decoration-1"></div>
+    <div class="bg-decoration bg-decoration-2"></div>
+
+    <div class="illustration-wrapper">
+      <div class="illustration-icon">
+        <i class="fas fa-users-cog"></i>
+      </div>
+      <div class="illustration-text">
+        <h2>Gestiona tu equipo</h2>
+        <p>
+          Administra personas, consulta información y mantén todo organizado en
+          un solo lugar.
+        </p>
+      </div>
+    </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const localRadio = document.getElementById('local');
-    const auth0Radio = document.getElementById('auth0');
-    const localForm = document.getElementById('localForm');
-    const auth0Form = document.getElementById('auth0Form');
-    const defaultCredentials = document.getElementById('defaultCredentials');
+  function showLoginForm() {
+    document.getElementById("loginFormContainer").style.display = "block";
+    document.getElementById("registerFormContainer").style.display = "none";
+    document.getElementById("formTitle").textContent = "Iniciar Sesión";
+    document.getElementById("loginToggle").classList.add("active");
+    document.getElementById("registerToggle").classList.remove("active");
+  }
 
-    function toggleForms() {
-        if (localRadio.checked) {
-            localForm.style.display = 'block';
-            auth0Form.style.display = 'none';
-            defaultCredentials.style.display = 'block';
-            document.getElementById('username').required = true;
-            document.getElementById('password').required = true;
-        } else {
-            localForm.style.display = 'none';
-            auth0Form.style.display = 'block';
-            defaultCredentials.style.display = 'none';
-            document.getElementById('username').required = false;
-            document.getElementById('password').required = false;
-        }
+  function showRegisterForm() {
+    document.getElementById("loginFormContainer").style.display = "none";
+    document.getElementById("registerFormContainer").style.display = "block";
+    document.getElementById("formTitle").textContent = "Registro de Usuario";
+    document.getElementById("loginToggle").classList.remove("active");
+    document.getElementById("registerToggle").classList.add("active");
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get("mode");
+
+    if (mode === "register") {
+      showRegisterForm();
     }
 
-    localRadio.addEventListener('change', toggleForms);
-    auth0Radio.addEventListener('change', toggleForms);
-});
+    const localRadio = document.getElementById("local");
+    const auth0Radio = document.getElementById("auth0");
+    const localForm = document.getElementById("localForm");
+    const auth0Form = document.getElementById("auth0Form");
+    const defaultCredentials = document.getElementById("defaultCredentials");
+    const loginButton = document.getElementById("loginButton");
+    const rateLimitWarning = document.getElementById("rateLimitWarning");
+    const rateLimitMessage = document.getElementById("rateLimitMessage");
+    const rateLimitCountdown = document.getElementById("rateLimitCountdown");
 
-function loginWithAuth0() {
-    // Mostrar indicador de carga
+    let countdownInterval = null;
+
+    function toggleForms() {
+      if (localRadio.checked) {
+        localForm.style.display = "block";
+        auth0Form.style.display = "none";
+        defaultCredentials.style.display = "block";
+        document.getElementById("username").required = true;
+        document.getElementById("password").required = true;
+      } else {
+        localForm.style.display = "none";
+        auth0Form.style.display = "block";
+        defaultCredentials.style.display = "none";
+        document.getElementById("username").required = false;
+        document.getElementById("password").required = false;
+      }
+    }
+
+    localRadio.addEventListener("change", toggleForms);
+    auth0Radio.addEventListener("change", toggleForms);
+
+    function formatTime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m ${secs}s`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+      } else {
+        return `${secs}s`;
+      }
+    }
+
+    function updateCountdown(secondsRemaining) {
+      if (secondsRemaining <= 0) {
+        // Bloqueo expirado
+        rateLimitWarning.style.display = "none";
+        loginButton.disabled = false;
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+        return;
+      }
+
+      rateLimitCountdown.textContent = formatTime(secondsRemaining);
+    }
+
+    function checkRateLimitStatus() {
+      fetch("/api/rate-limit-status")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.login.blocked) {
+            rateLimitWarning.style.display = "block";
+            rateLimitMessage.textContent = data.login.message;
+            loginButton.disabled = true;
+
+            let secondsRemaining = data.login.seconds_remaining;
+            updateCountdown(secondsRemaining);
+
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
+            }
+
+            countdownInterval = setInterval(() => {
+              secondsRemaining--;
+              updateCountdown(secondsRemaining);
+
+              if (secondsRemaining <= 0) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+                setTimeout(checkRateLimitStatus, 1000);
+              }
+            }, 1000);
+          } else {
+            rateLimitWarning.style.display = "none";
+            loginButton.disabled = false;
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
+              countdownInterval = null;
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking rate limit status:", error);
+        });
+    }
+
+    checkRateLimitStatus();
+
+    setInterval(() => {
+      if (!countdownInterval) {
+        checkRateLimitStatus();
+      }
+    }, 5000);
+
+    const regUsername = document.getElementById("reg_username");
+    const regEmail = document.getElementById("reg_email");
+    const regPassword = document.getElementById("reg_password");
+    const regConfirmPassword = document.getElementById("reg_confirm_password");
+    const registerButton = document.getElementById("registerButton");
+
+    regUsername.addEventListener("input", function () {
+      const username = this.value;
+      const requirementsDiv = document.getElementById("username-requirements");
+      const lengthItem = document.getElementById("username-length");
+      const formatItem = document.getElementById("username-format");
+
+      if (username.length > 0) {
+        requirementsDiv.style.display = "block";
+
+        if (username.length >= 3) {
+          lengthItem.classList.remove("invalid");
+          lengthItem.classList.add("valid");
+        } else {
+          lengthItem.classList.remove("valid");
+          lengthItem.classList.add("invalid");
+        }
+
+        const formatRegex = /^[a-z0-9_]+$/;
+        if (formatRegex.test(username)) {
+          formatItem.classList.remove("invalid");
+          formatItem.classList.add("valid");
+        } else {
+          formatItem.classList.remove("valid");
+          formatItem.classList.add("invalid");
+        }
+      } else {
+        requirementsDiv.style.display = "none";
+        lengthItem.classList.remove("valid", "invalid");
+        formatItem.classList.remove("valid", "invalid");
+      }
+    });
+
+    regEmail.addEventListener("input", function () {
+      const email = this.value;
+      const requirementsDiv = document.getElementById("email-requirements");
+      const formatItem = document.getElementById("email-format");
+
+      if (email.length > 0) {
+        requirementsDiv.style.display = "block";
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailRegex.test(email)) {
+          formatItem.classList.remove("invalid");
+          formatItem.classList.add("valid");
+        } else {
+          formatItem.classList.remove("valid");
+          formatItem.classList.add("invalid");
+        }
+      } else {
+        requirementsDiv.style.display = "none";
+        formatItem.classList.remove("valid", "invalid");
+      }
+    });
+
+    regPassword.addEventListener("input", function () {
+      const password = this.value;
+      const requirementsDiv = document.getElementById("password-requirements");
+      const lengthItem = document.getElementById("password-length");
+      const lowercaseItem = document.getElementById("password-lowercase");
+      const uppercaseItem = document.getElementById("password-uppercase");
+      const numberItem = document.getElementById("password-number");
+      const specialItem = document.getElementById("password-special");
+
+      if (password.length > 0) {
+        requirementsDiv.style.display = "block";
+
+        if (password.length >= 8) {
+          lengthItem.classList.remove("invalid");
+          lengthItem.classList.add("valid");
+        } else {
+          lengthItem.classList.remove("valid");
+          lengthItem.classList.add("invalid");
+        }
+
+        if (/[a-z]/.test(password)) {
+          lowercaseItem.classList.remove("invalid");
+          lowercaseItem.classList.add("valid");
+        } else {
+          lowercaseItem.classList.remove("valid");
+          lowercaseItem.classList.add("invalid");
+        }
+
+        if (/[A-Z]/.test(password)) {
+          uppercaseItem.classList.remove("invalid");
+          uppercaseItem.classList.add("valid");
+        } else {
+          uppercaseItem.classList.remove("valid");
+          uppercaseItem.classList.add("invalid");
+        }
+
+        if (/[0-9]/.test(password)) {
+          numberItem.classList.remove("invalid");
+          numberItem.classList.add("valid");
+        } else {
+          numberItem.classList.remove("valid");
+          numberItem.classList.add("invalid");
+        }
+
+        if (/[@$!%*?&]/.test(password)) {
+          specialItem.classList.remove("invalid");
+          specialItem.classList.add("valid");
+        } else {
+          specialItem.classList.remove("valid");
+          specialItem.classList.add("invalid");
+        }
+      } else {
+        requirementsDiv.style.display = "none";
+        lengthItem.classList.remove("valid", "invalid");
+        lowercaseItem.classList.remove("valid", "invalid");
+        uppercaseItem.classList.remove("valid", "invalid");
+        numberItem.classList.remove("valid", "invalid");
+        specialItem.classList.remove("valid", "invalid");
+      }
+
+      if (regConfirmPassword.value.length > 0) {
+        validatePasswordMatch();
+      }
+    });
+
+    regConfirmPassword.addEventListener("input", validatePasswordMatch);
+
+    function validatePasswordMatch() {
+      const password = regPassword.value;
+      const confirmPassword = regConfirmPassword.value;
+      const indicatorDiv = document.getElementById("password-match-indicator");
+      const matchItem = document.getElementById("password-match");
+
+      if (confirmPassword.length > 0) {
+        indicatorDiv.style.display = "block";
+
+        if (password === confirmPassword && password.length > 0) {
+          matchItem.classList.remove("invalid");
+          matchItem.classList.add("valid");
+        } else {
+          matchItem.classList.remove("valid");
+          matchItem.classList.add("invalid");
+        }
+      } else {
+        indicatorDiv.style.display = "none";
+        matchItem.classList.remove("valid", "invalid");
+      }
+    }
+
+    const registerRateLimitWarning = document.getElementById(
+      "registerRateLimitWarning"
+    );
+    const registerRateLimitMessage = document.getElementById(
+      "registerRateLimitMessage"
+    );
+    const registerRateLimitCountdown = document.getElementById(
+      "registerRateLimitCountdown"
+    );
+
+    let registerCountdownInterval = null;
+
+    function updateRegisterCountdown(secondsRemaining) {
+      if (secondsRemaining <= 0) {
+        registerRateLimitWarning.style.display = "none";
+        registerButton.disabled = false;
+        if (registerCountdownInterval) {
+          clearInterval(registerCountdownInterval);
+          registerCountdownInterval = null;
+        }
+        return;
+      }
+
+      registerRateLimitCountdown.textContent = formatTime(secondsRemaining);
+    }
+
+    function checkRegisterRateLimitStatus() {
+      fetch("/api/rate-limit-status")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.register && data.register.blocked) {
+            registerRateLimitWarning.style.display = "block";
+            registerRateLimitMessage.textContent = data.register.message;
+            registerButton.disabled = true;
+
+            let secondsRemaining = data.register.seconds_remaining;
+            updateRegisterCountdown(secondsRemaining);
+
+            if (registerCountdownInterval) {
+              clearInterval(registerCountdownInterval);
+            }
+
+            registerCountdownInterval = setInterval(() => {
+              secondsRemaining--;
+              updateRegisterCountdown(secondsRemaining);
+
+              if (secondsRemaining <= 0) {
+                clearInterval(registerCountdownInterval);
+                registerCountdownInterval = null;
+                setTimeout(checkRegisterRateLimitStatus, 1000);
+              }
+            }, 1000);
+          } else {
+            registerRateLimitWarning.style.display = "none";
+            registerButton.disabled = false;
+            if (registerCountdownInterval) {
+              clearInterval(registerCountdownInterval);
+              registerCountdownInterval = null;
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking register rate limit status:", error);
+        });
+    }
+
+    setInterval(() => {
+      if (
+        !registerCountdownInterval &&
+        document.getElementById("registerFormContainer").style.display !==
+          "none"
+      ) {
+        checkRegisterRateLimitStatus();
+      }
+    }, 5000);
+  });
+
+  function loginWithAuth0() {
     const button = event.target;
     const originalText = button.innerHTML;
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirigiendo...';
     button.disabled = true;
-    
-    // Redirigir a Auth0
+
     window.location.href = '{{ url_for("auth0_login") }}';
-}
+  }
 </script>
 {% endblock %}
