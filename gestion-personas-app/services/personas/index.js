@@ -28,11 +28,11 @@ app.use(
 app.use(
   cors({
     origin: [
-      "http://localhost:5000", // Frontend
-      "http://localhost:8001", // Gateway
-      "http://localhost:3000", // Por si se usa otro puerto
-      "http://127.0.0.1:5000", // Alternativo para localhost
-      "http://127.0.0.1:8001", // Alternativo para gateway
+      "http://localhost:5000",
+      "http://localhost:8001",
+      "http://localhost:3000",
+      "http://127.0.0.1:5000",
+      "http://127.0.0.1:8001",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -65,62 +65,6 @@ const ensureUploadsDirectory = async () => {
   } catch (error) {
     console.error("Error creating uploads directory:", error);
   }
-};
-
-// Function to parse date in STRICT format dd-mm-yyyy (e.g., 25-11-2025 or 05-01-1995)
-// ONLY accepts dd-mm-yyyy with 4-digit year. Rejects all other formats.
-const parseDateDDMMYYYY = (dateString) => {
-  if (!dateString || typeof dateString !== "string") {
-    return null;
-  }
-
-  const trimmedDate = dateString.trim();
-
-  // STRICT pattern: requires exactly dd-mm-yyyy format
-  // dd: 1 or 2 digits for day (01-31 or 1-31)
-  // mm: 1 or 2 digits for month (01-12 or 1-12)
-  // yyyy: exactly 4 digits for year
-  const pattern = /^(\d{1,2})-(\d{1,2})-(\d{4})$/;
-  const match = trimmedDate.match(pattern);
-
-  if (!match) {
-    // If pattern doesn't match, reject immediately - NO FALLBACK
-    return null;
-  }
-
-  const day = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-  const year = parseInt(match[3], 10);
-
-  // Validate ranges
-  if (
-    day < 1 ||
-    day > 31 ||
-    month < 1 ||
-    month > 12 ||
-    year < 1900 ||
-    year > 2100
-  ) {
-    return null;
-  }
-
-  // Create date and verify it's valid (JavaScript will adjust invalid dates like Feb 30)
-  // Note: JavaScript months are 0-indexed
-  const date = new Date(year, month - 1, day);
-
-  // Validate that the date components match (prevents auto-adjustment)
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
-    return null;
-  }
-
-  // Return in YYYY-MM-DD format for PostgreSQL
-  const formattedMonth = String(month).padStart(2, "0");
-  const formattedDay = String(day).padStart(2, "0");
-  return `${year}-${formattedMonth}-${formattedDay}`;
 };
 
 // Database connection
@@ -184,7 +128,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB limit
+    fileSize: 2 * 1024 * 1024, // 2MB
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
@@ -192,36 +136,23 @@ const upload = multer({
       path.extname(file.originalname).toLowerCase()
     );
     const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error("Solo se permiten imágenes (jpeg, jpg, png, gif)"));
-    }
+    if (mimetype && extname) return cb(null, true);
+    return cb(new Error("Solo se permiten imágenes (jpeg, jpg, png, gif)"));
   },
 });
 
 // Multer configuration for CSV uploads
 const uploadCSV = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit for CSV files
-  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /csv/;
-    const extname = allowedTypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
+    const extname = path.extname(file.originalname).toLowerCase() === ".csv";
     const mimetype =
       file.mimetype === "text/csv" ||
       file.mimetype === "application/vnd.ms-excel" ||
       file.mimetype === "text/plain";
-
-    if (mimetype || extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error("Solo se permiten archivos CSV"));
-    }
+    if (mimetype || extname) return cb(null, true);
+    return cb(new Error("Solo se permiten archivos CSV"));
   },
 });
 
@@ -324,8 +255,8 @@ async function logTransaction(
       status: status,
       error_message: error,
     });
-  } catch (error) {
-    console.error("Error logging transaction:", error);
+  } catch (err) {
+    console.error("Error logging transaction:", err.message);
   }
 }
 
@@ -335,6 +266,19 @@ async function logTransaction(
 app.get("/health", (req, res) => {
   res.json({ status: "OK", service: "personas-service" });
 });
+
+// Helper: parse dd-mm-yyyy or dd/mm/yyyy to yyyy-mm-dd
+function parseDateDDMMYYYY(input) {
+  if (!input) return null;
+  const norm = String(input).trim().replace(/[/.]/g, "-");
+  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(norm);
+  if (!match) return null;
+  const [_, dd, mm, yyyy] = match;
+  const iso = `${yyyy}-${mm}-${dd}`;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return iso;
+}
 
 // Create persona
 app.post("/", upload.single("foto"), async (req, res) => {
@@ -533,7 +477,6 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
 
         // Validate record structure
         const { error } = personaSchema.validate(record);
-
         if (error) {
           results.validation_errors.push({
             row: rowNumber,
@@ -584,16 +527,6 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
 
         results.created++;
         results.created_ids.push(insertResult.rows[0].id); // Guardar ID para sincronizar embedding
-
-        // Log successful creation
-        await logTransaction(
-          "CREATE_BULK",
-          insertResult.rows[0].id,
-          record.numero_documento,
-          null,
-          "SUCCESS",
-          req
-        );
 
         // Log successful creation
         await logTransaction(
@@ -669,6 +602,29 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+
+// Check existence BEFORE generic param route to avoid routing conflicts
+// Support both Spanish and English paths for compatibility
+app.get(
+  ["/existe/:numero_documento", "/exists/:numero_documento"],
+  async (req, res) => {
+    try {
+      const { numero_documento } = req.params;
+      const result = await pool.query(
+        "SELECT COUNT(*) as count FROM personas WHERE numero_documento = $1",
+        [numero_documento]
+      );
+      const existe = parseInt(result.rows[0].count) > 0;
+      // Return both keys for backward compatibility: "existe" (ES) and "exists" (EN)
+      return res.json({ existe, exists: existe, numero_documento });
+    } catch (error) {
+      console.error("Error verificando existencia de persona:", error);
+      return res
+        .status(500)
+        .json({ error: "Error al verificar existencia de persona" });
+    }
+  }
+);
 
 // Get persona by documento
 app.get("/:numero_documento", async (req, res) => {
@@ -998,33 +954,38 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
-app.listen(PORT, async () => {
-  console.log(`Personas service running on port ${PORT}`);
-  await ensureUploadsDirectory();
+// Exportar app para tests
+if (process.env.NODE_ENV === "test") {
+  module.exports = app;
+} else {
+  app.listen(PORT, async () => {
+    console.log(`Personas service running on port ${PORT}`);
+    await ensureUploadsDirectory();
 
-  // Auto-registrar en el Service Registry
-  const serviceConfig = {
-    serviceId: "personas-service",
-    name: "personas-service",
-    host: "personas-service",
-    port: parseInt(PORT),
-    protocol: "http",
-    metadata: {
-      version: "1.0.0",
-      description: "Personas management service for CRUD operations",
-      maintainer: "personas-team",
-      healthEndpoint: "/health",
-      tags: ["personas", "crud", "images", "documents"],
-      capabilities: [
-        "create-persona",
-        "read-persona",
-        "update-persona",
-        "delete-persona",
-        "image-upload",
-        "document-management",
-      ],
-    },
-  };
+    // Auto-registrar en el Service Registry
+    const serviceConfig = {
+      serviceId: "personas-service",
+      name: "personas-service",
+      host: "personas-service",
+      port: parseInt(PORT),
+      protocol: "http",
+      metadata: {
+        version: "1.0.0",
+        description: "Personas management service for CRUD operations",
+        maintainer: "personas-team",
+        healthEndpoint: "/health",
+        tags: ["personas", "crud", "images", "documents"],
+        capabilities: [
+          "create-persona",
+          "read-persona",
+          "update-persona",
+          "delete-persona",
+          "image-upload",
+          "document-management",
+        ],
+      },
+    };
 
-  createServiceRegistryClient(serviceConfig);
-});
+    createServiceRegistryClient(serviceConfig);
+  });
+}

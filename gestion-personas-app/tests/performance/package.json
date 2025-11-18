@@ -1,0 +1,20 @@
+{
+  "name": "performance-tests",
+  "version": "1.0.0",
+  "description": "Performance and load tests for the application",
+  "scripts": {
+    "test": "jest --runInBand --detectOpenHandles --forceExit",
+    "test:verbose": "jest --runInBand --detectOpenHandles --forceExit --verbose"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "axios": "^1.6.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 120000,
+    "testMatch": [
+      "**/*.test.js"
+    ]
+  }
+}

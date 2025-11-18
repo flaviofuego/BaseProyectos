@@ -1,0 +1,29 @@
+# Coverage reports
+coverage/
+coverage_html/
+coverage_js/
+.coverage
+htmlcov/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Node modules (if installed locally for development)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+.pytest_cache/
+.jest/

@@ -1,3 +1,4 @@
+// Cleaned version without duplicated/redeclared blocks.
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
@@ -154,26 +155,99 @@ Usa títulos, listas, tablas y métricas en negritas:
   }
 
   setupMiddleware() {
-    this.app.use(helmet(), cors(), compression());
+    this.app.use(helmet());
+    this.app.use(cors());
+    this.app.use(compression());
     this.app.use(express.json({ limit: "10mb" }));
     this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.app.use((req, res, next) => {
       const start = Date.now();
-      res.on("finish", () =>
+      res.on("finish", () => {
         console.log(
           `${req.method} ${req.path} - ${res.statusCode} - ${
             Date.now() - start
           }ms`
-        )
-      );
+        );
+      });
       next();
     });
+  }
+
+  /**
+   * Security validation for queries (CU-08: Security Risk Detection)
+   * Detects dangerous keywords and SQL injection attempts
+   */
+  checkSecurityRisks(query) {
+    const queryLower = query.toLowerCase();
+
+    // Lista de palabras clave peligrosas
+    const dangerousKeywords = [
+      "password",
+      "contraseña",
+      "passwd",
+      "drop table",
+      "drop database",
+      "delete from",
+      "truncate",
+      "update personas",
+      "update usuarios",
+      "update users",
+      "insert into",
+      "alter table",
+      "create table",
+      "grant",
+      "revoke",
+      "exec",
+      "execute",
+      "script",
+      "<script",
+      "javascript:",
+      "onerror=",
+      "onload=",
+      "--",
+      "/*",
+      "*/",
+      "xp_",
+      "sp_",
+      "0x",
+      "char(",
+      "union select",
+      "union all select",
+    ];
+
+    for (const keyword of dangerousKeywords) {
+      if (queryLower.includes(keyword)) {
+        return {
+          isDangerous: true,
+          reason: `Palabra clave no permitida: "${keyword}"`,
+        };
+      }
+    }
+
+    // Detectar patrones de SQL injection
+    const sqlInjectionPatterns = [
+      /;\s*(drop|delete|truncate|update|insert|alter|create)\s+/i,
+      /'\s*or\s*'1'\s*=\s*'1/i,
+      /'\s*or\s*1\s*=\s*1/i,
+      /'\s*;\s*--/i,
+      /\/\*.*\*\//i,
+    ];
+
+    for (const pattern of sqlInjectionPatterns) {
+      if (pattern.test(query)) {
+        return {
+          isDangerous: true,
+          reason: "Patrón de SQL injection detectado",
+        };
+      }
+    }
+
+    return { isDangerous: false };
   }
 
   async initializeService() {
     try {
       console.log("🚀 Iniciando NLP Service v2.0...");
-
       const client = await this.pool.connect();
       try {
         await client.query("SELECT NOW()");
@@ -181,11 +255,9 @@ Usa títulos, listas, tablas y métricas en negritas:
       } finally {
         client.release();
       }
-
       await this.verifyPgvectorExtension();
       await this.updateServiceStats();
       await this.autoSyncEmbeddings();
-
       this.serviceState.ready = true;
       console.log("✅ Servicio inicializado");
       this.registerService();
@@ -199,14 +271,20 @@ Usa títulos, listas, tablas y métricas en negritas:
     const extensionCheck = await this.pool.query(
       `SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') as exists`
     );
-    if (!extensionCheck.rows[0].exists)
-      throw new Error("pgvector no instalado");
-
+    if (!extensionCheck.rows[0].exists) {
+      try {
+        await this.pool.query("CREATE EXTENSION IF NOT EXISTS vector");
+        console.log("✅ pgvector instalado automáticamente");
+      } catch (e) {
+        throw new Error("pgvector no instalado");
+      }
+    }
     const tableCheck = await this.pool.query(
       `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'personas_embeddings') as exists`
     );
-    if (!tableCheck.rows[0].exists)
+    if (!tableCheck.rows[0].exists) {
       console.log("⚠️ Tabla personas_embeddings no existe");
+    }
   }
 
   async updateServiceStats() {
@@ -225,33 +303,28 @@ Usa títulos, listas, tablas y métricas en negritas:
       const dbResult = await this.pool.query(
         "SELECT COUNT(*) as total FROM personas_con_edad"
       );
-      const totalPersonasDB = parseInt(dbResult.rows[0].total);
       const embeddingsResult = await this.pool.query(
         "SELECT COUNT(*) as total FROM personas_embeddings"
       );
+      const totalPersonasDB = parseInt(dbResult.rows[0].total) || 0;
       const totalEmbeddings = parseInt(embeddingsResult.rows[0].total) || 0;
-
       console.log(
         `DB: ${totalPersonasDB} personas | Vector: ${totalEmbeddings} embeddings`
       );
-
       if (totalPersonasDB === totalEmbeddings) {
         console.log("✅ Sincronizado");
         this.serviceState.lastSync = new Date().toISOString();
         return;
       }
-
       console.log("🔄 Sincronizando...");
       const result = await this.pool.query(`
         SELECT p.* FROM personas_con_edad p
         LEFT JOIN personas_embeddings pe ON p.id = pe.persona_id
         WHERE pe.id IS NULL ORDER BY p.id
       `);
-
       const { successCount, errorCount } = await this.processBatchEmbeddings(
         result.rows
       );
-
       this.serviceState.lastSync = new Date().toISOString();
       await this.updateServiceStats();
       console.log(`✅ Sync: ${successCount} éxitos, ${errorCount} errores`);
@@ -261,9 +334,8 @@ Usa títulos, listas, tablas y métricas en negritas:
   }
 
   async processBatchEmbeddings(personas, batchSize = 10) {
-    let successCount = 0,
-      errorCount = 0;
-
+    let successCount = 0;
+    let errorCount = 0;
     for (let i = 0; i < personas.length; i += batchSize) {
       const batch = personas.slice(i, i + batchSize);
       await Promise.all(
@@ -272,11 +344,9 @@ Usa títulos, listas, tablas y métricas en negritas:
             const embeddingText = this.buildEmbeddingText(persona);
             const embedding = await this.generateEmbedding(embeddingText);
             await this.pool.query(
-              `
-            INSERT INTO personas_embeddings (persona_id, embedding, content_text)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP
-          `,
+              `INSERT INTO personas_embeddings (persona_id, embedding, content_text)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
               [persona.id, pgvector.toSql(embedding), embeddingText]
             );
             successCount++;
@@ -286,7 +356,7 @@ Usa títulos, listas, tablas y métricas en negritas:
           }
         })
       );
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((r) => setTimeout(r, 300));
     }
     return { successCount, errorCount };
   }
@@ -294,11 +364,11 @@ Usa títulos, listas, tablas y métricas en negritas:
   buildEmbeddingText(persona) {
     return `${persona.primer_nombre} ${persona.segundo_nombre || ""} ${
       persona.apellidos
-    } 
-      ${persona.tipo_documento} ${persona.numero_documento} 
-      ${persona.genero} edad ${persona.edad} años ${persona.grupo_edad || ""}
-      ${persona.correo_electronico} ${persona.celular}
-      nacimiento ${persona.fecha_nacimiento || ""}`.trim();
+    } ${persona.tipo_documento} ${persona.numero_documento} ${
+      persona.genero
+    } edad ${persona.edad} años ${persona.grupo_edad || ""} ${
+      persona.correo_electronico
+    } ${persona.celular} nacimiento ${persona.fecha_nacimiento || ""}`.trim();
   }
 
   async logTransaction(
@@ -498,14 +568,11 @@ Responde SOLO con JSON válido (sin markdown):
         temperature: 0.2,
         maxTokens: 400,
       });
-
-      text =
-        text
-          .replace(/```json\n?/g, "")
-          .replace(/```\n?/g, "")
-          .trim() || "{}";
+      text = (text || "{}")
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
       const params = JSON.parse(text);
-
       return {
         numero_documento: params.numero_documento || null,
         tipo_documento: ["Cédula", "Tarjeta de identidad"].includes(
@@ -581,25 +648,22 @@ Responde SOLO con JSON válido (sin markdown):
     const queryEmbedding = await this.generateEmbedding(query);
     const { whereClauses, queryParams, paramCounter } =
       this.buildWhereClause(parameters);
-    const whereSQL =
-      whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
-
+    const whereSQL = whereClauses.length
+      ? `WHERE ${whereClauses.join(" AND ")}`
+      : "";
     const sqlQuery = `
       SELECT p.*, EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
-      CASE WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
-           WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
-           ELSE 'Adulto mayor' END AS grupo_edad,
-      1 - (pe.embedding <=> $${paramCounter}) AS similarity
+        CASE WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
+             WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
+             ELSE 'Adulto mayor' END AS grupo_edad,
+        1 - (pe.embedding <=> $${paramCounter}) AS similarity
       FROM personas_embeddings pe
       JOIN personas p ON pe.persona_id = p.id
       ${whereSQL}
       ORDER BY pe.embedding <=> $${paramCounter}
-      LIMIT $${paramCounter + 1}
-    `;
-
+      LIMIT $${paramCounter + 1}`;
     queryParams.push(pgvector.toSql(queryEmbedding), parameters.limit || 100);
     const results = (await this.pool.query(sqlQuery, queryParams)).rows;
-
     return results;
   }
 
@@ -607,8 +671,6 @@ Responde SOLO con JSON válido (sin markdown):
     const whereClauses = [];
     const queryParams = [];
     let paramCounter = 1;
-
-    // Filtros de documento
     if (params.numero_documento) {
       whereClauses.push(`p.numero_documento = $${paramCounter++}`);
       queryParams.push(params.numero_documento);
@@ -617,66 +679,28 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.tipo_documento = $${paramCounter++}`);
       queryParams.push(params.tipo_documento);
     }
-
-    // Filtros de nombre (búsqueda específica por campo con soporte para patrones)
+    const patternField = (value) =>
+      value.includes("%") ? value : `%${value}%`;
     if (params.primer_nombre) {
       whereClauses.push(`p.primer_nombre ILIKE $${paramCounter++}`);
-      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
-      const primerNombrePattern = params.primer_nombre.includes("%")
-        ? params.primer_nombre
-        : `%${params.primer_nombre}%`;
-      queryParams.push(primerNombrePattern);
+      queryParams.push(patternField(params.primer_nombre));
     }
     if (params.segundo_nombre) {
       whereClauses.push(`p.segundo_nombre ILIKE $${paramCounter++}`);
-      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
-      const segundoNombrePattern = params.segundo_nombre.includes("%")
-        ? params.segundo_nombre
-        : `%${params.segundo_nombre}%`;
-      queryParams.push(segundoNombrePattern);
+      queryParams.push(patternField(params.segundo_nombre));
     }
     if (params.apellidos) {
       whereClauses.push(`p.apellidos ILIKE $${paramCounter++}`);
-      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
-      const apellidosPattern = params.apellidos.includes("%")
-        ? params.apellidos
-        : `%${params.apellidos}%`;
-      queryParams.push(apellidosPattern);
+      queryParams.push(patternField(params.apellidos));
     }
-    // Filtro de nombre general (busca en todos los campos de nombre)
     if (params.nombre) {
-      // Detectar si tiene comodines (%) para patrones específicos
-      const tieneComodines = params.nombre.includes("%");
-
-      if (!tieneComodines) {
-        // Si el nombre tiene múltiples palabras, buscar con concatenación de campos
-        const nombrePalabras = params.nombre.trim().split(/\s+/);
-
-        if (nombrePalabras.length > 1) {
-          // Para nombres completos, buscar en la concatenación de todos los campos
-          const nombreCompleto = `CONCAT(p.primer_nombre, ' ', COALESCE(p.segundo_nombre, ''), ' ', p.apellidos)`;
-          whereClauses.push(`${nombreCompleto} ILIKE $${paramCounter}`);
-          queryParams.push(`%${params.nombre}%`);
-          paramCounter++;
-        } else {
-          // Para una sola palabra, buscar en cualquier campo individual
-          whereClauses.push(
-            `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
-          );
-          queryParams.push(`%${params.nombre}%`);
-          paramCounter++;
-        }
-      } else {
-        // Si tiene comodines, buscar el patrón en cualquier campo
-        whereClauses.push(
-          `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
-        );
-        queryParams.push(params.nombre);
-        paramCounter++;
-      }
+      const pattern = patternField(params.nombre);
+      whereClauses.push(
+        `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
+      );
+      queryParams.push(pattern);
+      paramCounter++;
     }
-
-    // Filtros de fecha de nacimiento
     if (params.fecha_nacimiento_min && params.fecha_nacimiento_max) {
       whereClauses.push(
         `p.fecha_nacimiento BETWEEN $${paramCounter} AND $${paramCounter + 1}`
@@ -693,8 +717,6 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.fecha_nacimiento <= $${paramCounter++}`);
       queryParams.push(params.fecha_nacimiento_max);
     }
-
-    // Filtros de edad (calculada)
     if (params.edad_min !== null && params.edad_max !== null) {
       whereClauses.push(
         `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN $${paramCounter} AND $${
@@ -714,14 +736,10 @@ Responde SOLO con JSON válido (sin markdown):
       );
       queryParams.push(params.edad_max);
     }
-
-    // Filtro de género
     if (params.genero) {
       whereClauses.push(`p.genero = $${paramCounter++}`);
       queryParams.push(params.genero);
     }
-
-    // Filtro de grupo de edad
     if (params.grupo_edad) {
       const grupoEdadConditions = {
         "Menor de edad": `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18`,
@@ -732,18 +750,14 @@ Responde SOLO con JSON válido (sin markdown):
         whereClauses.push(grupoEdadConditions[params.grupo_edad]);
       }
     }
-
-    // Filtros de contacto
     if (params.correo_electronico) {
       whereClauses.push(`p.correo_electronico ILIKE $${paramCounter++}`);
-      queryParams.push(`%${params.correo_electronico}%`);
+      queryParams.push(patternField(params.correo_electronico));
     }
     if (params.celular) {
       whereClauses.push(`p.celular LIKE $${paramCounter++}`);
-      queryParams.push(`%${params.celular}%`);
+      queryParams.push(patternField(params.celular));
     }
-
-    // Filtros de fechas de auditoría
     if (params.created_at_min && params.created_at_max) {
       whereClauses.push(
         `p.created_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`
@@ -757,7 +771,6 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.created_at <= $${paramCounter++}`);
       queryParams.push(params.created_at_max);
     }
-
     if (params.updated_at_min && params.updated_at_max) {
       whereClauses.push(
         `p.updated_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`
@@ -771,16 +784,13 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.updated_at <= $${paramCounter++}`);
       queryParams.push(params.updated_at_max);
     }
-
     return { whereClauses, queryParams, paramCounter };
   }
 
   async generateMarkdownResponse(query, vectorResults) {
-    if (vectorResults.length === 0) {
-      return `## Sin Resultados\n\nNo se encontraron empleados que coincidan con los criterios de búsqueda.\n\n**Sugerencias:**\n- Verifica los filtros aplicados\n- Intenta con criterios más amplios\n- Revisa la ortografía`;
+    if (!vectorResults.length) {
+      return `## Sin Resultados\n\nNo se encontraron empleados que coincidan con la consulta.`;
     }
-
-    // Preparar información completa para la IA
     const dataContext = {
       total_resultados: vectorResults.length,
       muestra_completa: vectorResults.map((r) => ({
@@ -799,48 +809,24 @@ Responde SOLO con JSON válido (sin markdown):
         updated_at: r.updated_at,
       })),
     };
-
-    const prompt = `${this.SYSTEM_PROMPT}
-
-## CONSULTA DEL USUARIO
-"${query}"
-
-## DATOS DISPONIBLES (${vectorResults.length} registros)
-${JSON.stringify(dataContext, null, 2)}
-
-## INSTRUCCIONES
-1. **Analiza** la pregunta del usuario y TODOS los datos proporcionados
-2. **Realiza** todos los cálculos, agregaciones y análisis necesarios (promedios, conteos, porcentajes, comparaciones, etc.)
-3. **Razona** sobre patrones, tendencias o insights relevantes
-4. **Responde** de forma completa y profesional en Markdown
-
-**IMPORTANTE**: 
-- Genera Markdown PURO (NO uses bloques \`\`\`markdown)
-- Incluye tablas para listados (| Columna | Columna |)
-- Usa negritas ** para métricas clave
-- Incluye títulos ## y subtítulos ###
-- Calcula TODO lo que la pregunta requiera (no aproximes)
-- Si la pregunta requiere estadísticas, calcúlalas: promedios, medianas, distribuciones, porcentajes
-- Si requiere comparaciones, hazlas
-- Si requiere análisis, proporciona insights basados en los datos
-
-Responde DIRECTAMENTE en Markdown:`;
-
+    const prompt = `${this.SYSTEM_PROMPT}\n\nConsulta: "${query}"\n\nDatos (${
+      vectorResults.length
+    } registros):\n${JSON.stringify(
+      dataContext,
+      null,
+      2
+    )}\n\nGenera respuesta analítica en Markdown profesional.`;
     try {
-      let markdown =
-        (await this.callAzureAI({
-          systemMessage: this.SYSTEM_PROMPT,
-          userMessage: prompt,
-          temperature: this.chatConfig.temperature,
-          maxTokens: this.chatConfig.max_tokens,
-        })) || "Error generando respuesta.";
-
-      // Limpiar bloques de código markdown
-      markdown = markdown
+      let markdown = await this.callAzureAI({
+        systemMessage: this.SYSTEM_PROMPT,
+        userMessage: prompt,
+        temperature: this.chatConfig.temperature,
+        maxTokens: this.chatConfig.max_tokens,
+      });
+      markdown = (markdown || "Error generando respuesta.")
         .replace(/```markdown\n?/gi, "")
         .replace(/```\n?$/g, "")
         .trim();
-
       return markdown;
     } catch (error) {
       console.error("Error generando markdown:", error.message);
@@ -849,12 +835,10 @@ Responde DIRECTAMENTE en Markdown:`;
   }
 
   generateFallbackMarkdown(results) {
-    if (results.length === 0)
+    if (!results.length)
       return "## Sin Resultados\n\nNo se encontraron empleados.";
-
     let md = `## Resultados de Búsqueda\n\n**Total encontrado:** ${results.length}\n\n`;
     md += `| Nombre Completo | Edad | Género | Documento |\n|---|---|---|---|\n`;
-
     results.slice(0, 30).forEach((r) => {
       const nombreCompleto = `${r.primer_nombre} ${r.segundo_nombre || ""} ${
         r.apellidos
@@ -863,10 +847,8 @@ Responde DIRECTAMENTE en Markdown:`;
         r.genero || "N/A"
       } | ${r.tipo_documento || ""} ${r.numero_documento || ""} |\n`;
     });
-
     if (results.length > 30)
       md += `\n*Mostrando 30 de ${results.length} resultados*`;
-
     return md;
   }
 
@@ -902,7 +884,7 @@ Responde DIRECTAMENTE en Markdown:`;
             postgresql: await this.checkDB(),
             pgvector: await this.checkPgVector(),
             azure_ai_foundry: !!(
-              process.env.AZURE_FOUNDRY_ENDPOINT && process.env.AZURE_API_KEY
+              this.AZURE_FOUNDRY_ENDPOINT && this.AZURE_API_KEY
             ),
           },
           stats: {
@@ -910,8 +892,7 @@ Responde DIRECTAMENTE en Markdown:`;
             last_sync: this.serviceState.lastSync,
           },
         };
-
-        const allHealthy = Object.values(health.dependencies).every((v) => v);
+        const allHealthy = Object.values(health.dependencies).every(Boolean);
         health.status =
           allHealthy && this.serviceState.ready ? "healthy" : "degraded";
         res.status(allHealthy ? 200 : 503).json(health);
@@ -923,27 +904,30 @@ Responde DIRECTAMENTE en Markdown:`;
     this.app.post("/query", async (req, res) => {
       const startTime = Date.now();
       const { query } = req.body;
-
       try {
         if (!query || typeof query !== "string" || query.length > 2000) {
           return res
             .status(400)
             .json({ success: false, error: "Query inválido (max 2000 chars)" });
         }
-
+        const securityCheck = this.checkSecurityRisks(query);
+        if (securityCheck.isDangerous) {
+          return res
+            .status(400)
+            .json({
+              success: false,
+              error: `Consulta no permitida: ${securityCheck.reason}`,
+            });
+        }
         const parameters = await this.extractQueryParameters(query);
         const results = await this.queryVectorDatabase(query, parameters);
         const markdownResponse = await this.generateMarkdownResponse(
           query,
           results
         );
-
         const response = {
           success: true,
-          data: {
-            markdown: markdownResponse,
-            // raw_results removido - solo devolvemos la respuesta de la IA
-          },
+          data: { markdown: markdownResponse, raw_results: results },
           metadata: {
             results_count: results.length,
             processing_time_ms: Date.now() - startTime,
@@ -951,7 +935,6 @@ Responde DIRECTAMENTE en Markdown:`;
             vector_search: true,
           },
         };
-
         await this.logTransaction("NLP_QUERY", query, "SUCCESS", req, response);
         res.json(response);
       } catch (error) {
@@ -980,29 +963,23 @@ Responde DIRECTAMENTE en Markdown:`;
           return res
             .status(400)
             .json({ success: false, error: "persona_id requerido" });
-
         const result = await this.pool.query(
           "SELECT * FROM personas_con_edad WHERE id = $1",
           [persona_id]
         );
-        if (result.rows.length === 0)
+        if (!result.rows.length)
           return res
             .status(404)
             .json({ success: false, error: "Persona no encontrada" });
-
         const persona = result.rows[0];
         const embeddingText = this.buildEmbeddingText(persona);
         const embedding = await this.generateEmbedding(embeddingText);
-
         await this.pool.query(
-          `
-          INSERT INTO personas_embeddings (persona_id, embedding, content_text)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP
-        `,
+          `INSERT INTO personas_embeddings (persona_id, embedding, content_text)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
           [persona.id, pgvector.toSql(embedding), embeddingText]
         );
-
         await this.updateServiceStats();
         await this.logTransaction(
           "UPDATE_EMBEDDING",
@@ -1010,7 +987,6 @@ Responde DIRECTAMENTE en Markdown:`;
           "SUCCESS",
           req
         );
-
         res.json({
           success: true,
           message: "Embedding actualizado",
@@ -1044,7 +1020,6 @@ Responde DIRECTAMENTE en Markdown:`;
         const { successCount, errorCount } = await this.processBatchEmbeddings(
           result.rows
         );
-
         this.serviceState.lastSync = new Date().toISOString();
         await this.updateServiceStats();
         await this.logTransaction(
@@ -1054,7 +1029,6 @@ Responde DIRECTAMENTE en Markdown:`;
           req,
           { successCount, errorCount }
         );
-
         res.json({
           success: true,
           message: "Sincronización completada",
@@ -1088,14 +1062,14 @@ Responde DIRECTAMENTE en Markdown:`;
     this.app.get("/stats", async (req, res) => {
       try {
         const dbStats = await this.pool.query(`
-          SELECT COUNT(*) as total_personas, COUNT(CASE WHEN fecha_nacimiento IS NOT NULL THEN 1 END) as personas_con_edad,
-          COUNT(CASE WHEN correo_electronico IS NOT NULL THEN 1 END) as personas_con_email, MAX(created_at) as ultima_persona_creada
-          FROM personas
-        `);
+          SELECT COUNT(*) as total_personas,
+                 COUNT(CASE WHEN fecha_nacimiento IS NOT NULL THEN 1 END) as personas_con_edad,
+                 COUNT(CASE WHEN correo_electronico IS NOT NULL THEN 1 END) as personas_con_email,
+                 MAX(created_at) as ultima_persona_creada
+          FROM personas`);
         const embeddingsStats = await this.pool.query(
           `SELECT COUNT(*) as total_embeddings FROM personas_embeddings`
         );
-
         res.json({
           success: true,
           stats: {
@@ -1109,7 +1083,7 @@ Responde DIRECTAMENTE en Markdown:`;
               total_embeddings: parseInt(
                 embeddingsStats.rows[0].total_embeddings
               ),
-              vector_size: 1536,
+              vector_size: this.VECTOR_SIZE,
               distance_metric: "cosine",
             },
             service: {
@@ -1193,10 +1167,6 @@ nlpService.start();
 // Manejo de cierre graceful
 process.on("SIGTERM", async () => {
   console.log("\n🔄 Cerrando servicio...");
-  if (nlpService.syncInterval) {
-    clearInterval(nlpService.syncInterval);
-    console.log("⏰ Sincronización periódica detenida");
-  }
   await nlpService.pool.end();
   process.exit(0);
 });

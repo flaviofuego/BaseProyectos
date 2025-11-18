@@ -23,6 +23,15 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Helper para habilitar/deshabilitar rate limiting en entornos no productivos
+const isRateLimitEnabled = () => {
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.DISABLE_RATE_LIMIT === "1") return false;
+  // En test deshabilitado explícitamente
+  if (process.env.NODE_ENV === "test") return false;
+  return true; // por defecto habilitado en dev a menos que se desactive
+};
+
 // ============================================================================
 // RATE LIMITING CONFIGURATION
 // ============================================================================
@@ -30,12 +39,13 @@ const PORT = process.env.PORT || 3001;
 /**
  * Rate Limiter para Login
  * Previene ataques de fuerza bruta limitando intentos de login
- * - 5 intentos por 15 minutos por IP
+ * - Production: 5 intentos por 15 minutos por IP
+ * - Development/Test: 1000 intentos (para tests de performance)
  * - Resetea después del período de ventana
  */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Límite de 5 intentos
+  max: process.env.NODE_ENV === "production" ? 5 : 1000, // Límite alto en dev/test
   message: {
     error:
       "Demasiados intentos de inicio de sesión. Por favor, intenta de nuevo en 15 minutos.",
@@ -59,11 +69,12 @@ const loginLimiter = rateLimit({
 /**
  * Rate Limiter para Registro
  * Previene creación masiva de cuentas falsas
- * - 3 intentos por hora por IP
+ * - Production: 3 intentos por hora por IP
+ * - Development/Test: 1000 intentos (para tests de performance)
  */
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 3, // Límite de 3 intentos
+  max: process.env.NODE_ENV === "production" ? 3 : 1000, // Límite alto en dev/test
   message: {
     error:
       "Demasiados intentos de registro. Por favor, intenta de nuevo en 1 hora.",
@@ -87,11 +98,12 @@ const registerLimiter = rateLimit({
 /**
  * Rate Limiter General para Auth API
  * Protección contra abuso general de la API de autenticación
- * - 100 requests por 15 minutos por IP
+ * - Production: 100 requests por 15 minutos por IP
+ * - Development/Test: 10000 requests por 15 minutos (para tests de performance)
  */
 const authApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Límite de 100 requests
+  max: process.env.NODE_ENV === "production" ? 100 : 10000, // Límite alto en dev/test
   message: {
     error: "Demasiadas peticiones. Por favor, intenta de nuevo más tarde.",
     retryAfter: "15 minutos",
@@ -143,8 +155,10 @@ const passwordChangeLimiter = rateLimit({
 // MIDDLEWARE
 // ============================================================================
 
-// Aplicar rate limiter general a todas las rutas
-app.use(authApiLimiter);
+// Aplicar rate limiter general a todas las rutas si está habilitado
+if (isRateLimitEnabled()) {
+  app.use(authApiLimiter);
+}
 
 // Middleware
 app.use(helmet());
@@ -1053,127 +1067,135 @@ app.get("/health", (req, res) => {
 // Local login
 // ============================================================================
 // ENDPOINT: POST /login
-// Rate Limiting: 5 intentos por 15 minutos por IP
+// Rate Limiting: 5 intentos por 15 minutos por IP (skip en tests)
 // ============================================================================
-app.post("/login", loginLimiter, async (req, res, next) => {
-  try {
-    // =========================================================================
-    // VALIDACIÓN Y NORMALIZACIÓN EN LOGIN (1.C)
-    // =========================================================================
-    // Normalizar el username antes de buscar en la base de datos
-    // Esto asegura que "Admin", " admin " y "ADMIN" sean el mismo usuario
-    const { error, value } = loginSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: error.details[0].message });
-    }
-
-    // Usar valores normalizados para la autenticación
-    // Importante: Sobrescribir req.body para que passport use valores normalizados
-    req.body.username = value.username;
-    req.body.password = value.password;
-
-    passport.authenticate(
-      "local",
-      { session: false },
-      async (err, user, info) => {
-        if (err || !user) {
-          return res
-            .status(401)
-            .json({ error: info?.message || "Authentication failed" });
-        }
-
-        const token = generateToken(user);
-
-        // Get user preferences
-        let preferences = { consulta_service_enabled: true };
-        try {
-          const userPrefs = await getUserPreferences(user.id);
-          preferences.consulta_service_enabled =
-            userPrefs.consulta_service_enabled;
-        } catch (error) {
-          console.error("Error loading user preferences on login:", error);
-          // Default to enabled on error
-        }
-
-        // Log successful login
-        logTransaction(user.id, "LOGIN", "SUCCESS", req);
-
-        res.json({
-          token,
-          user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            consulta_service_enabled: preferences.consulta_service_enabled,
-          },
-        });
+app.post(
+  "/login",
+  isRateLimitEnabled() ? loginLimiter : [],
+  async (req, res, next) => {
+    try {
+      // =========================================================================
+      // VALIDACIÓN Y NORMALIZACIÓN EN LOGIN (1.C)
+      // =========================================================================
+      // Normalizar el username antes de buscar en la base de datos
+      // Esto asegura que "Admin", " admin " y "ADMIN" sean el mismo usuario
+      const { error, value } = loginSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ error: error.details[0].message });
       }
-    )(req, res, next);
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Internal server error" });
+
+      // Usar valores normalizados para la autenticación
+      // Importante: Sobrescribir req.body para que passport use valores normalizados
+      req.body.username = value.username;
+      req.body.password = value.password;
+
+      passport.authenticate(
+        "local",
+        { session: false },
+        async (err, user, info) => {
+          if (err || !user) {
+            return res
+              .status(401)
+              .json({ error: info?.message || "Authentication failed" });
+          }
+
+          const token = generateToken(user);
+
+          // Get user preferences
+          let preferences = { consulta_service_enabled: true };
+          try {
+            const userPrefs = await getUserPreferences(user.id);
+            preferences.consulta_service_enabled =
+              userPrefs.consulta_service_enabled;
+          } catch (error) {
+            console.error("Error loading user preferences on login:", error);
+            // Default to enabled on error
+          }
+
+          // Log successful login
+          logTransaction(user.id, "LOGIN", "SUCCESS", req);
+
+          res.json({
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              consulta_service_enabled: preferences.consulta_service_enabled,
+            },
+          });
+        }
+      )(req, res, next);
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
-});
+);
 
 // Register
 // ============================================================================
 // ENDPOINT: POST /register
-// Rate Limiting: 3 intentos por hora por IP
+// Rate Limiting: 3 intentos por hora por IP (skip en tests)
 // ============================================================================
-app.post("/register", registerLimiter, async (req, res) => {
-  try {
-    // =========================================================================
-    // VALIDACIÓN Y NORMALIZACIÓN (1.A, 1.B, 1.C)
-    // =========================================================================
-    // Joi no solo valida, también NORMALIZA los valores:
-    // - username: convierte a minúsculas y elimina espacios
-    // - email: convierte a minúsculas y elimina espacios
-    // - password: valida complejidad
-    // Es CRÍTICO usar el valor normalizado (value) en lugar de req.body
-    const { error, value } = registerSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: error.details[0].message });
+app.post(
+  "/register",
+  isRateLimitEnabled() ? registerLimiter : [],
+  async (req, res) => {
+    try {
+      // =========================================================================
+      // VALIDACIÓN Y NORMALIZACIÓN (1.A, 1.B, 1.C)
+      // =========================================================================
+      // Joi no solo valida, también NORMALIZA los valores:
+      // - username: convierte a minúsculas y elimina espacios
+      // - email: convierte a minúsculas y elimina espacios
+      // - password: valida complejidad
+      // Es CRÍTICO usar el valor normalizado (value) en lugar de req.body
+      const { error, value } = registerSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ error: error.details[0].message });
+      }
+
+      // Usar valores NORMALIZADOS de Joi, no los originales de req.body
+      const { username, email, password } = value;
+
+      // Check if user exists
+      // Nota: La búsqueda también debe usar valores normalizados
+      const existingUser = await pool.query(
+        "SELECT id FROM users WHERE username = $1 OR email = $2",
+        [username, email]
+      );
+
+      if (existingUser.rows.length > 0) {
+        return res.status(409).json({ error: "Usuario o email ya existe" });
+      }
+
+      // Hash password
+      const saltRounds = process.env.NODE_ENV === "production" ? 10 : 4;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+
+      // Create user (guardamos valores normalizados)
+      const result = await pool.query(
+        "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email",
+        [username, email, passwordHash]
+      );
+
+      const user = result.rows[0];
+      const token = generateToken(user);
+
+      // Log registration
+      logTransaction(user.id, "REGISTER", "SUCCESS", req);
+
+      res.status(201).json({
+        token,
+        user,
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    // Usar valores NORMALIZADOS de Joi, no los originales de req.body
-    const { username, email, password } = value;
-
-    // Check if user exists
-    // Nota: La búsqueda también debe usar valores normalizados
-    const existingUser = await pool.query(
-      "SELECT id FROM users WHERE username = $1 OR email = $2",
-      [username, email]
-    );
-
-    if (existingUser.rows.length > 0) {
-      return res.status(409).json({ error: "Usuario o email ya existe" });
-    }
-
-    // Hash password
-    const saltRounds = process.env.NODE_ENV === "production" ? 10 : 4;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
-    // Create user (guardamos valores normalizados)
-    const result = await pool.query(
-      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email",
-      [username, email, passwordHash]
-    );
-
-    const user = result.rows[0];
-    const token = generateToken(user);
-
-    // Log registration
-    logTransaction(user.id, "REGISTER", "SUCCESS", req);
-
-    res.status(201).json({
-      token,
-      user,
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ error: "Internal server error" });
   }
-});
+);
 
 // Auth0 routes
 // Auth0 login
@@ -1299,30 +1321,36 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong!" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Auth service running on port ${PORT}`);
-  console.log(
-    `Auth0 configured: ${!!(
-      process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID
-    )}`
-  );
+// Only start server if not in test mode
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Auth service running on port ${PORT}`);
+    console.log(
+      `Auth0 configured: ${!!(
+        process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID
+      )}`
+    );
 
-  // Auto-registrar en el Service Registry
-  const serviceConfig = {
-    serviceId: "auth-service",
-    name: "auth-service",
-    host: "auth-service",
-    port: parseInt(PORT),
-    protocol: "http",
-    metadata: {
-      version: "1.0.0",
-      description: "Authentication and authorization service",
-      maintainer: "auth-team",
-      healthEndpoint: "/health",
-      tags: ["auth", "authentication", "security"],
-      capabilities: ["local-auth", "auth0", "jwt", "session-management"],
-    },
-  };
+    // Auto-registrar en el Service Registry
+    const serviceConfig = {
+      serviceId: "auth-service",
+      name: "auth-service",
+      host: "auth-service",
+      port: parseInt(PORT),
+      protocol: "http",
+      metadata: {
+        version: "1.0.0",
+        description: "Authentication and authorization service",
+        maintainer: "auth-team",
+        healthEndpoint: "/health",
+        tags: ["auth", "authentication", "security"],
+        capabilities: ["local-auth", "auth0", "jwt", "session-management"],
+      },
+    };
 
-  createServiceRegistryClient(serviceConfig);
-});
+    createServiceRegistryClient(serviceConfig);
+  });
+}
+
+// Export app for testing
+module.exports = app;

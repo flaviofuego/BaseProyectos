@@ -1,0 +1,38 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    curl \
+    wget \
+    jq \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements
+COPY requirements.txt requirements-test.txt ./
+
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements-test.txt
+
+# Instalar herramientas adicionales de testing
+RUN pip install --no-cache-dir \
+    pytest-html \
+    pytest-json-report \
+    pytest-timeout \
+    pytest-xdist
+
+# Copiar código fuente
+COPY . .
+
+# Crear directorio para resultados
+RUN mkdir -p /app/test-results
+
+# Healthcheck
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD python --version || exit 1
+
+CMD ["pytest", "--cov=.", "--cov-report=html:/app/test-results/coverage-python", "--cov-report=xml:/app/test-results/coverage-python.xml", "--cov-report=term", "--html=/app/test-results/report.html", "--self-contained-html", "-v"]

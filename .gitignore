@@ -110,6 +110,15 @@ ENV/
 env.bak/
 venv.bak/
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.npm
+.yarn-integrity
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -127,3 +136,19 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# ==========================================
+# Monorepo test artifacts (Node/Python/E2E)
+# ==========================================
+# JS/Jest coverage directories
+coverage/
+
+# Frontend JS coverage
+coverage_js/
+
+# Playwright reports
+playwright-report/
+
+# Aggregated test results
+tests/results/
+test-results/

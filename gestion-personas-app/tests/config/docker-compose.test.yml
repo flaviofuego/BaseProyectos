@@ -1,0 +1,190 @@
+
+services:
+  # ==========================================
+  # BASE DE DATOS DE PRUEBAS
+  # ==========================================
+  postgres-test:
+    image: pgvector/pgvector:pg15
+    container_name: postgres_test
+    environment:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - ../../database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ../../database/migrations:/docker-entrypoint-initdb.d/migrations
+    ports:
+      - "5433:5432"
+    networks:
+      - test-network
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # REDIS DE PRUEBAS
+  # ==========================================
+  redis-test:
+    image: redis:7-alpine
+    container_name: redis_test
+    ports:
+      - "6380:6379"
+    networks:
+      - test-network
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ==========================================
+  # SERVICE REGISTRY (Test Mode)
+  # ==========================================
+  service-registry-test:
+    build:
+      context: ../../services/registry
+      dockerfile: Dockerfile
+    container_name: service_registry_test
+    environment:
+      - NODE_ENV=test
+      - SERVICE_REGISTRY_PORT=3010
+    ports:
+      - "3011:3010"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ==========================================
+  # TEST RUNNER - NODE.JS SERVICES
+  # ==========================================
+  test-runner-node:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.test.node
+    container_name: test_runner_node
+    volumes:
+      - ../../services:/app/services
+      - ../results:/app/tests/results
+      - ../../gateway:/app/gateway
+      - /app/services/auth/node_modules
+      - /app/services/personas/node_modules
+      - /app/services/consulta/node_modules
+      - /app/services/nlp/node_modules
+      - /app/services/log/node_modules
+      - /app/gateway/node_modules
+    environment:
+      - NODE_ENV=test
+      - CI=true
+      - DATABASE_URL=postgresql://test_user:test_pass@postgres-test:5432/test_db
+      - REDIS_URL=redis://redis-test:6379
+      - SERVICE_REGISTRY_URL=http://service-registry-test:3010
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
+    networks:
+      - test-network
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      service-registry-test:
+        condition: service_healthy
+    command: npm run test:all
+
+  # ==========================================
+  # TEST RUNNER - PYTHON FRONTEND
+  # ==========================================
+  test-runner-python:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile.test
+    container_name: test_runner_python
+    volumes:
+      - ../../frontend:/app
+      - ../results:/app/tests/results
+    environment:
+      - TESTING=true
+      - FLASK_ENV=testing
+      - DATABASE_URL=postgresql://test_user:test_pass@postgres-test:5432/test_db
+      - REDIS_URL=redis://redis-test:6379
+      - API_GATEWAY_URL=http://gateway-test:8001
+    networks:
+      - test-network
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    command: pytest --cov=. --cov-report=html --cov-report=xml --cov-report=term -v
+
+  # ==========================================
+  # GATEWAY DE PRUEBAS (opcional para E2E)
+  # ==========================================
+  gateway-test:
+    build:
+      context: ../../gateway
+      dockerfile: Dockerfile
+    container_name: gateway_test
+    environment:
+      - NODE_ENV=test
+      - PORT=8001
+      - SERVICE_REGISTRY_URL=http://service-registry-test:3010
+      - REDIS_URL=redis://redis-test:6379
+      - JWT_SECRET=test-secret-key-12345
+    ports:
+      - "8002:8001"
+    networks:
+      - test-network
+    depends_on:
+      - service-registry-test
+      - redis-test
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ==========================================
+  # E2E TEST RUNNER
+  # ==========================================
+  test-runner-e2e:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.test.e2e
+    container_name: test_runner_e2e
+    volumes:
+      - ../e2e:/app/tests/e2e
+      - ../results:/app/tests/results
+    environment:
+      - NODE_ENV=test
+      - API_GATEWAY_URL=http://gateway-test:8001
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+    networks:
+      - test-network
+    depends_on:
+      gateway-test:
+        condition: service_healthy
+    command: npm run test:e2e
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-results:
+    driver: local

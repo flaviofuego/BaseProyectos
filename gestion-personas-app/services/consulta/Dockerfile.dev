@@ -8,7 +8,7 @@ RUN npm install -g nodemon
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies)
+# Install all dependencies (including dev dependencies for testing)
 RUN npm install
 
 # Copy source code
