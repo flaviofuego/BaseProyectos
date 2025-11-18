@@ -1,79 +1,40 @@
-# 🚀 Sistema de Gestión de Personas - Versión 3.0
+# 🚀 Sistema de Gestión de Personas - v3.0
 
-Sistema completo de gestión de datos personales con **arquitectura de microservicios autodescubrible**, interfaz moderna, autenticación avanzada, notificaciones inteligentes y sistema de consultas mejorado con IA.
+Sistema completo de gestión de datos personales con **arquitectura de microservicios autodescubrible**, interfaz moderna, autenticación avanzada y consultas inteligentes con IA.
 
 ## ✨ Características Principales
 
-- 🏗️ **Arquitectura de Microservicios** escalable con **Service Registry autodescubrible**
-- 🔐 **Autenticación JWT completa** con sesiones seguras y Auth0 integration
-- 🔍 **Búsqueda avanzada** con filtros dinámicos y resultados en tiempo real
-- 🤖 **Consultas en lenguaje natural** usando IA (Google Gemini + RAG)
-- 📊 **Dashboard interactivo** con estadísticas y refrescos automáticos
-- 📝 **Sistema de auditoría** completo con logs detallados
-- 🚀 **Cache inteligente** optimizado para performance
-- 📱 **Interfaz moderna** responsive con Bootstrap 5.3
-- 🔔 **Sistema de notificaciones** avanzado con historial
+- 🏗️ **Microservicios escalables** con Service Registry autodescubrible
+- 🔐 **Autenticación JWT + Auth0** con sesiones distribuidas
+- 🔍 **Búsqueda avanzada** con filtros y cache inteligente
+- 🤖 **Consultas en lenguaje natural** (Google Gemini + RAG)
+- 📊 **Dashboard interactivo** con auto-refresh
+- 📝 **Sistema de auditoría** completo
 - 🎨 **Temas dinámicos** (claro/oscuro/automático)
-- ⚡ **Validación en tiempo real** y manejo de errores mejorado
-- 🌐 **Service Discovery** automático con health checks y heartbeats
-- 🔄 **Load Balancing** inteligente y fault tolerance
+- 🔔 **Notificaciones avanzadas** con historial
 
-## 🆕 Últimas Mejoras (Septiembre 2025) - v3.0
-
-### 🌐 **Service Registry Implementation**
-
-- ✅ **Autodescubrimiento de servicios** - Registro automático al inicio
-- ✅ **Health checks continuos** - Heartbeats cada 15 segundos
-- ✅ **Service discovery dinámico** - El gateway encuentra servicios automáticamente
-- ✅ **Fault tolerance** - Re-registro automático en caso de fallos
-- ✅ **Metadata enriquecida** - Versiones, tags, capabilities por servicio
-- ✅ **Graceful shutdown** - Desregistro limpio al cerrar servicios
-
-### 🎨 **Interfaz y UX**
-
-- ✅ **Tema oscuro completo** - Soporte mejorado para modo oscuro
-- ✅ **Sistema de notificaciones dropdown** - Historial de sesión con contador
-- ✅ **Validación en tiempo real** - Verificación de documentos existentes
-- ✅ **Navegación mejorada** - Flujo usuario → notificaciones optimizado
-- ✅ **Dashboard con auto-refresh** - Datos actualizados automáticamente
-
-### 🔧 **Funcionalidad y Performance**
-
-- ✅ **Manejo de errores avanzado** - Códigos HTTP específicos (409, 422, etc.)
-- ✅ **Búsqueda silenciosa en logs** - Sin notificaciones molestas
-- ✅ **Cache invalidation** inteligente en dashboard
-- ✅ **Contenedores renombrados** - Consistencia en nomenclatura
-- ✅ **Debugging mejorado** - Logs detallados para troubleshooting
-
-### 🚀 **Backend y API**
-
-- ✅ **Error 409 handling** - Documentos duplicados correctamente manejados
-- ✅ **Gateway error forwarding** - Códigos de estado preservados
-- ✅ **Session storage** - Persistencia de notificaciones por sesión
-- ✅ **API response optimization** - Mejores tiempos de respuesta
-
-## 🏗️ Arquitectura del Sistema
+## 🏗️ Arquitectura
 
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        WEB[Frontend Flask:5000]
+    subgraph Frontend
+        WEB[Flask:5000]
     end
     
-    subgraph "Gateway Layer"
+    subgraph Gateway
         GW[API Gateway:8001]
         SR[Service Registry:3010]
     end
     
-    subgraph "Microservices Layer"
-        AUTH[Auth Service:3001]
-        PERS[Personas Service:3002]
-        CONS[Consulta Service:3003]
-        NLP[NLP Service:3004]
-        LOG[Log Service:3005]
+    subgraph Services
+        AUTH[Auth:3001]
+        PERS[Personas:3002]
+        CONS[Consulta:3003]
+        NLP[NLP:3004]
+        LOG[Logs:3005]
     end
     
-    subgraph "Data Layer"
+    subgraph Data
         PG[(PostgreSQL:5432)]
         RD[(Redis:6379)]
         QD[(Qdrant:6333)]
@@ -81,471 +42,231 @@ graph TB
     
     WEB --> GW
     GW --> SR
-    GW --> AUTH
-    GW --> PERS
-    GW --> CONS
-    GW --> NLP
-    GW --> LOG
-    
-    AUTH -.-> SR
-    PERS -.-> SR
-    CONS -.-> SR
-    NLP -.-> SR
-    LOG -.-> SR
-    
-    AUTH --> PG
-    PERS --> PG
-    CONS --> PG
-    LOG --> PG
-    
+    GW --> AUTH & PERS & CONS & NLP & LOG
+    AUTH & PERS & CONS & NLP & LOG -.auto-registro.-> SR
+    AUTH & PERS & CONS & LOG --> PG
     CONS --> RD
     NLP --> QD
-    NLP --> PG
 ```
 
-### Componentes Principales
+### Componentes Clave
 
-**🌐 Service Registry (Puerto 3010)**
+| Componente | Puerto | Función | Tecnología |
+|------------|--------|---------|------------|
+| **Frontend** | 5000 | UI responsive con temas | Flask + Bootstrap 5.3 |
+| **Service Registry** | 3010 | Autodescubrimiento de servicios | Node.js |
+| **API Gateway** | 8001 | Routing dinámico + rate limiting | Express.js |
+| **Auth Service** | 3001 | JWT + Auth0 + sesiones | Node.js + PostgreSQL + Redis |
+| **Personas Service** | 3002 | CRUD + validación + imágenes | Node.js + PostgreSQL |
+| **Consulta Service** | 3003 | Búsqueda avanzada + cache | Node.js + PostgreSQL + Redis |
+| **NLP Service** | 3004 | Consultas IA + búsqueda semántica | Node.js + Gemini + Qdrant |
+| **Log Service** | 3005 | Auditoría y trazabilidad | Node.js + PostgreSQL |
 
-- **Autodescubrimiento**: Registro automático de todos los servicios
-- **Health monitoring**: Verificación continua del estado de servicios
-- **Service discovery**: API para localizar servicios dinámicamente
-- **Metadata management**: Versiones, tags, capabilities por servicio
-- **Fault tolerance**: Re-registro automático y cleanup de servicios caídos
+## 🚀 Quick Start
 
-**🔗 API Gateway (Puerto 8001)**
-
-- **Service discovery client**: Conecta con Service Registry automáticamente
-- **Dynamic routing**: Enrutamiento basado en servicios registrados
-- **Rate limiting**: Protección contra ataques DDoS
-- **Request forwarding**: Preservación de códigos de estado HTTP
-- **CORS handling**: Configuración centralizada para frontend
-
-**🔐 Auth Service (Puerto 3001)**
-
-- **JWT Authentication**: Tokens seguros con expiración configurable
-- **Auth0 Integration**: Login social y empresarial
-- **Session management**: Redis para sesiones distribuidas
-- **Password security**: Bcrypt hashing y validación fuerte
-- **Auto-registration**: Se registra automáticamente en Service Registry
-
-**👥 Personas Service (Puerto 3002)**
-
-- **CRUD completo**: Create, Read, Update, Delete con validaciones
-- **Image handling**: Upload, resize y serving de fotos
-- **Document validation**: Verificación de duplicados en tiempo real
-- **Audit logging**: Registro completo de operaciones
-- **Scalable design**: Preparado para múltiples réplicas
-
-**🔍 Consulta Service (Puerto 3003)**
-
-- **Advanced search**: Filtros múltiples con paginación optimizada
-- **Redis caching**: Cache inteligente con TTL configurable
-- **Silent search**: Búsquedas sin notificaciones para logs
-- **Performance optimization**: Índices de base de datos optimizados
-- **Load balancing ready**: Soporte para réplicas múltiples
-
-**🤖 NLP Service (Puerto 3004)**
-
-- **Google Gemini AI**: Procesamiento de lenguaje natural avanzado
-- **Vector search**: Búsquedas semánticas con Qdrant
-- **RAG implementation**: Retrieval-Augmented Generation
-- **Embedding generation**: Vectorización de consultas y documentos
-- **Context-aware responses**: Respuestas inteligentes y contextuales
-
-**📊 Log Service (Puerto 3005)**
-
-- **Transaction logging**: Registro completo de operaciones del sistema
-- **Audit trail**: Trazabilidad total con timestamps y metadata
-- **Advanced filtering**: Búsqueda por fecha, usuario, acción, entidad
-- **Performance metrics**: Estadísticas de uso y rendimiento
-- **Data analytics**: Insights y reportes automatizados
-
-**🎨 Frontend Flask (Puerto 5000)**
-
-- **Responsive UI**: Bootstrap 5.3 con temas dinámicos
-- **Real-time validation**: Verificación de campos mientras escribes
-- **Notification system**: Toast notifications con historial persistente
-- **Theme management**: Modo claro/oscuro/automático
-- **Progressive enhancement**: Funcionalidad básica sin JavaScript
-
-### Bases de Datos y Storage
-
-**🐘 PostgreSQL (Puerto 5432)**
-
-- **Primary data**: Personas, usuarios, logs de transacciones
-- **ACID compliance**: Transacciones seguras y consistentes
-- **Connection pooling**: Optimización de conexiones
-- **Backup strategy**: Snapshots automáticos y point-in-time recovery
-- **Indexing**: Optimizado para consultas frecuentes
-
-**🔴 Redis (Puerto 6379)**
-
-- **Session storage**: Sesiones JWT distribuidas
-- **Query caching**: Cache de consultas con TTL inteligente
-- **Rate limiting**: Contadores para API Gateway
-- **Real-time data**: Estados temporales y notificaciones
-- **Pub/Sub**: Comunicación en tiempo real entre servicios
-
-**🔍 Qdrant Vector Database (Puerto 6333)**
-
-- **Semantic search**: Búsquedas por similitud semántica
-- **AI embeddings**: Vectores generados por Google Gemini
-- **High performance**: Búsquedas vectoriales optimizadas
-- **Scalable storage**: Diseñado para grandes volúmenes de datos
-- **REST API**: Integración simple con servicios NLP
-
-## 🚀 Quick Start (Setup en 3 pasos)
-
-### 1. 📥 Clonar e inicializar
+### 1. Clonar e Inicializar
 
 ```bash
-git clone https://github.com/tu-usuario/gestion-personas-app.git
+git clone <repo-url>
 cd gestion-personas-app
-cp env.example .env
+cp .env.example .env
 ```
 
-### 2. ⚙️ Configurar API Key (Opcional)
+### 2. Configurar (Opcional)
 
-Edita `.env` y agrega tu Gemini API Key:
+Edita `.env` para añadir Gemini API Key:
 
 ```bash
 GEMINI_API_KEY=tu_api_key_aqui
 ```
 
-*Nota: Sin esto, las consultas NLP no funcionarán, pero el resto del sistema sí.*
-
-### 3. 🐳 Levantar el sistema
+### 3. Levantar Servicios
 
 ```bash
-# Construir y ejecutar todos los servicios
+# Producción
 docker-compose up -d
 
-# Ver logs en tiempo real (opcional)
-docker-compose logs -f
+# Desarrollo (hot reload)
+make dev
 ```
 
-### 4. 🌐 Acceder a la aplicación
+### 4. Acceder
 
-**URL Principal:** <http://localhost:5000>
+- **App**: <http://localhost:5000>
+- **Service Registry**: <http://localhost:3010/services>
+- **API Gateway Health**: <http://localhost:8001/health>
 
-**URLs de Monitoreo:**
+**Credenciales**: `admin` / `admin123`
 
-- **Service Registry:** <http://localhost:3010/services> (Ver servicios registrados)
-- **API Gateway Health:** <http://localhost:8001/health> (Estado del gateway)
-- **Qdrant Dashboard:** <http://localhost:6333/dashboard> (Vector database)
+## 📡 API Endpoints Principales
 
-**Credenciales por defecto:**
-
-- Usuario: `admin`
-- Contraseña: `admin123`
-
-## 🔗 API Endpoints Principales
-
-### 🌐 Service Registry API (Puerto 3010)
+### Autenticación
 
 ```bash
-# Ver todos los servicios registrados
-GET /services
-curl http://localhost:3010/services
-
-# Descubrir un servicio específico
-GET /discover/{serviceName}
-curl http://localhost:3010/discover/auth-service
-
-# Health check del registry
-GET /health
-curl http://localhost:3010/health
-
-# Registrar un servicio (usado internamente)
-POST /register
-{
-  "serviceId": "mi-servicio",
-  "name": "mi-servicio", 
-  "host": "mi-servicio",
-  "port": 3006,
-  "metadata": {
-    "version": "1.0.0",
-    "tags": ["api", "backend"]
-  }
-}
-
-# Enviar heartbeat (usado internamente)
-POST /heartbeat
-{
-  "serviceId": "mi-servicio"
-}
-
-# Desregistrar servicio (usado internamente)
-DELETE /services/{serviceId}
-```
-
-### 🔐 Authentication API (Puerto 8001)
-
-```bash
-# Login JWT
+# Login
 POST /api/auth/login
-{
-  "username": "admin",
-  "password": "admin123"
-}
+{ "username": "admin", "password": "admin123" }
 
-# Registro de usuario
+# Registro
 POST /api/auth/register
-{
-  "username": "nuevo_usuario",
-  "email": "user@example.com",
-  "password": "password123"
-}
-
-# Login con Auth0
-GET /api/auth/login/auth0
-
-# Logout
-POST /api/auth/logout
+{ "username": "user", "email": "user@example.com", "password": "pass" }
 ```
 
-### 👥 Personas API (Puerto 8001)
+### Personas (CRUD)
 
 ```bash
-# Crear persona
+# Crear
 POST /api/personas
 Authorization: Bearer {token}
-{
-  "numero_documento": "1234567890",
-  "tipo_documento": "Cédula",
-  "primer_nombre": "Juan",
-  "apellidos": "Pérez García",
-  "fecha_nacimiento": "1990-05-15",
-  "genero": "Masculino",
-  "correo_electronico": "juan@example.com",
-  "celular": "3001234567"
-}
 
-# Listar personas con paginación
-GET /api/personas?page=1&limit=10
-Authorization: Bearer {token}
+# Listar
+GET /api/personas?page=1&limit=20
 
-# Buscar persona por documento
-GET /api/personas/documento/{numero_documento}
-Authorization: Bearer {token}
+# Buscar por documento
+GET /api/personas/documento/{numero}
 
-# Verificar si documento existe (para validación)
-GET /api/personas/existe/{numero_document}
-Authorization: Bearer {token}
+# Verificar existencia
+GET /api/personas/existe/{numero}
 
-# Actualizar persona
+# Actualizar
 PUT /api/personas/{id}
-Authorization: Bearer {token}
 
-# Eliminar persona
+# Eliminar
 DELETE /api/personas/{id}
-Authorization: Bearer {token}
 ```
 
-### 🔍 Consulta Avanzada API (Puerto 8001)
+### Búsqueda Avanzada
 
 ```bash
-# Búsqueda avanzada con filtros
-GET /api/consulta/search?tipo_documento=Cédula&genero=Masculino&limit=20
-Authorization: Bearer {token}
+# Filtros múltiples
+GET /api/consulta/search?tipo_documento=Cédula&genero=Masculino
 
-# Búsqueda por nombre
-GET /api/consulta/nombre?q=Juan&page=1&limit=10
-Authorization: Bearer {token}
+# Por nombre
+GET /api/consulta/nombre?q=Juan&page=1
 
-# Búsqueda por rango de edad
-GET /api/consulta/edad?min_edad=18&max_edad=65
-Authorization: Bearer {token}
-
-# Estadísticas de consulta
+# Estadísticas
 GET /api/consulta/stats
-Authorization: Bearer {token}
 ```
 
-### 🤖 NLP API (Puerto 8001)
+### NLP
 
 ```bash
 # Consulta en lenguaje natural
 POST /api/nlp/consulta
-Authorization: Bearer {token}
-{
-  "pregunta": "¿Cuántas personas hay de Bogotá menores de 30 años?"
-}
+{ "pregunta": "¿Cuántas personas hay de Bogotá menores de 30 años?" }
 
 # Búsqueda semántica
 POST /api/nlp/buscar
-Authorization: Bearer {token}
-{
-  "query": "personas jóvenes estudiantes",
-  "limit": 10
-}
+{ "query": "personas jóvenes estudiantes", "limit": 10 }
 ```
 
-### 📊 Logs y Auditoría API (Puerto 8001)
+### Logs y Auditoría
 
 ```bash
-# Buscar logs con filtros
-GET /api/logs/search?transaction_type=CREATE&status=SUCCESS&limit=50
-Authorization: Bearer {token}
+# Filtrar logs
+GET /api/logs/search?transaction_type=CREATE&status=SUCCESS
 
-# Estadísticas de transacciones
+# Estadísticas
 GET /api/logs/stats
-Authorization: Bearer {token}
-
-# Logs por usuario
-GET /api/logs/user/{user_id}
-Authorization: Bearer {token}
-
-# Limpiar logs antiguos
-DELETE /api/logs/cleanup?days=30
-Authorization: Bearer {token}
 ```
 
-## 🔧 Desarrollo y Mantenimiento
+## 🔧 Comandos de Desarrollo
 
-### Comandos útiles
+### Producción
 
 ```bash
-# Parar todos los servicios
-docker-compose down
+make build      # Construir imágenes
+make up         # Iniciar servicios
+make down       # Detener servicios
+make logs       # Ver logs
+```
 
-# Rebuild completo (después de cambios de código)
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+### Desarrollo (Hot Reload)
 
-# Ver logs de un servicio específico
+```bash
+make dev        # Iniciar con hot reload
+make logs-dev   # Ver logs de desarrollo
+make down-dev   # Detener desarrollo
+```
+
+### Base de Datos
+
+```bash
+make db-backup   # Backup manual
+make db-restore  # Restaurar desde backup
+make db-reset    # Reset completo (⚠️ destructivo)
+make db-status   # Ver estadísticas
+```
+
+### Testing
+
+```bash
+make test              # Todos los tests
+make test-unit         # Solo unitarios
+make test-integration  # Solo integración
+make test-e2e          # Solo E2E
+make test-coverage     # Generar cobertura
+```
+
+### Debugging
+
+```bash
+# Logs específicos
 docker-compose logs -f frontend
 docker-compose logs -f service-registry
-docker-compose logs -f auth-service
 docker-compose logs -f personas-service
 
-# Restart de un servicio específico
-docker-compose restart frontend
-docker-compose restart service-registry
-
-# Ver estado de servicios
-docker-compose ps
-
-# Acceso directo a la base de datos
-docker exec -it personas_db psql -U admin -d personas_db
-
-# Monitorear Service Registry en tiempo real
-watch -n 2 'curl -s http://localhost:3010/services | jq'
-```
-
-### Verificar instalación completa
-
-```bash
-# Health check de todos los servicios
+# Health checks
 curl http://localhost:8001/health | jq
-
-# Verificar Service Registry
 curl http://localhost:3010/services | jq
 
-# Test de autenticación completo
-curl -X POST http://localhost:8001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' | jq
-
-# Verificar autodescubrimiento de servicios
-echo "Servicios registrados automáticamente:"
-curl -s http://localhost:3010/services | jq '.services[] | {name: .name, url: .url, status: .status}'
-
-# Test de conexión Gateway → Servicios
-for service in auth-service personas-service consulta-service nlp-service log-service; do
-  echo "Testing discovery for $service:"
-  curl -s http://localhost:3010/discover/$service | jq '.instance.url'
-done
+# Monitoreo en tiempo real
+watch -n 2 'curl -s http://localhost:3010/services | jq ".services | length"'
 ```
 
-## 📱 Funcionalidades Completas
+## 📊 Funcionalidades Principales
 
-### 🏠 Dashboard Principal
+### Dashboard
 
-- **Estadísticas en tiempo real**: Total de personas, registros por género, distribución por ciudad
-- **Auto-refresh inteligente**: Datos actualizados cada 30 segundos con cache invalidation
-- **Búsqueda rápida**: Acceso directo a funciones principales
-- **Navegación intuitiva**: Menú Bootstrap responsive con tema dinámico
-- **Notificaciones centralizadas**: Dropdown con historial de sesión y contador
+- ✅ Estadísticas en tiempo real (auto-refresh 30s)
+- ✅ Distribución por género/ciudad/edad
+- ✅ Gráficos interactivos (Plotly.js)
+- ✅ Cache invalidation inteligente
 
-### 👥 Gestión de Personas
+### Gestión de Personas
 
-1. **Crear Personas**:
-   - Formulario completo con validaciones en tiempo real
-   - Verificación de documentos duplicados (Error 409)
-   - Mensajes de error específicos y descriptivos
-   - Upload de fotos con preview
+- ✅ CRUD completo con validación en tiempo real
+- ✅ Verificación de duplicados (código 409)
+- ✅ Upload de imágenes (resize automático)
+- ✅ Búsqueda avanzada con filtros
+- ✅ Carga masiva CSV
 
-2. **Modificar Datos**:
-   - Actualización con búsqueda previa y navegación mejorada
-   - Validación de campos en tiempo real
-   - Preservación de datos originales durante edición
+### Consultas Inteligentes
 
-3. **Consultar Datos**:
-   - 🔍 **Búsqueda individual** por documento con validación
-   - 🎯 **Búsqueda avanzada** con filtros múltiples y paginación
-   - ⚡ **Resultados en tiempo real** optimizados
-   - 📊 **Cache inteligente** para consultas frecuentes
+- ✅ Lenguaje natural con Google Gemini
+- ✅ Búsqueda semántica con Qdrant
+- ✅ Respuestas contextuales y análisis
 
-4. **Eliminar Personas**:
-   - Proceso seguro con confirmación doble
-   - Verificación de existencia antes de eliminar
-   - Logging completo de eliminaciones
+### Auditoría
 
-### 🤖 Consultas Inteligentes
+- ✅ Registro completo de operaciones
+- ✅ Filtros avanzados (fecha, usuario, acción)
+- ✅ Trazabilidad total con timestamps
+- ✅ Búsqueda silenciosa (sin notificaciones)
 
-- **Lenguaje Natural**: "¿Cuántas personas hay de Bogotá menores de 30 años?"
-- **IA con RAG**: Análisis semántico usando Google Gemini
-- **Respuestas contextuales**: Interpretación inteligente de consultas
-- **Vector database**: Búsquedas semánticas con Qdrant
+### Notificaciones
 
-### 📊 Auditoría y Logs
+- ✅ Toast modernas con iconos/colores
+- ✅ Dropdown con historial de sesión
+- ✅ Contador dinámico con animaciones
+- ✅ Estados leído/no leído
 
-- **Registro completo** de todas las operaciones (CREATE, READ, UPDATE, DELETE)
-- **Búsqueda silenciosa** - Sin notificaciones molestas al consultar
-- **Filtros avanzados** por fecha, usuario, acción, tipo de entidad
-- **Trazabilidad total** con timestamps y detalles de solicitudes
-- **Exportación de datos** para análisis
+### Temas
 
-### 🔔 Sistema de Notificaciones Avanzado
-
-- **Toast notifications** modernas con iconos y colores
-- **Dropdown de historial** con persistencia de sesión
-- **Contador dinámico** con animaciones
-- **Estados de leído/no leído** para seguimiento
-- **Limpieza automática** y manual de notificaciones
-- **Integración completa** con todos los módulos del sistema
-
-### 🎨 Temas y Accesibilidad
-
-- **Tema claro/oscuro/automático** con transiciones suaves
-- **Modo oscuro completo** - Todos los componentes optimizados
-- **Accesibilidad WCAG** - Screen readers y navegación por teclado
-- **Responsive design** - Móvil, tablet y desktop
-- **Shortcuts de teclado** - Ctrl+Shift+T para cambiar tema
-
-### ✅ Validaciones y Manejo de Errores
-
-| Campo | Validación | Ejemplo | Error Handling |
-|-------|------------|---------|----------------|
-| Primer/Segundo Nombre | Solo letras, máx 30 chars | "Juan Carlos" | Validación en tiempo real |
-| Apellidos | Solo letras, máx 60 chars | "García López" | Formato automático |
-| Documento | Solo números, máx 10 chars | "1234567890" | **Verificación de duplicados** |
-| Fecha Nacimiento | No futura, calendario | "1990-05-15" | Validación de edad |
-| Género | Lista: M/F/Otro/Prefiero no decir | "Masculino" | Selección obligatoria |
-| Email | Formato válido | "<user@domain.com>" | Verificación sintáctica |
-| Celular | Exactamente 10 dígitos | "3001234567" | Formato colombiano |
-| Foto | Máx 2MB, jpg/png/gif | upload.jpg | Preview y validación |
-
-#### 🛡️ **Códigos de Error Específicos**
-
-- **400 Bad Request**: Datos inválidos con detalles específicos
-- **409 Conflict**: "❌ Ya existe una persona con este documento"
-- **422 Unprocessable Entity**: Errores de validación con campo específico
-- **500 Server Error**: Errores internos con logging automático
-- **404 Not Found**: Persona no encontrada en consultas
+- ✅ Claro/oscuro/automático
+- ✅ Persistencia en sessionStorage
+- ✅ Transiciones suaves
+- ✅ Shortcut: `Ctrl+Shift+T`
 
 ## 🔧 Configuración Avanzada
 
@@ -755,94 +476,101 @@ docker exec -it personas_redis redis-cli
 - **Database size**: Monitoring automático
 - **Error rates**: < 1% target
 
-## 🔒 Seguridad y Mejores Prácticas
+## 🔒 Seguridad
 
-### Seguridad Implementada
-
-- 🔐 **JWT Authentication** con expiración
-- 🛡️ **Rate limiting** en API Gateway
-- 🔍 **Input validation** exhaustiva
-- 📝 **Audit trail** completo
+- 🔐 **JWT** con expiración 24h
+- 🛡️ **Bcrypt** hashing (10+ rounds)
+- 🔍 **Validación** frontend + backend
 - 🚫 **SQL injection** prevention
-- 🔒 **Session security** con secrets
+- 📊 **Rate limiting** (100 req/min)
+- 🔒 **CORS** configurado
 
-### Producción Checklist
+## ⚡ Performance
 
-- [ ] Cambiar credenciales por defecto
-- [ ] Configurar HTTPS/SSL
-- [ ] Backup automático de database
-- [ ] Monitoring y alertas
-- [ ] Log rotation
-- [ ] Security updates
-- [ ] Load balancer setup
-- [ ] CDN para assets estáticos
+| Métrica | Target | Implementación |
+|---------|--------|----------------|
+| Response time | < 200ms | Connection pooling + índices |
+| Cache hit ratio | > 80% | Redis TTL 5 min |
+| Throughput | > 1000 req/min | Load balancing ready |
+| DB connections | Max 20 | PostgreSQL pool |
 
-## 🧪 Testing y Calidad de Código
+## 🐳 Docker y Volúmenes
 
-### Entorno de Testing Dockerizado
+### Volúmenes Persistentes
 
-El proyecto incluye un **entorno de testing completamente automatizado** que permite ejecutar tests de forma aislada sin afectar el entorno de desarrollo.
-
-#### 🚀 Quick Start
-
-```bash
-# Opción 1: Script interactivo
-cd gestion-personas-app
-./test-quickstart.sh
-
-# Opción 2: Comandos Make
-make test              # Ejecutar TODOS los tests
-make test-unit         # Solo tests unitarios
-make test-integration  # Solo tests de integración
-make test-e2e          # Solo tests E2E
-make test-coverage     # Generar reporte de cobertura
+```yaml
+volumes:
+  personas_data:        # PostgreSQL
+  personas_redis_data:  # Redis
+  personas_uploads:     # Imágenes
+  qdrant_storage:       # Vector DB
 ```
 
-#### 📊 Tipos de Tests
+### Hot Reload (Desarrollo)
 
-- **Unitarios**: Tests de funciones individuales
-- **Integración**: Tests de API endpoints y bases de datos
-- **E2E**: Tests de flujo completo con Playwright
-- **Frontend**: Tests de Python con pytest
+```yaml
+volumes:
+  ./services/shared:/app/shared    # Service Registry Client
+  ./services/registry:/app         # Registry
+  ./services/auth:/app             # Auth
+  ./services/personas:/app         # Personas
+  ./gateway:/app                   # Gateway
+  ./frontend:/app                  # Frontend
+```
 
-#### 📈 Cobertura y Reportes
+## 📚 Documentación Adicional
+
+- [`README-DEV.md`](README-DEV.md) - Guía de desarrollo avanzado
+- `TESTING-GUIDE.md` - Guía completa de testing
+- [`services/registry/README.md`](gestion-personas-app/services/registry/README.md) - Service Registry
+- `DATABASE-MIGRATIONS.md` - Sistema de migraciones
+
+## 🧪 Testing
 
 ```bash
-# Ver resultados interactivamente
-./view-test-results.sh
-
-# O consultar reportes
-make test-results
+# Entorno aislado
+./test-quickstart.sh      # Setup + ejecutar tests
+./check-test-setup.sh     # Verificar configuración
+./view-test-results.sh    # Ver reportes
 
 # Reportes disponibles en:
-# - test-results/index.html (consolidado)
-# - test-results/coverage-python/index.html
-# - test-results/coverage/*/index.html
+# test-results/index.html
+# test-results/coverage-python/index.html
 ```
 
-#### 🐳 Servicios de Test
+## 🆕 Últimas Mejoras (v3.0)
 
-El entorno incluye:
+### Service Registry
 
-- PostgreSQL Test (puerto 5433, tmpfs)
-- Redis Test (puerto 6380, tmpfs)
-- Service Registry Test
-- Gateway Test
-- Test Runners (Node.js, Python, E2E)
+- ✅ Autodescubrimiento automático
+- ✅ Heartbeats cada 15s
+- ✅ Re-registro en fallos
+- ✅ Cleanup automático (>60s sin heartbeat)
 
-#### 📚 Documentación Completa
+### UX/UI
 
-- **Guía Completa**: [`gestion-personas-app/TESTING-GUIDE.md`](gestion-personas-app/TESTING-GUIDE.md)
-- **Quick Reference**: [`gestion-personas-app/TESTING-README.md`](gestion-personas-app/TESTING-README.md)
-- **Setup Summary**: [`gestion-personas-app/TEST-SETUP-SUMMARY.md`](gestion-personas-app/TEST-SETUP-SUMMARY.md)
+- ✅ Tema oscuro completo
+- ✅ Notificaciones dropdown
+- ✅ Validación en tiempo real
+- ✅ Dashboard auto-refresh
 
-#### ✅ Verificar Setup
+### Backend
 
-```bash
-cd gestion-personas-app
-./check-test-setup.sh
-```
+- ✅ Error 409 handling
+- ✅ Gateway error forwarding
+- ✅ Cache invalidation
+- ✅ Session storage
 
-## 📄 Licencia y Contacto
+## 🔗 Enlaces Útiles
 
-**Licencia**: MIT License
+- **Service Registry**: <http://localhost:3010/services>
+- **Gateway Health**: <http://localhost:8001/health>
+- **Qdrant Dashboard**: <http://localhost:6333/dashboard>
+
+## 📄 Licencia
+
+MIT License
+
+---
+
+**Versión**: 3.0 | **Fecha**: Septiembre 2025 | **Estado**: Producción
