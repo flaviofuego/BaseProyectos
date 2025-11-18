@@ -13,6 +13,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <!-- Notification System CSS -->
+    <link href="{{ url_for('static', filename='css/notification.css') }}" rel="stylesheet">
     <!-- Accessibility CSS -->
     <link href="{{ url_for('static', filename='css/accessibility.css') }}" rel="stylesheet">
     
@@ -53,6 +55,11 @@
                                 <i class="fas fa-plus" aria-hidden="true"></i> 
                                 <span>Crear Persona</span>
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('bulk_upload_personas') }}">
+                                <i class="fas fa-file-upload" aria-hidden="true"></i> 
+                                <span>Carga Masiva CSV</span>
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('modificar_persona') }}">
                                 <i class="fas fa-edit" aria-hidden="true"></i> 
                                 <span>Modificar Datos</span>
@@ -71,6 +78,12 @@
                         <a class="nav-link" href="{{ url_for('consulta_nlp') }}" {% if request.endpoint == 'consulta_nlp' %}aria-current="page"{% endif %}>
                             <i class="fas fa-robot" aria-hidden="true"></i> 
                             <span>Consulta IA</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('reportes') }}" {% if request.endpoint == 'reportes' %}aria-current="page"{% endif %}>
+                            <i class="fas fa-chart-line" aria-hidden="true"></i> 
+                            <span>Reportes</span>
                         </a>
                     </li>
                     <li class="nav-item">

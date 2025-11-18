@@ -1,0 +1,481 @@
+/*
+   login and registration styles
+*/
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+}
+
+.login-panel-left {
+  flex: 1;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+}
+
+[data-theme="dark"] .login-panel-left {
+  background: #1A202C;
+}
+
+.login-form-wrapper {
+  width: 100%;
+  max-width: 450px;
+}
+
+.login-logo {
+  margin-bottom: 2.5rem;
+}
+
+.login-logo h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #000000;
+  margin: 0;
+}
+
+.login-logo p {
+  font-size: 0.95rem;
+  color: #2D3748;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #000000;
+  margin-bottom: 2rem;
+}
+
+.auth-toggle {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.auth-toggle-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  background: transparent;
+  color: #2D3748;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.auth-toggle-btn.active {
+  color: #0066cc;
+  font-weight: 700;
+}
+
+.auth-toggle-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #0066cc;
+  border-radius: 3px 3px 0 0;
+}
+
+
+.auth-method-selector {
+  margin-bottom: 2rem;
+}
+
+.auth-method-selector label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1A202C;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.method-options {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.method-option {
+  position: relative;
+  flex: 1;
+}
+
+.method-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.method-option label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  border: 2px solid #CBD5E0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1A202C;
+}
+
+.method-option input[type="radio"]:checked + label {
+  border-color: #0066cc;
+  background: #f0f7ff;
+  color: #0066cc;
+}
+
+.method-option label i {
+  margin-right: 0.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1A202C;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.form-control-clean {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 2px solid #CBD5E0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: #1A202C;
+  font-weight: 500;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.form-control-clean:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.form-control-clean::placeholder {
+  color: #718096;
+  font-weight: 400;
+}
+
+.btn-primary-clean {
+  width: 100%;
+  padding: 0.95rem;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.btn-primary-clean:hover {
+  background: #0052a3;
+}
+
+.btn-primary-clean:disabled {
+  background: #adb5bd;
+  cursor: not-allowed;
+}
+
+.btn-secondary-clean {
+  width: 100%;
+  padding: 0.95rem;
+  background: transparent;
+  color: #0066cc;
+  border: 2px solid #0066cc;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: block;
+  text-align: center;
+}
+
+.btn-secondary-clean:hover {
+  background: #f0f7ff;
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.login-panel-right {
+  flex: 1;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.illustration-wrapper {
+  text-align: center;
+  color: white;
+  z-index: 2;
+}
+
+.illustration-icon {
+  font-size: 12rem;
+  margin-bottom: 2rem;
+  opacity: 0.9;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.illustration-text h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.illustration-text p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  line-height: 1.6;
+}
+
+.bg-decoration {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bg-decoration-1 {
+  width: 300px;
+  height: 300px;
+  top: -100px;
+  right: -100px;
+}
+
+.bg-decoration-2 {
+  width: 200px;
+  height: 200px;
+  bottom: -50px;
+  left: -50px;
+}
+
+.info-box {
+  background: #F7FAFC;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1.5rem;
+  border: 1px solid #E2E8F0;
+}
+
+.info-box small {
+  font-size: 0.85rem;
+  color: #2D3748;
+  font-weight: 500;
+}
+
+.info-box code {
+  background: #EDF2F7;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  color: #0066cc;
+  font-weight: 600;
+}
+
+.alert-clean {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.alert-clean.alert-danger {
+  background: #f8d7da;
+  border-left-color: #dc3545;
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: #2D3748;
+  font-weight: 500;
+}
+
+.requirement-item.valid {
+  color: #28a745;
+}
+
+.requirement-item.invalid {
+  color: #dc3545;
+}
+
+.requirement-item i {
+  font-size: 0.75rem;
+}
+
+.requirement-item.valid i::before {
+  content: "\f058"; /* fa-check-circle */
+}
+
+.requirement-item.invalid i::before {
+  content: "\f057"; /* fa-times-circle */
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .login-panel-right {
+    display: none;
+  }
+
+  .login-panel-left {
+    flex: 1;
+    max-width: 100%;
+  }
+}
+
+/*
+   DARK MODE STYLES
+ */
+
+
+[data-theme="dark"] .login-logo h1 {
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .login-logo p {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .login-title {
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .auth-toggle-btn {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .auth-toggle-btn.active {
+  color: #7C70DB;
+}
+
+[data-theme="dark"] .auth-toggle-btn.active::after {
+  background: #7C70DB;
+}
+
+[data-theme="dark"] .auth-method-selector label {
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .method-option label {
+  border-color: #4A5568;
+  color: #E2E8F0;
+  background: #2D3748;
+}
+
+[data-theme="dark"] .method-option input[type="radio"]:checked + label {
+  border-color: #7C70DB;
+  background: rgba(124, 112, 219, 0.15);
+  color: #A78BFA;
+}
+
+[data-theme="dark"] .form-group label {
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .form-control-clean {
+  background: #2D3748;
+  border-color: #4A5568;
+  color: #F7FAFC;
+}
+
+[data-theme="dark"] .form-control-clean:focus {
+  border-color: #7C70DB;
+  box-shadow: 0 0 0 3px rgba(124, 112, 219, 0.2);
+}
+
+[data-theme="dark"] .form-control-clean::placeholder {
+  color: #A0AEC0;
+}
+
+[data-theme="dark"] .btn-primary-clean {
+  background: #7C70DB;
+}
+
+[data-theme="dark"] .btn-primary-clean:hover {
+  background: #6C5FCE;
+}
+
+[data-theme="dark"] .btn-secondary-clean {
+  color: #A78BFA;
+  border-color: #7C70DB;
+}
+
+[data-theme="dark"] .btn-secondary-clean:hover {
+  background: rgba(124, 112, 219, 0.15);
+  color: #A78BFA;
+  border-color: #7C70DB;
+}
+
+[data-theme="dark"] .info-box {
+  background: #2D3748;
+  border-color: #4A5568;
+}
+
+[data-theme="dark"] .info-box small {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .info-box code {
+  background: #1A202C;
+  color: #A78BFA;
+}
+
+[data-theme="dark"] .alert-clean {
+  background: rgba(252, 211, 77, 0.15);
+  border-left-color: #FBBF24;
+  color: #FDE68A;
+}
+
+[data-theme="dark"] .alert-clean.alert-danger {
+  background: rgba(248, 113, 113, 0.15);
+  border-left-color: #F87171;
+  color: #FCA5A5;
+}
+
+[data-theme="dark"] .requirement-item {
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .requirement-item.valid {
+  color: #34D399;
+}
+
+[data-theme="dark"] .requirement-item.invalid {
+  color: #F87171;
+}

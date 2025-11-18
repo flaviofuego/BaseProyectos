@@ -1,0 +1,53 @@
+{
+  "name": "frontend-js-tests",
+  "version": "1.0.0",
+  "description": "Frontend JavaScript tests with Jest",
+  "scripts": {
+    "test": "jest --coverage --verbose",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "coverageDirectory": "coverage_js",
+    "collectCoverageFrom": [
+      "static/js/form-validator.js",
+      "static/js/format-utils.js",
+      "static/js/theme-manager.js",
+      "!static/js/**/*.test.js",
+      "!static/js/**/*.spec.js"
+    ],
+    "coverageThreshold": {
+      "static/js/form-validator.js": {
+        "branches": 85,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      },
+      "static/js/format-utils.js": {
+        "branches": 90,
+        "functions": 95,
+        "lines": 95,
+        "statements": 95
+      },
+      "static/js/theme-manager.js": {
+        "branches": 80,
+        "functions": 85,
+        "lines": 85,
+        "statements": 85
+      }
+    },
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/unit/setup.js"
+    ],
+    "testMatch": [
+      "**/tests/unit/**/*.test.js"
+    ]
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^9.3.3",
+    "@testing-library/jest-dom": "^6.1.5",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

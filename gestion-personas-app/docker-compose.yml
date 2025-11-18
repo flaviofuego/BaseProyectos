@@ -7,19 +7,30 @@ services:
       - "3010:3010"
     environment:
       - NODE_ENV=production
-      - SERVICE_REGISTRY_PORT=3010
+      - SERVICE_REGISTRY_PORT=${SERVICE_REGISTRY_PORT:-3010}
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3010/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
     networks:
       - app-network
+    depends_on:
+      - postgres
+      - redis
 
-  # Base de datos PostgreSQL
+  # Base de datos PostgreSQL con pgvector
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg15
     container_name: personas_db
     environment:
       POSTGRES_DB: personas_db
@@ -47,16 +58,16 @@ services:
     networks:
       - app-network
 
-  # Vector Database para RAG
-  qdrant:
-    image: qdrant/qdrant
-    container_name: personas_vectordb
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    networks:
-      - app-network
+  # Vector Database para RAG - DEPRECATED: Ahora se usa pgvector en PostgreSQL
+  # qdrant:
+  #   image: qdrant/qdrant
+  #   container_name: personas_vectordb
+  #   ports:
+  #     - "6333:6333"
+  #   volumes:
+  #     - qdrant_data:/qdrant/storage
+  #   networks:
+  #     - app-network
 
   # API Gateway
   gateway:
@@ -65,7 +76,8 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - NODE_ENV=production
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
     depends_on:
       - service-registry
     networks:
@@ -76,19 +88,21 @@ services:
     build: ./services/auth
     container_name: auth_service
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket para control de contenedores
+      - /var/run/docker.sock:/var/run/docker.sock # Docker socket para control de contenedores
+      - ./services/shared:/app/shared
     environment:
       - NODE_ENV=production
       - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=${DATABASE_URL}
       - AUTH0_DOMAIN=${AUTH0_DOMAIN}
       - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
       - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
       - AUTH0_CALLBACK_URL=${AUTH0_CALLBACK_URL}
       - SESSION_SECRET=${SESSION_SECRET}
       - FRONTEND_URL=${FRONTEND_URL}
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
       - SERVICE_NAME=auth-service
       - SERVICE_PORT=3001
       - CONSULTA_SERVICE_CONTAINER=consulta_service
@@ -96,6 +110,7 @@ services:
       - postgres
       - redis
       - service-registry
+      - log-service
     networks:
       - app-network
 
@@ -105,15 +120,20 @@ services:
     container_name: personas_service
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
+      - NLP_SERVICE_URL=${NLP_SERVICE_URL}
       - SERVICE_NAME=personas-service
       - SERVICE_PORT=3002
     volumes:
       - personas_uploads:/uploads
+      - ./services/shared:/app/shared
     depends_on:
       - postgres
       - service-registry
+      - log-service
+      - nlp-service
     networks:
       - app-network
 
@@ -124,41 +144,51 @@ services:
       replicas: 2
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
       restart_policy:
         condition: on-failure
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
-      - REDIS_URL=redis://redis:6379
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
       - SERVICE_NAME=consulta-service
       - SERVICE_PORT=3003
     depends_on:
       - postgres
       - redis
       - service-registry
+      - log-service
     networks:
       - app-network
+    volumes:
+      - ./services/shared:/app/shared
 
-  # Servicio de NLP con RAG
+  # Servicio de NLP con RAG (usando pgvector)
   nlp-service:
     build: ./services/nlp
     container_name: nlp_service
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - QDRANT_URL=http://qdrant:6333
-      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - NODE_ENV=production
+      - AZURE_FOUNDRY_ENDPOINT=${AZURE_FOUNDRY_ENDPOINT}
+      - AZURE_EMBEDDING_MODEL=${AZURE_EMBEDDING_MODEL}
+      - AZURE_CHAT_MODEL=${AZURE_CHAT_MODEL}
+      - AZURE_API_KEY=${AZURE_API_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - LOG_SERVICE_URL=${LOG_SERVICE_URL}
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
       - SERVICE_NAME=nlp-service
       - SERVICE_PORT=3004
     depends_on:
       - postgres
-      - qdrant
       - service-registry
+      - log-service
     networks:
       - app-network
+    volumes:
+      - ./services/shared:/app/shared
 
   # Servicio de Logs
   log-service:
@@ -166,8 +196,8 @@ services:
     container_name: log_service
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
-      - SERVICE_REGISTRY_URL=http://service-registry:3010
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
       - SERVICE_NAME=log-service
       - SERVICE_PORT=3005
     depends_on:
@@ -175,6 +205,8 @@ services:
       - service-registry
     networks:
       - app-network
+    volumes:
+      - ./services/shared:/app/shared
 
   # Frontend Flask
   frontend:
@@ -183,8 +215,9 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - API_GATEWAY_URL=http://gateway:8001
-      - FLASK_SECRET_KEY=your-flask-secret-key-change-in-production
+      - FLASK_ENV=production
+      - API_GATEWAY_URL=${API_GATEWAY_URL}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
     depends_on:
       - gateway
     networks:
@@ -192,7 +225,7 @@ services:
 
 volumes:
   postgres_data:
-  qdrant_data:
+  # qdrant_data:  # DEPRECATED: Ahora se usa pgvector
   personas_uploads:
 
 networks:

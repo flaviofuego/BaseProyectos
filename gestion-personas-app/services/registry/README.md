@@ -7,12 +7,14 @@ Este proyecto implementa un **Service Registry Pattern** que permite el auto-des
 ### Componentes Principales
 
 1. **Service Registry** (Puerto 3010)
+
    - Registro automático de servicios
-   - Descubrimiento de servicios 
+   - Descubrimiento de servicios
    - Health checks y heartbeat
    - Load balancing básico
 
 2. **API Gateway** (Puerto 8001)
+
    - Proxy dinámico usando Service Discovery
    - Enrutamiento automático
    - Circuit breaker básico
@@ -25,22 +27,26 @@ Este proyecto implementa un **Service Registry Pattern** que permite el auto-des
 ## 🚀 Inicio Rápido
 
 ### 1. Iniciar el Sistema Completo
+
 ```bash
 ./start-service-registry.sh
 ```
 
 ### 2. Verificar Servicios Registrados
+
 ```bash
 curl http://localhost:3010/services | jq
 ```
 
 ### 3. Probar Service Discovery
+
 ```bash
 curl http://localhost:3010/discover/auth-service
 curl http://localhost:3010/discover/personas-service
 ```
 
 ### 4. Verificar API Gateway
+
 ```bash
 curl http://localhost:8001/health
 ```
@@ -48,6 +54,7 @@ curl http://localhost:8001/health
 ## 📡 Service Registry API
 
 ### Registrar un Servicio
+
 ```bash
 POST /register
 {
@@ -65,21 +72,25 @@ POST /register
 ```
 
 ### Descubrir un Servicio
+
 ```bash
 GET /discover/{serviceName}
 ```
 
 ### Listar Todos los Servicios
+
 ```bash
 GET /services
 ```
 
 ### Enviar Heartbeat
+
 ```bash
 POST /heartbeat/{serviceId}
 ```
 
 ### Desregistrar Servicio
+
 ```bash
 DELETE /deregister/{serviceId}
 ```
@@ -87,12 +98,14 @@ DELETE /deregister/{serviceId}
 ## 🔧 Configuración de Variables de Entorno
 
 ### Service Registry
+
 ```env
 NODE_ENV=development
 SERVICE_REGISTRY_PORT=3010
 ```
 
 ### Microservicios
+
 ```env
 SERVICE_REGISTRY_URL=http://service-registry:3010
 SERVICE_NAME=auth-service
@@ -100,6 +113,7 @@ SERVICE_PORT=3001
 ```
 
 ### API Gateway
+
 ```env
 SERVICE_REGISTRY_URL=http://service-registry:3010
 ```
@@ -109,12 +123,12 @@ SERVICE_REGISTRY_URL=http://service-registry:3010
 Todos los servicios deben implementar un endpoint `/health`:
 
 ```javascript
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
-    status: 'UP',
-    service: 'service-name',
+    status: "UP",
+    service: "service-name",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 ```
@@ -124,26 +138,26 @@ app.get('/health', (req, res) => {
 ### Implementación en un Microservicio
 
 ```javascript
-const { ServiceRegistryClient } = require('../registry/client');
+const { ServiceRegistryClient } = require("../registry/client");
 
 const registryClient = new ServiceRegistryClient(
   process.env.SERVICE_REGISTRY_URL,
   process.env.SERVICE_NAME,
   process.env.SERVICE_PORT,
-  'container-hostname'
+  "container-hostname"
 );
 
 // Auto-registro al iniciar
 app.listen(PORT, async () => {
   try {
     await registryClient.register({
-      version: '1.0.0',
-      tags: ['auth', 'security'],
-      environment: process.env.NODE_ENV
+      version: "1.0.0",
+      tags: ["auth", "security"],
+      environment: process.env.NODE_ENV,
     });
-    console.log('✅ Service registered');
+    console.log("✅ Service registered");
   } catch (error) {
-    console.error('❌ Registration failed:', error.message);
+    console.error("❌ Registration failed:", error.message);
   }
 });
 
@@ -153,13 +167,38 @@ registryClient.setupGracefulShutdown();
 
 ## 🧪 Testing
 
-### Ejecutar Tests de Integración
+### Tests Disponibles
+
+- **Integración** (`integration/service-registry.integration.test.js`):
+  - Registro de servicios, heartbeat, descubrimiento
+  - Múltiples instancias y load balancing
+  - Deregistro y estado del registry
+- **Unit** (`tests/unit/cleanup.job.test.js`):
+  - Job automático de cleanup (fake timers)
+  - Verifica remoción de servicios con heartbeat expirado (>30s)
+
+### Ejecutar Tests
+
+```bash
+# Tests unitarios
+npm test
+
+# Tests de integración
+npm run test:integration
+
+# Todos los tests
+npm run test:all
+```
+
+### Test Manual de Service Registry
+
 ```bash
 cd services/registry
 node test-service-registry.js
 ```
 
-### Test Manual
+### Test Manual de API
+
 ```bash
 # Verificar Service Registry
 curl http://localhost:3010/health
@@ -177,17 +216,20 @@ curl http://localhost:8001/health
 ## 📊 Monitoreo
 
 ### Logs en Tiempo Real
+
 ```bash
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
 ```
 
 ### Logs Específicos
+
 ```bash
 docker logs service_registry_dev -f
 docker logs api_gateway_dev -f
 ```
 
 ### Estado de Servicios
+
 ```bash
 # Ver servicios registrados
 curl -s http://localhost:3010/services | jq '.services[] | {name: .name, status: .status, url: .url}'
@@ -199,17 +241,20 @@ curl -s http://localhost:3010/services | jq '.services[] | select(.isHealthy == 
 ## 🚨 Troubleshooting
 
 ### Service Registry No Responde
+
 ```bash
 docker logs service_registry_dev
 docker restart service_registry_dev
 ```
 
 ### Servicio No Se Registra
+
 1. Verificar variable `SERVICE_REGISTRY_URL`
 2. Comprobar conectividad de red
 3. Revisar logs del servicio
 
 ### API Gateway No Encuentra Servicios
+
 1. Verificar que Service Registry esté running
 2. Comprobar que los servicios estén registrados
 3. Revisar logs del API Gateway

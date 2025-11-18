@@ -1,0 +1,12 @@
+﻿numero_documento,tipo_documento,primer_nombre,segundo_nombre,apellidos,fecha_nacimiento,genero,correo_electronico,celular
+9000000001,Cédula,Carlos,Eduardo,Prueba Válida,15-03-1995,Masculino,carlos.valido@test.com,3009000001
+9000000002,Tarjeta de identidad,Sofía,Andrea,Prueba Válida Dos,20-08-2007,Femenino,sofia.valida@test.com,3109000002
+9000000003,Cédula,Miguel,Ángel,Prueba Válida Tres,10-12-1988,Masculino,miguel.valido@test.com,3209000003
+LETRAS9999,Cédula,Error,Número,Documento Con Letras,05-05-1990,Masculino,error.doc@test.com,3001234567
+9000000004,Pasaporte,Error,Tipo,Documento Incorrecto,1992-07-14,Femenino,error.tipo@test.com,3109000004
+9000000005,Cédula,María123,Con,Números En Nombre,1985-11-30,Femenino,maria.numeros@test.com,3209000005
+9000000006,Cédula,José,Luis,Sin Correo Electrónico,1993-04-22,Masculino,,3159000006
+9000000007,Cédula,Pedro,Pablo,Fecha En Futuro,2035-01-01,Masculino,pedro.futuro@test.com,3109000007
+9000000008,Cédula,Ana,María,Email Inválido,1990-06-15,Femenino,no-es-email,3209000008
+9000000009,Cédula,Diego,Fernando,Prueba Válida Cuatro,1987-09-25,Masculino,diego.valido@test.com,3159000009
+9000000010,Tarjeta de identidad,Valentina,Isabel,Prueba Válida Cinco,2006-02-14,Femenino,valentina.valida@test.com,3109000010

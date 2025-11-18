@@ -1,0 +1,10 @@
+﻿numero_documento,tipo_documento,primer_nombre,segundo_nombre,apellidos,fecha_nacimiento,genero,correo_electronico,celular
+1111111111,Cédula,Pedro,José,González Martínez,20-06-1988,Masculino,pedro.gonzalez@test.com,3001111111
+2222222222,Tarjeta de identidad,Ana,María,López Torres,15-12-2006,Femenino,ana.lopez@test.com,3102222222
+3333333333,Cédula,Luis,Fernando,Ramírez Castro,25-03-1995,Masculino,luis.ramirez@test.com,3203333333
+INVALID123,Cédula,Nombre,Invalido,Documento Inválido,01-01-1990,Masculino,invalido@test.com,3001234567
+4444444444,Pasaporte,María,Clara,Error Tipo Doc,1992-07-14,Femenino,maria.error@test.com,3104444444
+5555555555,Cédula,Juan,Carlos,Sin Email,1985-11-30,Masculino,,3155555555
+6666666666,Cédula,Laura123,Número,En Nombre,1990-05-10,Femenino,laura.numero@test.com,3206666666
+7777777777,Cédula,Roberto,Andrés,Fecha Futura,2030-01-01,Masculino,roberto.futuro@test.com,3107777777
+8888888888,Cédula,Sofia,Isabel,Válida Correcta,1998-09-18,Femenino,sofia.valida@test.com,3208888888

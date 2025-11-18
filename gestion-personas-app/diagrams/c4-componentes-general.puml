@@ -1,0 +1,78 @@
+@startuml C4_Component_Overview
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Diagrama de Componentes - Vista General (C4 Level 3)
+
+Person(usuario, "Usuario", "Usuario final del sistema")
+
+System_Boundary(frontend, "Frontend Layer") {
+    Component(web_controllers, "Web Controllers", "Flask Routes", "Controladores web: Auth, Personas, Consultas, NLP, Logs, Config")
+    Component(ui_components, "UI Components", "Jinja2 + JS", "Templates, Theme Manager, Session Manager")
+}
+
+System_Boundary(gateway, "API Gateway") {
+    Component(router, "Dynamic Router", "Express + Service Discovery", "Enrutamiento dinámico con auto-discovery y middlewares de seguridad")
+}
+
+System_Boundary(registry, "Service Registry") {
+    Component(discovery, "Service Discovery", "Node.js", "Auto-registro, Health Checks y Service Store in-memory")
+}
+
+System_Boundary(microservices, "Microservices Layer") {
+    Component(auth, "Auth Service", "Node.js + JWT + OAuth2", "Autenticación, Autorización, Gestión de Usuarios y Preferencias")
+    Component(personas, "Personas Service", "Node.js + Multer", "CRUD Personas, Validación, Manejo de Imágenes")
+    Component(consulta, "Consulta Service", "Node.js + Redis", "Búsqueda Avanzada, Filtros, Cache, Estadísticas")
+    Component(nlp, "NLP Service", "Node.js + Gemini AI", "Procesamiento NLP, Embeddings, Búsqueda Semántica")
+    Component(logs, "Log Service", "Node.js", "Logging Centralizado, Auditoría, Análisis")
+}
+
+System_Boundary(data, "Data Layer") {
+    ContainerDb(postgres, "PostgreSQL", "PostgreSQL 15", "Base de datos relacional principal")
+    ContainerDb(redis_cache, "Redis", "Redis 7", "Cache y sesiones")
+    ContainerDb(qdrant_db, "Qdrant", "Vector DB", "Búsqueda semántica vectorial")
+}
+
+System_Ext(gemini, "Google Gemini API", "IA generativa y embeddings")
+System_Ext(auth0, "Auth0", "OAuth2 provider")
+
+' Relaciones principales
+Rel(usuario, web_controllers, "Interactúa", "HTTPS")
+Rel(web_controllers, ui_components, "Renderiza vistas")
+Rel(web_controllers, router, "API Calls", "REST/JSON")
+
+Rel(router, discovery, "Service Discovery", "HTTP")
+Rel(router, auth, "Forward requests")
+Rel(router, personas, "Forward requests")
+Rel(router, consulta, "Forward requests")
+Rel(router, nlp, "Forward requests")
+Rel(router, logs, "Forward requests")
+
+Rel(auth, discovery, "Auto-registro + Health")
+Rel(personas, discovery, "Auto-registro + Health")
+Rel(consulta, discovery, "Auto-registro + Health")
+Rel(nlp, discovery, "Auto-registro + Health")
+Rel(logs, discovery, "Auto-registro + Health")
+
+Rel(auth, postgres, "CRUD Usuarios", "SQL")
+Rel(auth, logs, "Log operaciones", "HTTP")
+Rel(auth, auth0, "OAuth2 flow", "HTTPS")
+
+Rel(personas, postgres, "CRUD Personas", "SQL")
+Rel(personas, logs, "Log operaciones", "HTTP")
+
+Rel(consulta, postgres, "Queries avanzadas", "SQL")
+Rel(consulta, redis_cache, "Cache resultados", "TCP")
+Rel(consulta, logs, "Log búsquedas", "HTTP")
+
+Rel(nlp, gemini, "AI Processing", "HTTPS")
+Rel(nlp, qdrant_db, "Vector Search", "gRPC")
+Rel(nlp, postgres, "Datos contextuales", "SQL")
+Rel(nlp, logs, "Log consultas NLP", "HTTP")
+
+Rel(logs, postgres, "Almacena logs", "SQL")
+
+SHOW_LEGEND()
+
+@enduml

@@ -1,5 +1,10 @@
 -- Crear esquema de base de datos para gestión de personas
 
+-- ============================================
+-- Extensión pgvector para búsqueda vectorial
+-- ============================================
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Tabla de usuarios para autenticación
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -114,4 +119,64 @@ ON CONFLICT DO NOTHING;
 INSERT INTO user_preferences (user_id, consulta_service_enabled)
 SELECT id, TRUE FROM users WHERE username = 'admin'
 ON CONFLICT (user_id) DO NOTHING;
+
+-- ============================================
+-- Tabla de embeddings vectoriales (pgvector)
+-- ============================================
+-- Tabla para almacenar embeddings de personas (768 dimensiones para Gemini embedding-001)
+CREATE TABLE IF NOT EXISTS personas_embeddings (
+    id SERIAL PRIMARY KEY,
+    persona_id INTEGER NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
+    embedding vector(768) NOT NULL,
+    content_text TEXT NOT NULL, -- Texto usado para generar el embedding
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(persona_id)
+);
+
+-- Índices para búsqueda eficiente de vectores
+-- HNSW (Hierarchical Navigable Small World) es más rápido para búsquedas de alta dimensión
+CREATE INDEX IF NOT EXISTS personas_embeddings_hnsw_idx 
+ON personas_embeddings 
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+-- También crear índice para persona_id para búsquedas directas
+CREATE INDEX IF NOT EXISTS personas_embeddings_persona_id_idx 
+ON personas_embeddings(persona_id);
+
+-- Trigger para actualizar updated_at automáticamente
+CREATE TRIGGER update_personas_embeddings_updated_at 
+BEFORE UPDATE ON personas_embeddings
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Función auxiliar para búsqueda de similitud con límite
+CREATE OR REPLACE FUNCTION search_similar_personas(
+    query_embedding vector(768),
+    similarity_threshold FLOAT DEFAULT 0.5,
+    max_results INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+    persona_id INTEGER,
+    similarity FLOAT,
+    content_text TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        pe.persona_id,
+        1 - (pe.embedding <=> query_embedding) AS similarity,
+        pe.content_text
+    FROM personas_embeddings pe
+    WHERE 1 - (pe.embedding <=> query_embedding) >= similarity_threshold
+    ORDER BY pe.embedding <=> query_embedding
+    LIMIT max_results;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Comentarios informativos
+COMMENT ON TABLE personas_embeddings IS 'Almacena embeddings vectoriales de personas para búsqueda semántica usando pgvector';
+COMMENT ON COLUMN personas_embeddings.embedding IS 'Vector de 768 dimensiones generado por Google Gemini embedding-001';
+COMMENT ON COLUMN personas_embeddings.content_text IS 'Texto concatenado usado para generar el embedding (nombre, documento, edad, etc)';
+COMMENT ON FUNCTION search_similar_personas IS 'Función auxiliar para búsqueda de similitud semántica con threshold y límite';
 

@@ -1,12 +1,14 @@
-const express = require('express');
-const { Pool } = require('pg');
-const redis = require('redis');
-const helmet = require('helmet');
-const cors = require('cors');
-const compression = require('compression');
-const axios = require('axios');
-const { createServiceRegistryClient } = require('./shared/service-registry-client');
-require('dotenv').config();
+const express = require("express");
+const { Pool } = require("pg");
+const redis = require("redis");
+const helmet = require("helmet");
+const cors = require("cors");
+const compression = require("compression");
+const axios = require("axios");
+const {
+  createServiceRegistryClient,
+} = require("./shared/service-registry-client");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -27,10 +29,10 @@ const pool = new Pool({
 
 // Redis connection for caching
 const redisClient = redis.createClient({
-  url: process.env.REDIS_URL
+  url: process.env.REDIS_URL,
 });
 
-redisClient.on('error', (err) => console.error('Redis Client Error', err));
+redisClient.on("error", (err) => console.error("Redis Client Error", err));
 redisClient.connect();
 
 // Cache TTL in seconds
@@ -42,60 +44,69 @@ function getCacheKey(type, params) {
 }
 
 // Helper function to log transactions
-async function logTransaction(type, entityId, numeroDocumento, status, req, responseData = null, error = null) {
+async function logTransaction(
+  type,
+  entityId,
+  numeroDocumento,
+  status,
+  req,
+  responseData = null,
+  error = null
+) {
   try {
-    const logServiceUrl = process.env.LOG_SERVICE_URL || 'http://log-service:3005';
+    const logServiceUrl =
+      process.env.LOG_SERVICE_URL || "http://log-service:3005";
     await axios.post(`${logServiceUrl}/log`, {
       transaction_type: type,
-      entity_type: 'PERSONA',
+      entity_type: "PERSONA",
       entity_id: entityId,
       numero_documento: numeroDocumento,
-      user_id: req.headers['x-user-id'],
+      user_id: req.headers["x-user-id"],
       ip_address: req.ip,
-      user_agent: req.headers['user-agent'],
+      user_agent: req.headers["user-agent"],
       request_data: req.query || req.body,
       response_data: responseData,
       status: status,
-      error_message: error
+      error_message: error,
     });
   } catch (error) {
-    console.error('Error logging transaction:', error);
+    console.error("Error logging transaction:", error);
   }
 }
 
 // Routes
 
 // Health check with readiness probe
-app.get('/health', async (req, res) => {
+app.get("/health", async (req, res) => {
   try {
     // Check database connection
-    await pool.query('SELECT 1');
-    
+    await pool.query("SELECT 1");
+
     // Check Redis connection
     await redisClient.ping();
-    
-    res.json({ 
-      status: 'OK', 
-      service: 'consulta-service',
+
+    res.json({
+      status: "OK",
+      service: "consulta-service",
       ready: true,
-      instance: process.env.HOSTNAME || 'unknown'
+      instance: process.env.HOSTNAME || "unknown",
     });
   } catch (error) {
-    res.status(503).json({ 
-      status: 'ERROR', 
-      service: 'consulta-service',
+    res.status(503).json({
+      status: "ERROR",
+      service: "consulta-service",
       ready: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
 
 // Get persona by documento with caching
-app.get('/persona/:numero_documento', async (req, res) => {
+app.get("/persona/:numero_documento", async (req, res) => {
   const startTime = Date.now();
   try {
     const { numero_documento } = req.params;
-    
+
     // Disable caching for real-time updates
     // const cacheKey = getCacheKey('persona', { numero_documento });
     // const cachedData = await redisClient.get(cacheKey);
@@ -111,13 +122,13 @@ app.get('/persona/:numero_documento', async (req, res) => {
 
     // Query database
     const result = await pool.query(
-      'SELECT * FROM personas WHERE numero_documento = $1',
+      "SELECT * FROM personas WHERE numero_documento = $1",
       [numero_documento]
     );
 
     if (result.rows.length === 0) {
-      await logTransaction('QUERY', null, numero_documento, 'NOT_FOUND', req);
-      return res.status(404).json({ error: 'Persona no encontrada' });
+      await logTransaction("QUERY", null, numero_documento, "NOT_FOUND", req);
+      return res.status(404).json({ error: "Persona no encontrada" });
     }
 
     const persona = result.rows[0];
@@ -126,29 +137,44 @@ app.get('/persona/:numero_documento', async (req, res) => {
     // await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(persona));
 
     // Log successful query
-    await logTransaction('QUERY', persona.id, numero_documento, 'SUCCESS', req, persona);
+    await logTransaction(
+      "QUERY",
+      persona.id,
+      numero_documento,
+      "SUCCESS",
+      req,
+      persona
+    );
 
     // Add headers to prevent caching
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     });
 
     res.json({
       ...persona,
       _cache: false,
-      _responseTime: Date.now() - startTime
+      _responseTime: Date.now() - startTime,
     });
   } catch (error) {
-    console.error('Error getting persona:', error);
-    await logTransaction('QUERY', null, req.params.numero_documento, 'ERROR', req, null, error.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error("Error getting persona:", error);
+    await logTransaction(
+      "QUERY",
+      null,
+      req.params.numero_documento,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 // Search personas with filters and caching
-app.get('/search', async (req, res) => {
+app.get("/search", async (req, res) => {
   const startTime = Date.now();
   try {
     const {
@@ -156,25 +182,34 @@ app.get('/search', async (req, res) => {
       genero,
       edad_min,
       edad_max,
+      nombre, // filtro por nombre (parcial) para primer_nombre o apellidos
       page = 1,
-      limit = 10
+      limit = 10,
     } = req.query;
 
-    // Disable caching for real-time updates
-    // const cacheKey = getCacheKey('search', req.query);
-    // const cachedData = await redisClient.get(cacheKey);
-    // if (cachedData) {
-    //   const result = JSON.parse(cachedData);
-    //   await logTransaction('SEARCH_CACHED', null, null, 'SUCCESS', req, { count: result.personas.length });
-    //   return res.json({
-    //     ...result,
-    //     _cache: true,
-    //     _responseTime: Date.now() - startTime
-    //   });
-    // }
+    // Check cache
+    const cacheKey = getCacheKey("search", req.query);
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      const result = JSON.parse(cachedData);
+      await logTransaction("SEARCH_CACHED", null, null, "SUCCESS", req, {
+        count: result.personas.length,
+        filters: req.query,
+      });
+
+      res.set({
+        "X-Cache": "HIT",
+      });
+
+      return res.json({
+        ...result,
+        _cache: true,
+        _responseTime: Date.now() - startTime,
+      });
+    }
 
     // Build query
-    let query = 'SELECT * FROM personas_con_edad WHERE 1=1';
+    let query = "SELECT * FROM personas_con_edad WHERE 1=1";
     const params = [];
     let paramCount = 1;
 
@@ -202,14 +237,23 @@ app.get('/search', async (req, res) => {
       paramCount++;
     }
 
+    if (nombre) {
+      // Búsqueda parcial case-insensitive en primer_nombre o apellidos
+      query += ` AND (primer_nombre ILIKE $${paramCount} OR apellidos ILIKE $${paramCount})`;
+      params.push(`%${nombre}%`);
+      paramCount++;
+    }
+
     // Count total results
-    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*)');
+    const countQuery = query.replace("SELECT *", "SELECT COUNT(*)");
     const countResult = await pool.query(countQuery, params);
     const totalCount = parseInt(countResult.rows[0].count);
 
     // Add pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${
+      paramCount + 1
+    }`;
     params.push(parseInt(limit), offset);
 
     // Execute query
@@ -221,68 +265,85 @@ app.get('/search', async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total: totalCount,
-        totalPages: Math.ceil(totalCount / parseInt(limit))
-      }
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+      },
     };
 
-    // Disable caching for real-time updates
-    // await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(response));
+    // Cachear el resultado
+    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(response));
 
     // Log search
-    await logTransaction('SEARCH', null, null, 'SUCCESS', req, { count: result.rows.length, filters: req.query });
+    await logTransaction("SEARCH", null, null, "SUCCESS", req, {
+      count: result.rows.length,
+      filters: req.query,
+    });
 
-    // Add headers to prevent caching
+    // Señalizar cache MISS
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+      "X-Cache": "MISS",
     });
 
     res.json({
       ...response,
       _cache: false,
-      _responseTime: Date.now() - startTime
+      _responseTime: Date.now() - startTime,
     });
   } catch (error) {
-    console.error('Error searching personas:', error);
-    await logTransaction('SEARCH', null, null, 'ERROR', req, null, error.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error("Error searching personas:", error);
+    await logTransaction(
+      "SEARCH",
+      null,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 // Get statistics with caching
-app.get('/stats', async (req, res) => {
+app.get("/stats", async (req, res) => {
   const startTime = Date.now();
   try {
-    const cacheKey = getCacheKey('stats', {});
+    const cacheKey = getCacheKey("stats", {});
 
     // Check cache
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
       const stats = JSON.parse(cachedData);
-      
-      await logTransaction('STATS_CACHED', null, null, 'SUCCESS', req, stats);
-      
+
+      await logTransaction("STATS_CACHED", null, null, "SUCCESS", req, stats);
+
       return res.json({
         ...stats,
         _cache: true,
-        _responseTime: Date.now() - startTime
+        _responseTime: Date.now() - startTime,
       });
     }
 
     // Gather statistics
     const queries = [
-      pool.query('SELECT COUNT(*) as total FROM personas'),
-      pool.query('SELECT genero, COUNT(*) as count FROM personas GROUP BY genero'),
-      pool.query('SELECT tipo_documento, COUNT(*) as count FROM personas GROUP BY tipo_documento'),
-      pool.query('SELECT grupo_edad, COUNT(*) as count FROM personas_con_edad GROUP BY grupo_edad'),
-      pool.query('SELECT MIN(edad) as min_edad, MAX(edad) as max_edad, AVG(edad) as avg_edad FROM personas_con_edad'),
+      pool.query("SELECT COUNT(*) as total FROM personas"),
+      pool.query(
+        "SELECT genero, COUNT(*) as count FROM personas GROUP BY genero"
+      ),
+      pool.query(
+        "SELECT tipo_documento, COUNT(*) as count FROM personas GROUP BY tipo_documento"
+      ),
+      pool.query(
+        "SELECT grupo_edad, COUNT(*) as count FROM personas_con_edad GROUP BY grupo_edad"
+      ),
+      pool.query(
+        "SELECT MIN(edad) as min_edad, MAX(edad) as max_edad, AVG(edad) as avg_edad FROM personas_con_edad"
+      ),
       pool.query(`
         SELECT primer_nombre, segundo_nombre, apellidos, fecha_nacimiento, edad
         FROM personas_con_edad
         ORDER BY edad ASC
         LIMIT 1
-      `)
+      `),
     ];
 
     const [
@@ -291,7 +352,7 @@ app.get('/stats', async (req, res) => {
       tipoDocResult,
       grupoEdadResult,
       edadStatsResult,
-      youngestResult
+      youngestResult,
     ] = await Promise.all(queries);
 
     const stats = {
@@ -311,78 +372,101 @@ app.get('/stats', async (req, res) => {
       estadisticas_edad: {
         minima: parseInt(edadStatsResult.rows[0].min_edad),
         maxima: parseInt(edadStatsResult.rows[0].max_edad),
-        promedio: parseFloat(edadStatsResult.rows[0].avg_edad).toFixed(2)
+        promedio: parseFloat(edadStatsResult.rows[0].avg_edad).toFixed(2),
       },
-      persona_mas_joven: youngestResult.rows[0] || null
+      persona_mas_joven: youngestResult.rows[0] || null,
     };
 
     // Cache the result
     await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(stats));
 
     // Log stats query
-    await logTransaction('STATS', null, null, 'SUCCESS', req, stats);
+    await logTransaction("STATS", null, null, "SUCCESS", req, stats);
 
     res.json({
       ...stats,
       _cache: false,
-      _responseTime: Date.now() - startTime
+      _responseTime: Date.now() - startTime,
     });
   } catch (error) {
-    console.error('Error getting stats:', error);
-    await logTransaction('STATS', null, null, 'ERROR', req, null, error.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error("Error getting stats:", error);
+    await logTransaction(
+      "STATS",
+      null,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
 // Clear cache endpoint (for admin use)
-app.delete('/cache', async (req, res) => {
+app.delete("/cache", async (req, res) => {
   try {
     await redisClient.flushDb();
-    
-    await logTransaction('CACHE_CLEAR', null, null, 'SUCCESS', req);
-    
-    res.json({ message: 'Cache cleared successfully' });
+
+    await logTransaction("CACHE_CLEAR", null, null, "SUCCESS", req);
+
+    res.json({ message: "Cache cleared successfully" });
   } catch (error) {
-    console.error('Error clearing cache:', error);
-    res.status(500).json({ error: 'Error clearing cache' });
+    console.error("Error clearing cache:", error);
+    res.status(500).json({ error: "Error clearing cache" });
   }
 });
 
 // Dashboard-specific stats endpoint with shorter cache
-app.get('/dashboard/stats', async (req, res) => {
+app.get("/dashboard/stats", async (req, res) => {
   const startTime = Date.now();
   try {
-    const cacheKey = getCacheKey('dashboard_stats', {});
+    const cacheKey = getCacheKey("dashboard_stats", {});
     const DASHBOARD_CACHE_TTL = 30; // 30 seconds cache for dashboard
 
     // Check cache
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
       const stats = JSON.parse(cachedData);
-      
-      await logTransaction('DASHBOARD_STATS_CACHED', null, null, 'SUCCESS', req, stats);
-      
+
+      await logTransaction(
+        "DASHBOARD_STATS_CACHED",
+        null,
+        null,
+        "SUCCESS",
+        req,
+        stats
+      );
+
       return res.json({
         ...stats,
         _cache: true,
         _responseTime: Date.now() - startTime,
-        _timestamp: new Date().toISOString()
+        _timestamp: new Date().toISOString(),
       });
     }
 
     // Gather statistics with optimized queries
     const queries = [
-      pool.query('SELECT COUNT(*) as total FROM personas'),
-      pool.query('SELECT genero, COUNT(*) as count FROM personas GROUP BY genero'),
-      pool.query('SELECT tipo_documento, COUNT(*) as count FROM personas GROUP BY tipo_documento'),
-      pool.query('SELECT grupo_edad, COUNT(*) as count FROM personas_con_edad GROUP BY grupo_edad'),
-      pool.query('SELECT MIN(edad) as min_edad, MAX(edad) as max_edad, ROUND(AVG(edad), 1) as avg_edad FROM personas_con_edad'),
+      pool.query("SELECT COUNT(*) as total FROM personas"),
+      pool.query(
+        "SELECT genero, COUNT(*) as count FROM personas GROUP BY genero"
+      ),
+      pool.query(
+        "SELECT tipo_documento, COUNT(*) as count FROM personas GROUP BY tipo_documento"
+      ),
+      pool.query(
+        "SELECT grupo_edad, COUNT(*) as count FROM personas_con_edad GROUP BY grupo_edad"
+      ),
+      pool.query(
+        "SELECT MIN(edad) as min_edad, MAX(edad) as max_edad, ROUND(AVG(edad), 1) as avg_edad FROM personas_con_edad"
+      ),
       pool.query(`
         SELECT primer_nombre, segundo_nombre, apellidos, fecha_nacimiento, edad
         FROM personas_con_edad
         ORDER BY edad ASC
         LIMIT 1
-      `)
+      `),
     ];
 
     const [
@@ -391,7 +475,7 @@ app.get('/dashboard/stats', async (req, res) => {
       tipoDocResult,
       grupoEdadResult,
       edadStatsResult,
-      youngestResult
+      youngestResult,
     ] = await Promise.all(queries);
 
     const stats = {
@@ -411,87 +495,109 @@ app.get('/dashboard/stats', async (req, res) => {
       estadisticas_edad: {
         minima: parseInt(edadStatsResult.rows[0].min_edad || 0),
         maxima: parseInt(edadStatsResult.rows[0].max_edad || 0),
-        promedio: parseFloat(edadStatsResult.rows[0].avg_edad || 0)
+        promedio: parseFloat(edadStatsResult.rows[0].avg_edad || 0),
       },
-      persona_mas_joven: youngestResult.rows[0] || null
+      persona_mas_joven: youngestResult.rows[0] || null,
     };
 
     // Cache the result with shorter TTL
-    await redisClient.setEx(cacheKey, DASHBOARD_CACHE_TTL, JSON.stringify(stats));
+    await redisClient.setEx(
+      cacheKey,
+      DASHBOARD_CACHE_TTL,
+      JSON.stringify(stats)
+    );
 
     // Log dashboard stats query
-    await logTransaction('DASHBOARD_STATS', null, null, 'SUCCESS', req, stats);
+    await logTransaction("DASHBOARD_STATS", null, null, "SUCCESS", req, stats);
 
     res.json({
       ...stats,
       _cache: false,
       _responseTime: Date.now() - startTime,
-      _timestamp: new Date().toISOString()
+      _timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error getting dashboard stats:', error);
-    await logTransaction('DASHBOARD_STATS', null, null, 'ERROR', req, null, error.message);
-    res.status(500).json({ 
-      error: 'Error interno del servidor',
-      _timestamp: new Date().toISOString()
+    console.error("Error getting dashboard stats:", error);
+    await logTransaction(
+      "DASHBOARD_STATS",
+      null,
+      null,
+      "ERROR",
+      req,
+      null,
+      error.message
+    );
+    res.status(500).json({
+      error: "Error interno del servidor",
+      _timestamp: new Date().toISOString(),
     });
   }
 });
 
 // Clear stats cache when data changes
-app.post('/cache/invalidate-stats', async (req, res) => {
+app.post("/cache/invalidate-stats", async (req, res) => {
   try {
     const statsKeys = [
-      getCacheKey('stats', {}),
-      getCacheKey('dashboard_stats', {})
+      getCacheKey("stats", {}),
+      getCacheKey("dashboard_stats", {}),
     ];
-    
-    await Promise.all(statsKeys.map(key => redisClient.del(key)));
-    
-    await logTransaction('STATS_CACHE_INVALIDATED', null, null, 'SUCCESS', req);
-    
-    res.json({ 
-      message: 'Stats cache invalidated successfully',
-      _timestamp: new Date().toISOString()
+
+    await Promise.all(statsKeys.map((key) => redisClient.del(key)));
+
+    await logTransaction("STATS_CACHE_INVALIDATED", null, null, "SUCCESS", req);
+
+    res.json({
+      message: "Stats cache invalidated successfully",
+      _timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error invalidating stats cache:', error);
-    res.status(500).json({ error: 'Error invalidating cache' });
+    console.error("Error invalidating stats cache:", error);
+    res.status(500).json({ error: "Error invalidating cache" });
   }
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received: closing HTTP server');
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM signal received: closing HTTP server");
   await redisClient.quit();
   await pool.end();
   process.exit(0);
 });
 
-app.listen(PORT, () => {
-  console.log(`Consulta service running on port ${PORT}`);
-  console.log(`Instance: ${process.env.HOSTNAME || 'unknown'}`);
-  
-  // Auto-registrar en el Service Registry
-  const serviceConfig = {
-    serviceId: 'consulta-service',
-    name: 'consulta-service',
-    host: 'consulta-service',
-    port: parseInt(PORT),
-    protocol: 'http',
-    metadata: {
-      version: '1.0.0',
-      description: 'Consulta service for advanced search and filtering of personas',
-      maintainer: 'consulta-team',
-      healthEndpoint: '/health',
-      tags: ['consulta', 'search', 'filter', 'cache', 'redis'],
-      capabilities: ['advanced-search', 'document-filter', 'age-filter', 'name-filter', 'redis-cache', 'transaction-logging']
-    }
-  };
-  
-  createServiceRegistryClient(serviceConfig);
-});
+// Si no estamos en modo test, iniciar el servidor
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Consulta service running on port ${PORT}`);
+    console.log(`Instance: ${process.env.HOSTNAME || "unknown"}`);
 
+    // Auto-registrar en el Service Registry
+    const serviceConfig = {
+      serviceId: "consulta-service",
+      name: "consulta-service",
+      host: "consulta-service",
+      port: parseInt(PORT),
+      protocol: "http",
+      metadata: {
+        version: "1.0.0",
+        description:
+          "Consulta service for advanced search and filtering of personas",
+        maintainer: "consulta-team",
+        healthEndpoint: "/health",
+        tags: ["consulta", "search", "filter", "cache", "redis"],
+        capabilities: [
+          "advanced-search",
+          "document-filter",
+          "age-filter",
+          "name-filter",
+          "redis-cache",
+          "transaction-logging",
+        ],
+      },
+    };
 
+    createServiceRegistryClient(serviceConfig);
+  });
+}
 
-
+// Exportar app para tests
+module.exports = app;

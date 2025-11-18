@@ -1,11 +1,13 @@
-const express = require('express');
-const { Pool } = require('pg');
-const Joi = require('joi');
-const helmet = require('helmet');
-const cors = require('cors');
-const compression = require('compression');
-const { createServiceRegistryClient } = require('./shared/service-registry-client');
-require('dotenv').config();
+const express = require("express");
+const { Pool } = require("pg");
+const Joi = require("joi");
+const helmet = require("helmet");
+const cors = require("cors");
+const compression = require("compression");
+const {
+  createServiceRegistryClient,
+} = require("./shared/service-registry-client");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -18,7 +20,7 @@ app.use(express.json());
 
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
 });
 
 // Validation schemas
@@ -32,8 +34,8 @@ const logSchema = Joi.object({
   user_agent: Joi.string().allow(null),
   request_data: Joi.object().allow(null),
   response_data: Joi.object().allow(null),
-  status: Joi.string().valid('SUCCESS', 'ERROR', 'NOT_FOUND').required(),
-  error_message: Joi.string().allow(null)
+  status: Joi.string().valid("SUCCESS", "ERROR", "NOT_FOUND").required(),
+  error_message: Joi.string().allow(null),
 });
 
 const searchSchema = Joi.object({
@@ -41,27 +43,27 @@ const searchSchema = Joi.object({
   entity_type: Joi.string(),
   numero_documento: Joi.string(),
   user_id: Joi.alternatives().try(Joi.number(), Joi.string()),
-  status: Joi.string().valid('SUCCESS', 'ERROR', 'NOT_FOUND'),
+  status: Joi.string().valid("SUCCESS", "ERROR", "NOT_FOUND"),
   fecha_inicio: Joi.date().iso(),
   fecha_fin: Joi.date().iso(),
   page: Joi.number().min(1).default(1),
-  limit: Joi.number().min(1).max(100).default(20)
+  limit: Joi.number().min(1).max(100).default(20),
 });
 
 // Routes
 
 // Health check
-app.get('/health', async (req, res) => {
+app.get("/health", async (req, res) => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'OK', service: 'log-service' });
+    await pool.query("SELECT 1");
+    res.json({ status: "OK", service: "log-service" });
   } catch (error) {
-    res.status(503).json({ status: 'ERROR', error: error.message });
+    res.status(503).json({ status: "ERROR", error: error.message });
   }
 });
 
 // Create log entry
-app.post('/log', async (req, res) => {
+app.post("/log", async (req, res) => {
   try {
     const { error } = logSchema.validate(req.body);
     if (error) {
@@ -79,7 +81,7 @@ app.post('/log', async (req, res) => {
       request_data,
       response_data,
       status,
-      error_message
+      error_message,
     } = req.body;
 
     const result = await pool.query(
@@ -100,23 +102,23 @@ app.post('/log', async (req, res) => {
         request_data ? JSON.stringify(request_data) : null,
         response_data ? JSON.stringify(response_data) : null,
         status,
-        error_message
+        error_message,
       ]
     );
 
     res.status(201).json({
-      message: 'Log entry created',
+      message: "Log entry created",
       log_id: result.rows[0].id,
-      created_at: result.rows[0].created_at
+      created_at: result.rows[0].created_at,
     });
   } catch (error) {
-    console.error('Error creating log:', error);
-    res.status(500).json({ error: 'Error creating log entry' });
+    console.error("Error creating log:", error);
+    res.status(500).json({ error: "Error creating log entry" });
   }
 });
 
 // Search logs with advanced filters
-app.get('/search', async (req, res) => {
+app.get("/search", async (req, res) => {
   try {
     const { error } = searchSchema.validate(req.query);
     if (error) {
@@ -132,7 +134,7 @@ app.get('/search', async (req, res) => {
       fecha_inicio,
       fecha_fin,
       page = 1,
-      limit = 20
+      limit = 20,
     } = req.query;
 
     // Validate and sanitize pagination parameters
@@ -140,7 +142,7 @@ app.get('/search', async (req, res) => {
     const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 20));
 
     // Build dynamic query
-    let query = 'SELECT * FROM transaction_logs WHERE 1=1';
+    let query = "SELECT * FROM transaction_logs WHERE 1=1";
     const params = [];
     let paramCount = 1;
 
@@ -190,13 +192,15 @@ app.get('/search', async (req, res) => {
     }
 
     // Count total results
-    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*)');
+    const countQuery = query.replace("SELECT *", "SELECT COUNT(*)");
     const countResult = await pool.query(countQuery, params);
     const totalCount = parseInt(countResult.rows[0].count);
 
     // Add pagination
     const offset = (pageNum - 1) * limitNum;
-    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${
+      paramCount + 1
+    }`;
     params.push(limitNum, offset);
 
     // Execute query
@@ -208,7 +212,7 @@ app.get('/search', async (req, res) => {
         page: pageNum,
         limit: limitNum,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limitNum)
+        totalPages: Math.ceil(totalCount / limitNum),
       },
       filters: {
         transaction_type,
@@ -217,78 +221,96 @@ app.get('/search', async (req, res) => {
         user_id,
         status,
         fecha_inicio,
-        fecha_fin
-      }
+        fecha_fin,
+      },
     });
   } catch (error) {
-    console.error('Error searching logs:', error);
-    res.status(500).json({ error: 'Error searching logs' });
+    console.error("Error searching logs:", error);
+    res.status(500).json({ error: "Error searching logs" });
   }
 });
 
 // Get log statistics
-app.get('/stats', async (req, res) => {
+app.get("/stats", async (req, res) => {
   try {
     const { fecha_inicio, fecha_fin } = req.query;
 
-    let dateFilter = '';
+    let dateFilter = "";
     const params = [];
-    
+
     if (fecha_inicio && fecha_fin) {
-      dateFilter = 'WHERE created_at BETWEEN $1 AND $2';
+      dateFilter = "WHERE created_at BETWEEN $1 AND $2";
       params.push(fecha_inicio, fecha_fin);
     } else if (fecha_inicio) {
-      dateFilter = 'WHERE created_at >= $1';
+      dateFilter = "WHERE created_at >= $1";
       params.push(fecha_inicio);
     } else if (fecha_fin) {
-      dateFilter = 'WHERE created_at <= $1';
+      dateFilter = "WHERE created_at <= $1";
       params.push(fecha_fin);
     }
 
     const queries = [
       // Total transactions
-      pool.query(`SELECT COUNT(*) as total FROM transaction_logs ${dateFilter}`, params),
-      
+      pool.query(
+        `SELECT COUNT(*) as total FROM transaction_logs ${dateFilter}`,
+        params
+      ),
+
       // By transaction type
-      pool.query(`
+      pool.query(
+        `
         SELECT transaction_type, COUNT(*) as count 
         FROM transaction_logs ${dateFilter}
         GROUP BY transaction_type
         ORDER BY count DESC
-      `, params),
-      
+      `,
+        params
+      ),
+
       // By status
-      pool.query(`
+      pool.query(
+        `
         SELECT status, COUNT(*) as count 
         FROM transaction_logs ${dateFilter}
         GROUP BY status
-      `, params),
-      
+      `,
+        params
+      ),
+
       // By entity type
-      pool.query(`
+      pool.query(
+        `
         SELECT entity_type, COUNT(*) as count 
         FROM transaction_logs ${dateFilter}
         GROUP BY entity_type
         ORDER BY count DESC
-      `, params),
-      
+      `,
+        params
+      ),
+
       // Most active users
-      pool.query(`
+      pool.query(
+        `
         SELECT user_id, COUNT(*) as count 
         FROM transaction_logs ${dateFilter}
-        ${dateFilter ? 'AND' : 'WHERE'} user_id IS NOT NULL
+        ${dateFilter ? "AND" : "WHERE"} user_id IS NOT NULL
         GROUP BY user_id
         ORDER BY count DESC
         LIMIT 10
-      `, params),
-      
+      `,
+        params
+      ),
+
       // Error rate
-      pool.query(`
+      pool.query(
+        `
         SELECT 
           COUNT(CASE WHEN status = 'ERROR' THEN 1 END) as errors,
           COUNT(*) as total
         FROM transaction_logs ${dateFilter}
-      `, params)
+      `,
+        params
+      ),
     ];
 
     const [
@@ -297,13 +319,14 @@ app.get('/stats', async (req, res) => {
       byStatusResult,
       byEntityResult,
       activeUsersResult,
-      errorRateResult
+      errorRateResult,
     ] = await Promise.all(queries);
 
     const errorData = errorRateResult.rows[0];
-    const errorRate = errorData.total > 0 
-      ? (errorData.errors / errorData.total * 100).toFixed(2) 
-      : 0;
+    const errorRate =
+      errorData.total > 0
+        ? ((errorData.errors / errorData.total) * 100).toFixed(2)
+        : 0;
 
     res.json({
       total_transactions: parseInt(totalResult.rows[0].total),
@@ -319,45 +342,45 @@ app.get('/stats', async (req, res) => {
         acc[row.entity_type] = parseInt(row.count);
         return acc;
       }, {}),
-      most_active_users: activeUsersResult.rows.map(row => ({
+      most_active_users: activeUsersResult.rows.map((row) => ({
         user_id: row.user_id,
-        transaction_count: parseInt(row.count)
+        transaction_count: parseInt(row.count),
       })),
       error_rate: parseFloat(errorRate),
       period: {
-        fecha_inicio: fecha_inicio || 'all_time',
-        fecha_fin: fecha_fin || 'all_time'
-      }
+        fecha_inicio: fecha_inicio || "all_time",
+        fecha_fin: fecha_fin || "all_time",
+      },
     });
   } catch (error) {
-    console.error('Error getting stats:', error);
-    res.status(500).json({ error: 'Error getting statistics' });
+    console.error("Error getting stats:", error);
+    res.status(500).json({ error: "Error getting statistics" });
   }
 });
 
 // Get specific log by ID
-app.get('/:id', async (req, res) => {
+app.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
     const result = await pool.query(
-      'SELECT * FROM transaction_logs WHERE id = $1',
+      "SELECT * FROM transaction_logs WHERE id = $1",
       [id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Log entry not found' });
+      return res.status(404).json({ error: "Log entry not found" });
     }
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error getting log:', error);
-    res.status(500).json({ error: 'Error getting log entry' });
+    console.error("Error getting log:", error);
+    res.status(500).json({ error: "Error getting log entry" });
   }
 });
 
 // Cleanup old logs (admin endpoint)
-app.delete('/cleanup', async (req, res) => {
+app.delete("/cleanup", async (req, res) => {
   try {
     const { days = 90 } = req.query;
 
@@ -368,39 +391,46 @@ app.delete('/cleanup', async (req, res) => {
     );
 
     res.json({
-      message: 'Old logs cleaned up',
+      message: "Old logs cleaned up",
       deleted_count: result.rows.length,
-      older_than_days: parseInt(days)
+      older_than_days: parseInt(days),
     });
   } catch (error) {
-    console.error('Error cleaning up logs:', error);
-    res.status(500).json({ error: 'Error cleaning up logs' });
+    console.error("Error cleaning up logs:", error);
+    res.status(500).json({ error: "Error cleaning up logs" });
   }
 });
 
 app.listen(PORT, () => {
   console.log(`Log service running on port ${PORT}`);
-  
+
   // Auto-registrar en el Service Registry
   const serviceConfig = {
-    serviceId: 'log-service',
-    name: 'log-service',
-    host: 'log-service',
+    serviceId: "log-service",
+    name: "log-service",
+    host: "log-service",
     port: parseInt(PORT),
-    protocol: 'http',
+    protocol: "http",
     metadata: {
-      version: '1.0.0',
-      description: 'Transaction logging and audit service for all system operations',
-      maintainer: 'log-team',
-      healthEndpoint: '/health',
-      tags: ['logging', 'audit', 'transactions', 'monitoring', 'analytics'],
-      capabilities: ['transaction-logging', 'log-search', 'statistics', 'audit-trail', 'cleanup', 'analytics']
-    }
+      version: "1.0.0",
+      description:
+        "Transaction logging and audit service for all system operations",
+      maintainer: "log-team",
+      healthEndpoint: "/health",
+      tags: ["logging", "audit", "transactions", "monitoring", "analytics"],
+      capabilities: [
+        "transaction-logging",
+        "log-search",
+        "statistics",
+        "audit-trail",
+        "cleanup",
+        "analytics",
+      ],
+    },
   };
-  
+
   createServiceRegistryClient(serviceConfig);
 });
 
-
-
-
+// Exportar app para pruebas
+module.exports = { app };

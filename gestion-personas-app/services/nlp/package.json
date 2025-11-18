@@ -1,25 +1,51 @@
 {
   "name": "nlp-service",
-  "version": "1.0.0",
-  "description": "NLP Service with RAG for natural language queries",
+  "version": "2.0.0",
+  "description": "Advanced NLP Service with RAG capabilities for natural language queries using Azure AI Foundry and PostgreSQL pgvector",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "init-embeddings": "node scripts/init-embeddings.js"
+    "legacy": "node index.js",
+    "test": "jest --config=jest.config.js",
+    "test:unit": "jest --config=jest.config.js --testPathPattern=tests/unit",
+    "test:integration": "jest --config=jest.integration.config.js",
+    "test:all": "npm run test:unit && npm run test:integration",
+    "test:basic": "node scripts/test-basic.sh",
+    "sync-embeddings": "node scripts/sync-embeddings.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "pg": "^8.11.3",
-    "@google/generative-ai": "^0.2.1",
-    "langchain": "^0.0.198",
-    "@qdrant/js-client-rest": "^1.7.0",
+    "pgvector": "^0.2.0",
     "dotenv": "^16.3.1",
-    "helmet": "^7.0.0",
+    "helmet": "^7.1.0",
     "cors": "^2.8.5",
-    "axios": "^1.6.0"
+    "axios": "^1.6.2",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.1.5"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
-  }
+    "nodemon": "^3.0.1",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "nock": "^13.4.0",
+    "testcontainers": "^10.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "nlp",
+    "rag",
+    "azure",
+    "azure-ai-foundry",
+    "pgvector",
+    "postgresql",
+    "vector-search",
+    "embeddings",
+    "ai",
+    "natural-language",
+    "semantic-search"
+  ]
 }

@@ -131,57 +131,57 @@ make down
 
 ### 1. **Desarrollo Frontend (JavaScript/CSS)**
 
-   ```bash
-   make dev
-   # Editar archivos en frontend/static/js/ o frontend/static/css/
-   # Los cambios se reflejan automáticamente en el navegador
-   # Verificar en Developer Tools que los archivos se cargan
-   ```
+```bash
+make dev
+# Editar archivos en frontend/static/js/ o frontend/static/css/
+# Los cambios se reflejan automáticamente en el navegador
+# Verificar en Developer Tools que los archivos se cargan
+```
 
 ### 2. **Desarrollo Backend (Python/Node.js)**
 
-   ```bash
-   make dev
-   # Editar archivos en frontend/app.py o services/*/index.js
-   # Los servicios se reinician automáticamente
-   # Verificar logs: docker-compose ... logs -f [servicio]
-   ```
+```bash
+make dev
+# Editar archivos en frontend/app.py o services/*/index.js
+# Los servicios se reinician automáticamente
+# Verificar logs: docker-compose ... logs -f [servicio]
+```
 
 ### 3. **Testing de Nuevas Características**
 
-   ```bash
-   # Test del sistema de notificaciones
-   # 1. Crear una persona con documento duplicado
-   # 2. Verificar error 409 en notificaciones
-   # 3. Comprobar historial en dropdown
-   
-   # Test del tema oscuro
-   # 1. Cambiar a modo oscuro
-   # 2. Verificar todos los componentes
-   # 3. Probar formularios y modales
-   ```
+```bash
+# Test del sistema de notificaciones
+# 1. Crear una persona con documento duplicado
+# 2. Verificar error 409 en notificaciones
+# 3. Comprobar historial en dropdown
+
+# Test del tema oscuro
+# 1. Cambiar a modo oscuro
+# 2. Verificar todos los componentes
+# 3. Probar formularios y modales
+```
 
 ### 4. **Debugging Avanzado**
 
-   ```bash
-   # Backend debugging
-   docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f frontend
-   
-   # Frontend debugging
-   # En Developer Tools:
-   # - Console: Ver logs de JavaScript
-   # - Network: Verificar requests AJAX
-   # - Application: Ver sessionStorage y localStorage
-   ```
+```bash
+# Backend debugging
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f frontend
+
+# Frontend debugging
+# En Developer Tools:
+# - Console: Ver logs de JavaScript
+# - Network: Verificar requests AJAX
+# - Application: Ver sessionStorage y localStorage
+```
 
 ### 5. **Testing/Staging**
 
-   ```bash
-   make down-dev
-   make build
-   make up
-   # Probar en modo producción antes de deploy
-   ```
+```bash
+make down-dev
+make build
+make up
+# Probar en modo producción antes de deploy
+```
 
 ## 🌐 Puertos y Servicios en Desarrollo
 
@@ -262,7 +262,7 @@ curl -X POST http://localhost:3010/register \
   -H "Content-Type: application/json" \
   -d '{
     "serviceId": "test-service",
-    "name": "test-service", 
+    "name": "test-service",
     "host": "localhost",
     "port": 9999,
     "metadata": {"version": "test"}
@@ -620,11 +620,13 @@ make db-migrations       # Lista todas las migraciones con sus fechas
 #### Workflow Automático
 
 **Al iniciar contenedores** (`make up` o `make dev`):
+
 1. Si existe un backup → Restaura automáticamente
 2. Si NO existe backup → Ejecuta `init.sql` + aplica migraciones pendientes
 3. Registra cada migración en `schema_migrations` para evitar duplicados
 
 **Al detener contenedores** (`make down` o `make down-dev`):
+
 1. Crea automáticamente un backup de la base de datos actual
 2. Guarda como `latest_backup.sql` (último backup)
 3. También crea copia con timestamp: `backup_YYYYMMDD_HHMMSS.sql`
@@ -663,18 +665,18 @@ database/
 ├── backups/                    # Backups (NO en git)
 │   ├── latest_backup.sql       # Último backup (usado para restore)
 │   ├── backup_20240101_120000.sql
-│   └── .gitignore              
+│   └── .gitignore
 └── migrations/                 # Migraciones (SÍ en git)
     ├── add_user_preferences.sql
     └── 002_add_notifications.sql
 ```
 
 **📚 Documentación Completa**: Ver `DATABASE-MIGRATIONS.md` para detalles completos sobre:
+
 - Casos de uso (clonar repo en nueva máquina, testing, recuperación)
 - Troubleshooting
 - Mejores prácticas
 - Ejemplos avanzados
-
 
 ### Performance y Monitoring
 
@@ -737,16 +739,18 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f frontend
 ```javascript
 // En Developer Console:
 // Ver estado de notificaciones
-window.notificationHistory.getNotifications()
+window.notificationHistory.getNotifications();
 
 // Test manual de validación
-window.validateDocument('1234567890')
+window.validateDocument("1234567890");
 
 // Ver tema actual
-document.documentElement.dataset.bsTheme
+document.documentElement.dataset.bsTheme;
 
 // Test de API directamente
-fetch('/api/personas/search?q=test').then(r=>r.json()).then(console.log)
+fetch("/api/personas/search?q=test")
+  .then((r) => r.json())
+  .then(console.log);
 ```
 
 ---
@@ -816,11 +820,17 @@ fetch('/api/personas/search?q=test').then(r=>r.json()).then(console.log)
 
 #### 🧪 **Testing Improvements**
 
-- [ ] Unit tests para Service Registry client
+- [x] **Unit tests para middleware de autenticación** (Meta: 90%)
+- [x] **Unit tests para validación de schemas Joi** (Meta: 95%)
+- [x] **Unit tests para generación de tokens JWT** (Meta: 95%)
+- [x] **Unit tests para procesamiento de imágenes Sharp** (Meta: 85%)
+- [x] **Unit tests para utilidades y helpers** (Meta: 90-100%)
 - [ ] Integration tests para todos los endpoints
 - [ ] Performance tests para service discovery
 - [ ] Chaos engineering tests para fault tolerance
 - [ ] Automated deployment pipeline con registry
+
+**Ver documentación completa en**: `gestion-personas-app/TESTING.md`
 
 #### 🔧 **Development Tools**
 
@@ -842,6 +852,43 @@ fetch('/api/personas/search?q=test').then(r=>r.json()).then(console.log)
 
 ### 🧪 **Testing Resources**
 
+#### **Tests Automatizados (Jest + Supertest)**
+
+```powershell
+# Ejecutar TODOS los tests con un solo comando
+cd gestion-personas-app
+.\run-all-tests.ps1
+
+# Ver reportes de cobertura en navegador
+.\open-coverage-reports.ps1
+
+# Tests individuales por servicio
+cd services/auth
+npm test                    # Ejecutar todos los tests
+npm test -- --coverage      # Con reporte de cobertura
+npm run test:watch          # Modo watch (auto-ejecuta al guardar)
+
+cd services/personas
+npm test                    # Ejecutar todos los tests
+```
+
+**📊 Tests Implementados** (260+ tests, 2,834+ líneas de código):
+
+- ✅ Middleware de autenticación JWT (40+ tests, 90% cobertura)
+- ✅ Validación de schemas Joi (70+ tests, 95% cobertura)
+- ✅ Generación de tokens JWT (50+ tests, 95% cobertura)
+- ✅ Procesamiento de imágenes Sharp (55+ tests, 85% cobertura)
+- ✅ Funciones auxiliares y helpers (45+ tests, 90-100% cobertura)
+
+**📄 Documentación de Tests**:
+
+- `TESTING.md` - Guía completa de testing
+- `TESTS-SUMMARY.md` - Resumen de implementación
+- `QUICK-START-TESTS.md` - Inicio rápido
+- `INDEX-TESTS.md` - Índice completo de archivos
+
+#### **Service Registry Tests**
+
 ```bash
 # Test automatizado completo
 docker exec -it service_registry_dev node test-service-registry.js
@@ -856,17 +903,20 @@ docker logs -f service_registry_dev | grep "💓"
 ### 🎯 **Quick Reference**
 
 **Service Registry URLs:**
+
 - Services List: `http://localhost:3010/services`
 - Discovery: `http://localhost:3010/discover/{service-name}`
 - Health: `http://localhost:3010/health`
 
 **Development Commands:**
+
 - Start: `make dev`
 - Monitor: `watch -n 2 'curl -s http://localhost:3010/services | jq'`
 - Test: `docker exec -it service_registry_dev node test-service-registry.js`
 - Debug: `docker logs -f service_registry_dev`
 
 **Troubleshooting:**
+
 - Verificar autoregistro: `docker logs auth_service_dev | grep registered`
 - Test de discovery: `curl http://localhost:3010/discover/auth-service`
 - Gateway health: `curl http://localhost:8001/health | jq .registeredServices`

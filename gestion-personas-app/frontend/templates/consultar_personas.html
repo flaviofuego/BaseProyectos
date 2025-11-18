@@ -2,7 +2,12 @@
 
 {% block title %}Consultar Personas - Sistema de Gestión de Personas{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/consultar_personas.css') }}">
+{% endblock %}
+
 {% block content %}
+<div class="container mt-4">
 <div class="row">
     <div class="col-12">
         <h1 class="mb-4">
@@ -28,7 +33,7 @@
                                value="{{ request.args.numero_documento or '' }}"
                                placeholder="Ingresa el número de documento">
                     </div>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary btn-primary-custom">
                         <i class="fas fa-search"></i> Buscar
                     </button>
                 </form>
@@ -80,10 +85,10 @@
                         </div>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary btn-primary-custom">
                             <i class="fas fa-search"></i> Buscar
                         </button>
-                        <a href="{{ url_for('consultar_personas') }}" class="btn btn-outline-secondary">
+                        <a href="{{ url_for('consultar_personas') }}" class="btn btn-outline-secondary btn-secondary-custom">
                             <i class="fas fa-times"></i> Limpiar
                         </a>
                     </div>
@@ -99,13 +104,28 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-list"></i> Resultados
-                    <span class="badge bg-primary">{{ personas|length }}</span>
-                </h5>
-                {% if personas|length > 1 %}
-                <small class="text-muted">Se encontraron {{ personas|length }} personas</small>
-                {% endif %}
+                <div>
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list"></i> Resultados
+                        <span class="badge bg-primary">{{ personas|length }}</span>
+                    </h5>
+                    {% if personas|length > 1 %}
+                    <small class="text-muted">Se encontraron {{ personas|length }} personas</small>
+                    {% endif %}
+                </div>
+                <!-- Export Buttons -->
+                <div class="btn-group" role="group">
+                    <button onclick="exportarDatos('csv')" 
+                            class="btn btn-success btn-success-outline" 
+                            title="Exportar a CSV">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                    <button onclick="exportarDatos('excel')" 
+                            class="btn btn-info btn-info-outline" 
+                            title="Exportar a Excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 {% if personas|length == 1 %}
@@ -133,10 +153,10 @@
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <a href="{{ url_for('modificar_persona') }}?numero_documento={{ persona.numero_documento }}" class="btn btn-warning btn-sm">
+                                <a href="{{ url_for('modificar_persona') }}?numero_documento={{ persona.numero_documento }}" class="btn btn-warning btn-warning-custom">
                                     <i class="fas fa-edit"></i> Modificar
                                 </a>
-                                <a href="{{ url_for('borrar_persona') }}?numero_documento={{ persona.numero_documento }}" class="btn btn-danger btn-sm">
+                                <a href="{{ url_for('borrar_persona') }}?numero_documento={{ persona.numero_documento }}" class="btn btn-danger btn-danger-custom">
                                     <i class="fas fa-trash"></i> Eliminar
                                 </a>
                             </div>
@@ -188,15 +208,15 @@
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
                                             <a href="{{ url_for('consultar_personas') }}?numero_documento={{ persona.numero_documento }}" 
-                                               class="btn btn-outline-info" title="Ver detalle">
+                                               class="btn btn-outline-info btn-secondary-custom" title="Ver detalle">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             <a href="{{ url_for('modificar_persona') }}?numero_documento={{ persona.numero_documento }}" 
-                                               class="btn btn-outline-warning" title="Modificar">
+                                               class="btn btn-outline-warning btn-warning-custom" title="Modificar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <a href="{{ url_for('borrar_persona') }}?numero_documento={{ persona.numero_documento }}" 
-                                               class="btn btn-outline-danger" title="Eliminar">
+                                               class="btn btn-outline-danger btn-danger-custom" title="Eliminar">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
@@ -238,6 +258,7 @@
     </div>
 </div>
 {% endif %}
+</div>
 
 <script>
 // Add search functionality with Enter key
@@ -251,6 +272,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Export data function
+function exportarDatos(formato) {
+    // Get current URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Add formato parameter
+    urlParams.set('formato', formato);
+    
+    // Build export URL
+    const exportUrl = '{{ url_for("exportar_personas") }}?' + urlParams.toString();
+    
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = ''; // This will use the filename from Content-Disposition header
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 </script>
 
 {% endblock %}
