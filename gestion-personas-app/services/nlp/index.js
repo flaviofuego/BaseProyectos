@@ -1,3 +1,4 @@
+// Cleaned version without duplicated/redeclared blocks.
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
@@ -15,7 +16,6 @@ class NLPService {
     this.app = express();
     this.PORT = process.env.SERVICE_PORT || 3004;
 
-
     this.pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       max: 10,
@@ -31,14 +31,7 @@ class NLPService {
     this.chatConfig = { temperature: 0.7, top_p: 0.95, max_tokens: 2048 };
     this.VECTOR_SIZE = 1536;
 
-
     this.SYSTEM_PROMPT = this.buildSystemPrompt();
-    this.serviceState = {
-      ready: false,
-      lastSync: null,
-      totalEmbeddings: 0,
-      startTime: Date.now(),
-    };
     this.serviceState = {
       ready: false,
       lastSync: null,
@@ -162,27 +155,20 @@ Usa títulos, listas, tablas y métricas en negritas:
   }
 
   setupMiddleware() {
-    this.app.use(helmet(), cors(), compression());
-    this.app.use(express.json({ limit: "10mb" }));
-    this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+    this.app.use(helmet());
+    this.app.use(cors());
+    this.app.use(compression());
     this.app.use(express.json({ limit: "10mb" }));
     this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.app.use((req, res, next) => {
       const start = Date.now();
-      res.on("finish", () =>
+      res.on("finish", () => {
         console.log(
           `${req.method} ${req.path} - ${res.statusCode} - ${
             Date.now() - start
           }ms`
-        )
-      );
-      res.on("finish", () =>
-        console.log(
-          `${req.method} ${req.path} - ${res.statusCode} - ${
-            Date.now() - start
-          }ms`
-        )
-      );
+        );
+      });
       next();
     });
   }
@@ -262,28 +248,20 @@ Usa títulos, listas, tablas y métricas en negritas:
   async initializeService() {
     try {
       console.log("🚀 Iniciando NLP Service v2.0...");
-
-      console.log("🚀 Iniciando NLP Service v2.0...");
-
       const client = await this.pool.connect();
       try {
-        await client.query("SELECT NOW()");
         await client.query("SELECT NOW()");
         await pgvector.registerType(client);
       } finally {
         client.release();
       }
-
       await this.verifyPgvectorExtension();
       await this.updateServiceStats();
       await this.autoSyncEmbeddings();
-
       this.serviceState.ready = true;
-      console.log("✅ Servicio inicializado");
       console.log("✅ Servicio inicializado");
       this.registerService();
     } catch (error) {
-      console.error("❌ Error inicializando:", error.message);
       console.error("❌ Error inicializando:", error.message);
       this.serviceState.ready = false;
     }
@@ -301,17 +279,12 @@ Usa títulos, listas, tablas y métricas en negritas:
         throw new Error("pgvector no instalado");
       }
     }
-
     const tableCheck = await this.pool.query(
       `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'personas_embeddings') as exists`
     );
-    if (!tableCheck.rows[0].exists)
+    if (!tableCheck.rows[0].exists) {
       console.log("⚠️ Tabla personas_embeddings no existe");
-    const tableCheck = await this.pool.query(
-      `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'personas_embeddings') as exists`
-    );
-    if (!tableCheck.rows[0].exists)
-      console.log("⚠️ Tabla personas_embeddings no existe");
+    }
   }
 
   async updateServiceStats() {
@@ -319,12 +292,8 @@ Usa títulos, listas, tablas y métricas en negritas:
       const result = await this.pool.query(
         "SELECT COUNT(*) as total FROM personas_embeddings"
       );
-      const result = await this.pool.query(
-        "SELECT COUNT(*) as total FROM personas_embeddings"
-      );
       this.serviceState.totalEmbeddings = parseInt(result.rows[0].total) || 0;
     } catch (error) {
-      console.error("Error actualizando stats:", error.message);
       console.error("Error actualizando stats:", error.message);
     }
   }
@@ -334,63 +303,39 @@ Usa títulos, listas, tablas y métricas en negritas:
       const dbResult = await this.pool.query(
         "SELECT COUNT(*) as total FROM personas_con_edad"
       );
-      const dbResult = await this.pool.query(
-        "SELECT COUNT(*) as total FROM personas_con_edad"
-      );
-      const totalPersonasDB = parseInt(dbResult.rows[0].total);
       const embeddingsResult = await this.pool.query(
         "SELECT COUNT(*) as total FROM personas_embeddings"
       );
-      const embeddingsResult = await this.pool.query(
-        "SELECT COUNT(*) as total FROM personas_embeddings"
-      );
+      const totalPersonasDB = parseInt(dbResult.rows[0].total) || 0;
       const totalEmbeddings = parseInt(embeddingsResult.rows[0].total) || 0;
-
       console.log(
         `DB: ${totalPersonasDB} personas | Vector: ${totalEmbeddings} embeddings`
       );
-      console.log(
-        `DB: ${totalPersonasDB} personas | Vector: ${totalEmbeddings} embeddings`
-      );
-
       if (totalPersonasDB === totalEmbeddings) {
-        console.log("✅ Sincronizado");
         console.log("✅ Sincronizado");
         this.serviceState.lastSync = new Date().toISOString();
         return;
       }
-
-      console.log("🔄 Sincronizando...");
       console.log("🔄 Sincronizando...");
       const result = await this.pool.query(`
         SELECT p.* FROM personas_con_edad p
         LEFT JOIN personas_embeddings pe ON p.id = pe.persona_id
         WHERE pe.id IS NULL ORDER BY p.id
       `);
-
       const { successCount, errorCount } = await this.processBatchEmbeddings(
         result.rows
       );
-
-      const { successCount, errorCount } = await this.processBatchEmbeddings(
-        result.rows
-      );
-
       this.serviceState.lastSync = new Date().toISOString();
       await this.updateServiceStats();
       console.log(`✅ Sync: ${successCount} éxitos, ${errorCount} errores`);
     } catch (error) {
       console.error("Error sync:", error.message);
-      console.error("Error sync:", error.message);
     }
   }
 
   async processBatchEmbeddings(personas, batchSize = 10) {
-    let successCount = 0,
-      errorCount = 0;
-    let successCount = 0,
-      errorCount = 0;
-
+    let successCount = 0;
+    let errorCount = 0;
     for (let i = 0; i < personas.length; i += batchSize) {
       const batch = personas.slice(i, i + batchSize);
       await Promise.all(
@@ -399,18 +344,9 @@ Usa títulos, listas, tablas y métricas en negritas:
             const embeddingText = this.buildEmbeddingText(persona);
             const embedding = await this.generateEmbedding(embeddingText);
             await this.pool.query(
-              `
-      await Promise.all(
-        batch.map(async (persona) => {
-          try {
-            const embeddingText = this.buildEmbeddingText(persona);
-            const embedding = await this.generateEmbedding(embeddingText);
-            await this.pool.query(
-              `
-            INSERT INTO personas_embeddings (persona_id, embedding, content_text)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP
-          `,
+              `INSERT INTO personas_embeddings (persona_id, embedding, content_text)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
               [persona.id, pgvector.toSql(embedding), embeddingText]
             );
             successCount++;
@@ -420,18 +356,7 @@ Usa títulos, listas, tablas y métricas en negritas:
           }
         })
       );
-      await new Promise((resolve) => setTimeout(resolve, 500));
-          `,
-              [persona.id, pgvector.toSql(embedding), embeddingText]
-            );
-            successCount++;
-          } catch (error) {
-            console.error(`Error persona ${persona.id}:`, error.message);
-            errorCount++;
-          }
-        })
-      );
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((r) => setTimeout(r, 300));
     }
     return { successCount, errorCount };
   }
@@ -439,26 +364,13 @@ Usa títulos, listas, tablas y métricas en negritas:
   buildEmbeddingText(persona) {
     return `${persona.primer_nombre} ${persona.segundo_nombre || ""} ${
       persona.apellidos
-    } 
-    return `${persona.primer_nombre} ${persona.segundo_nombre || ""} ${
-      persona.apellidos
-    } 
-      ${persona.tipo_documento} ${persona.numero_documento} 
-      ${persona.genero} edad ${persona.edad} años ${persona.grupo_edad || ""}
-      ${persona.genero} edad ${persona.edad} años ${persona.grupo_edad || ""}
-      ${persona.correo_electronico} ${persona.celular}
-      nacimiento ${persona.fecha_nacimiento || ""}`.trim();
-      nacimiento ${persona.fecha_nacimiento || ""}`.trim();
+    } ${persona.tipo_documento} ${persona.numero_documento} ${
+      persona.genero
+    } edad ${persona.edad} años ${persona.grupo_edad || ""} ${
+      persona.correo_electronico
+    } ${persona.celular} nacimiento ${persona.fecha_nacimiento || ""}`.trim();
   }
 
-  async logTransaction(
-    type,
-    query,
-    status,
-    req,
-    responseData = null,
-    error = null
-  ) {
   async logTransaction(
     type,
     query,
@@ -468,29 +380,6 @@ Usa títulos, listas, tablas y métricas en negritas:
     error = null
   ) {
     try {
-      const logServiceUrl =
-        process.env.LOG_SERVICE_URL || "http://log-service:3005";
-      await axios.post(
-        `${logServiceUrl}/log`,
-        {
-          transaction_type: type,
-          entity_type: "NLP_QUERY_V2",
-          user_id: req.headers["x-user-id"],
-          ip_address: req.ip || req.connection.remoteAddress,
-          user_agent: req.headers["user-agent"],
-          request_data: { query, timestamp: new Date().toISOString() },
-          response_data: responseData
-            ? {
-                intent: responseData.metadata?.intent,
-                results_count: responseData.metadata?.results_count,
-                processing_time: responseData.metadata?.processing_time_ms,
-              }
-            : null,
-          status,
-          error_message: error,
-        },
-        { timeout: 5000 }
-      );
       const logServiceUrl =
         process.env.LOG_SERVICE_URL || "http://log-service:3005";
       await axios.post(
@@ -516,18 +405,9 @@ Usa títulos, listas, tablas y métricas en negritas:
       );
     } catch (logError) {
       console.error("Error log:", logError.message);
-      console.error("Error log:", logError.message);
     }
   }
 
-  async callAzureAI({
-    systemMessage,
-    userMessage,
-    temperature = this.chatConfig.temperature,
-    maxTokens = this.chatConfig.max_tokens,
-    topP = this.chatConfig.top_p,
-    timeout = 30000,
-  }) {
   async callAzureAI({
     systemMessage,
     userMessage,
@@ -543,10 +423,6 @@ Usa títulos, listas, tablas y métricas en negritas:
           { role: "system", content: systemMessage },
           { role: "user", content: userMessage },
         ],
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: userMessage },
-        ],
         temperature,
         top_p: topP,
         max_tokens: maxTokens,
@@ -558,15 +434,7 @@ Usa títulos, listas, tablas y métricas en negritas:
         },
         timeout,
       }
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": this.AZURE_API_KEY,
-        },
-        timeout,
-      }
     );
-    return response.data.choices?.[0]?.message?.content?.trim() || "";
     return response.data.choices?.[0]?.message?.content?.trim() || "";
   }
 
@@ -574,13 +442,6 @@ Usa títulos, listas, tablas y métricas en negritas:
     const response = await axios.post(
       `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_EMBEDDING_MODEL}/embeddings?api-version=2023-05-15`,
       { model: this.AZURE_EMBEDDING_MODEL, input: text },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": this.AZURE_API_KEY,
-        },
-        timeout: 30000,
-      }
       {
         headers: {
           "Content-Type": "application/json",
@@ -703,35 +564,17 @@ Responde SOLO con JSON válido (sin markdown):
       let text = await this.callAzureAI({
         systemMessage:
           "Eres un extractor de parámetros preciso. Responde solo con JSON válido.",
-        systemMessage:
-          "Eres un extractor de parámetros preciso. Responde solo con JSON válido.",
         userMessage: prompt,
         temperature: 0.2,
         maxTokens: 400,
-        maxTokens: 400,
       });
-
-      text =
-        text
-          .replace(/```json\n?/g, "")
-          .replace(/```\n?/g, "")
-          .trim() || "{}";
-
-      text =
-        text
-          .replace(/```json\n?/g, "")
-          .replace(/```\n?/g, "")
-          .trim() || "{}";
+      text = (text || "{}")
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
       const params = JSON.parse(text);
-
-
       return {
         numero_documento: params.numero_documento || null,
-        tipo_documento: ["Cédula", "Tarjeta de identidad"].includes(
-          params.tipo_documento
-        )
-          ? params.tipo_documento
-          : null,
         tipo_documento: ["Cédula", "Tarjeta de identidad"].includes(
           params.tipo_documento
         )
@@ -759,29 +602,8 @@ Responde SOLO con JSON válido (sin markdown):
         ].includes(params.genero)
           ? params.genero
           : null,
-        edad_min:
-          params.edad_min && !isNaN(params.edad_min)
-            ? parseInt(params.edad_min)
-            : null,
-        edad_max:
-          params.edad_max && !isNaN(params.edad_max)
-            ? parseInt(params.edad_max)
-            : null,
-        genero: [
-          "Masculino",
-          "Femenino",
-          "No binario",
-          "Prefiero no reportar",
-        ].includes(params.genero)
-          ? params.genero
-          : null,
         correo_electronico: params.correo_electronico || null,
         celular: params.celular || null,
-        grupo_edad: ["Menor de edad", "Adulto", "Adulto mayor"].includes(
-          params.grupo_edad
-        )
-          ? params.grupo_edad
-          : null,
         grupo_edad: ["Menor de edad", "Adulto", "Adulto mayor"].includes(
           params.grupo_edad
         )
@@ -795,13 +617,8 @@ Responde SOLO con JSON válido (sin markdown):
           params.limit && !isNaN(params.limit)
             ? Math.min(Math.max(parseInt(params.limit), 10), 200)
             : 100,
-        limit:
-          params.limit && !isNaN(params.limit)
-            ? Math.min(Math.max(parseInt(params.limit), 10), 200)
-            : 100,
       };
     } catch (error) {
-      console.error("Error extracción params:", error.message);
       console.error("Error extracción params:", error.message);
       return {
         numero_documento: null,
@@ -823,7 +640,6 @@ Responde SOLO con JSON válido (sin markdown):
         updated_at_min: null,
         updated_at_max: null,
         limit: 100,
-        limit: 100,
       };
     }
   }
@@ -832,30 +648,22 @@ Responde SOLO con JSON válido (sin markdown):
     const queryEmbedding = await this.generateEmbedding(query);
     const { whereClauses, queryParams, paramCounter } =
       this.buildWhereClause(parameters);
-    const whereSQL =
-      whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
-
-    const { whereClauses, queryParams, paramCounter } =
-      this.buildWhereClause(parameters);
-    const whereSQL =
-      whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
-
+    const whereSQL = whereClauses.length
+      ? `WHERE ${whereClauses.join(" AND ")}`
+      : "";
     const sqlQuery = `
       SELECT p.*, EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
-      CASE WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
-           WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
-           ELSE 'Adulto mayor' END AS grupo_edad,
-      1 - (pe.embedding <=> $${paramCounter}) AS similarity
+        CASE WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
+             WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65 THEN 'Adulto'
+             ELSE 'Adulto mayor' END AS grupo_edad,
+        1 - (pe.embedding <=> $${paramCounter}) AS similarity
       FROM personas_embeddings pe
       JOIN personas p ON pe.persona_id = p.id
       ${whereSQL}
       ORDER BY pe.embedding <=> $${paramCounter}
-      LIMIT $${paramCounter + 1}
-    `;
-
+      LIMIT $${paramCounter + 1}`;
     queryParams.push(pgvector.toSql(queryEmbedding), parameters.limit || 100);
     const results = (await this.pool.query(sqlQuery, queryParams)).rows;
-
     return results;
   }
 
@@ -863,8 +671,6 @@ Responde SOLO con JSON válido (sin markdown):
     const whereClauses = [];
     const queryParams = [];
     let paramCounter = 1;
-
-    // Filtros de documento
     if (params.numero_documento) {
       whereClauses.push(`p.numero_documento = $${paramCounter++}`);
       queryParams.push(params.numero_documento);
@@ -873,89 +679,29 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.tipo_documento = $${paramCounter++}`);
       queryParams.push(params.tipo_documento);
     }
-
-    // Filtros de nombre (búsqueda específica por campo con soporte para patrones)
+    const patternField = (value) =>
+      value.includes("%") ? value : `%${value}%`;
     if (params.primer_nombre) {
       whereClauses.push(`p.primer_nombre ILIKE $${paramCounter++}`);
-      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
-      const primerNombrePattern = params.primer_nombre.includes("%")
-        ? params.primer_nombre
-      const primerNombrePattern = params.primer_nombre.includes("%")
-        ? params.primer_nombre
-        : `%${params.primer_nombre}%`;
-      queryParams.push(primerNombrePattern);
+      queryParams.push(patternField(params.primer_nombre));
     }
     if (params.segundo_nombre) {
       whereClauses.push(`p.segundo_nombre ILIKE $${paramCounter++}`);
-      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
-      const segundoNombrePattern = params.segundo_nombre.includes("%")
-        ? params.segundo_nombre
-      const segundoNombrePattern = params.segundo_nombre.includes("%")
-        ? params.segundo_nombre
-        : `%${params.segundo_nombre}%`;
-      queryParams.push(segundoNombrePattern);
+      queryParams.push(patternField(params.segundo_nombre));
     }
     if (params.apellidos) {
       whereClauses.push(`p.apellidos ILIKE $${paramCounter++}`);
-      // Si ya tiene comodines (%), usarlo directamente, sino agregar %
-      const apellidosPattern = params.apellidos.includes("%")
-        ? params.apellidos
-      const apellidosPattern = params.apellidos.includes("%")
-        ? params.apellidos
-        : `%${params.apellidos}%`;
-      queryParams.push(apellidosPattern);
+      queryParams.push(patternField(params.apellidos));
     }
-    // Filtro de nombre general (busca en todos los campos de nombre)
     if (params.nombre) {
-      // Detectar si tiene comodines (%) para patrones específicos
-      const tieneComodines = params.nombre.includes("%");
-
-      const tieneComodines = params.nombre.includes("%");
-
-      if (!tieneComodines) {
-        // Si el nombre tiene múltiples palabras, buscar con concatenación de campos
-        const nombrePalabras = params.nombre.trim().split(/\s+/);
-
-
-        if (nombrePalabras.length > 1) {
-          // Para nombres completos, buscar en la concatenación de todos los campos
-          const nombreCompleto = `CONCAT(p.primer_nombre, ' ', COALESCE(p.segundo_nombre, ''), ' ', p.apellidos)`;
-          whereClauses.push(`${nombreCompleto} ILIKE $${paramCounter}`);
-          queryParams.push(`%${params.nombre}%`);
-          paramCounter++;
-        } else {
-          // Para una sola palabra, buscar en cualquier campo individual
-          whereClauses.push(
-            `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
-          );
-          whereClauses.push(
-            `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
-          );
-          queryParams.push(`%${params.nombre}%`);
-          paramCounter++;
-        }
-      } else {
-        // Si tiene comodines, buscar el patrón en cualquier campo
-        whereClauses.push(
-          `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
-        );
-        whereClauses.push(
-          `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
-        );
-        queryParams.push(params.nombre);
-        paramCounter++;
-      }
-    }
-
-    // Filtros de fecha de nacimiento
-    if (params.fecha_nacimiento_min && params.fecha_nacimiento_max) {
+      const pattern = patternField(params.nombre);
       whereClauses.push(
-        `p.fecha_nacimiento BETWEEN $${paramCounter} AND $${paramCounter + 1}`
+        `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
       );
-      queryParams.push(
-        params.fecha_nacimiento_min,
-        params.fecha_nacimiento_max
-      );
+      queryParams.push(pattern);
+      paramCounter++;
+    }
+    if (params.fecha_nacimiento_min && params.fecha_nacimiento_max) {
       whereClauses.push(
         `p.fecha_nacimiento BETWEEN $${paramCounter} AND $${paramCounter + 1}`
       );
@@ -971,14 +717,7 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.fecha_nacimiento <= $${paramCounter++}`);
       queryParams.push(params.fecha_nacimiento_max);
     }
-
-    // Filtros de edad (calculada)
     if (params.edad_min !== null && params.edad_max !== null) {
-      whereClauses.push(
-        `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN $${paramCounter} AND $${
-          paramCounter + 1
-        }`
-      );
       whereClauses.push(
         `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN $${paramCounter} AND $${
           paramCounter + 1
@@ -990,32 +729,19 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(
         `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) >= $${paramCounter++}`
       );
-      whereClauses.push(
-        `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) >= $${paramCounter++}`
-      );
       queryParams.push(params.edad_min);
     } else if (params.edad_max !== null) {
       whereClauses.push(
         `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) <= $${paramCounter++}`
       );
-      whereClauses.push(
-        `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) <= $${paramCounter++}`
-      );
       queryParams.push(params.edad_max);
     }
-
-    // Filtro de género
     if (params.genero) {
       whereClauses.push(`p.genero = $${paramCounter++}`);
       queryParams.push(params.genero);
     }
-
-    // Filtro de grupo de edad
     if (params.grupo_edad) {
       const grupoEdadConditions = {
-        "Menor de edad": `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18`,
-        Adulto: `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65`,
-        "Adulto mayor": `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) > 65`,
         "Menor de edad": `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18`,
         Adulto: `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) BETWEEN 18 AND 65`,
         "Adulto mayor": `EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) > 65`,
@@ -1024,22 +750,15 @@ Responde SOLO con JSON válido (sin markdown):
         whereClauses.push(grupoEdadConditions[params.grupo_edad]);
       }
     }
-
-    // Filtros de contacto
     if (params.correo_electronico) {
       whereClauses.push(`p.correo_electronico ILIKE $${paramCounter++}`);
-      queryParams.push(`%${params.correo_electronico}%`);
+      queryParams.push(patternField(params.correo_electronico));
     }
     if (params.celular) {
       whereClauses.push(`p.celular LIKE $${paramCounter++}`);
-      queryParams.push(`%${params.celular}%`);
+      queryParams.push(patternField(params.celular));
     }
-
-    // Filtros de fechas de auditoría
     if (params.created_at_min && params.created_at_max) {
-      whereClauses.push(
-        `p.created_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`
-      );
       whereClauses.push(
         `p.created_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`
       );
@@ -1052,11 +771,7 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.created_at <= $${paramCounter++}`);
       queryParams.push(params.created_at_max);
     }
-
     if (params.updated_at_min && params.updated_at_max) {
-      whereClauses.push(
-        `p.updated_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`
-      );
       whereClauses.push(
         `p.updated_at BETWEEN $${paramCounter} AND $${paramCounter + 1}`
       );
@@ -1069,22 +784,15 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.updated_at <= $${paramCounter++}`);
       queryParams.push(params.updated_at_max);
     }
-
     return { whereClauses, queryParams, paramCounter };
   }
 
   async generateMarkdownResponse(query, vectorResults) {
-    if (vectorResults.length === 0) {
-      return `## Sin Resultados\n\nNo se encontraron empleados que coincidan con los criterios de búsqueda.\n\n**Sugerencias:**\n- Verifica los filtros aplicados\n- Intenta con criterios más amplios\n- Revisa la ortografía`;
+    if (!vectorResults.length) {
+      return `## Sin Resultados\n\nNo se encontraron empleados que coincidan con la consulta.`;
     }
-
-    // Preparar información completa para la IA
     const dataContext = {
       total_resultados: vectorResults.length,
-      muestra_completa: vectorResults.map((r) => ({
-        nombre_completo: `${r.primer_nombre} ${r.segundo_nombre || ""} ${
-          r.apellidos
-        }`.trim(),
       muestra_completa: vectorResults.map((r) => ({
         nombre_completo: `${r.primer_nombre} ${r.segundo_nombre || ""} ${
           r.apellidos
@@ -1100,89 +808,37 @@ Responde SOLO con JSON válido (sin markdown):
         created_at: r.created_at,
         updated_at: r.updated_at,
       })),
-        updated_at: r.updated_at,
-      })),
     };
-
-    const prompt = `${this.SYSTEM_PROMPT}
-
-## CONSULTA DEL USUARIO
-"${query}"
-
-## DATOS DISPONIBLES (${vectorResults.length} registros)
-${JSON.stringify(dataContext, null, 2)}
-
-## INSTRUCCIONES
-1. **Analiza** la pregunta del usuario y TODOS los datos proporcionados
-2. **Realiza** todos los cálculos, agregaciones y análisis necesarios (promedios, conteos, porcentajes, comparaciones, etc.)
-3. **Razona** sobre patrones, tendencias o insights relevantes
-4. **Responde** de forma completa y profesional en Markdown
-
-**IMPORTANTE**: 
-- Genera Markdown PURO (NO uses bloques \`\`\`markdown)
-- Incluye tablas para listados (| Columna | Columna |)
-- Usa negritas ** para métricas clave
-- Incluye títulos ## y subtítulos ###
-- Calcula TODO lo que la pregunta requiera (no aproximes)
-- Si la pregunta requiere estadísticas, calcúlalas: promedios, medianas, distribuciones, porcentajes
-- Si requiere comparaciones, hazlas
-- Si requiere análisis, proporciona insights basados en los datos
-
-Responde DIRECTAMENTE en Markdown:`;
-
+    const prompt = `${this.SYSTEM_PROMPT}\n\nConsulta: "${query}"\n\nDatos (${
+      vectorResults.length
+    } registros):\n${JSON.stringify(
+      dataContext,
+      null,
+      2
+    )}\n\nGenera respuesta analítica en Markdown profesional.`;
     try {
-      let markdown =
-        (await this.callAzureAI({
-          systemMessage: this.SYSTEM_PROMPT,
-          userMessage: prompt,
-          temperature: this.chatConfig.temperature,
-          maxTokens: this.chatConfig.max_tokens,
-        })) || "Error generando respuesta.";
-
-      let markdown =
-        (await this.callAzureAI({
-          systemMessage: this.SYSTEM_PROMPT,
-          userMessage: prompt,
-          temperature: this.chatConfig.temperature,
-          maxTokens: this.chatConfig.max_tokens,
-        })) || "Error generando respuesta.";
-
-      // Limpiar bloques de código markdown
-      markdown = markdown
+      let markdown = await this.callAzureAI({
+        systemMessage: this.SYSTEM_PROMPT,
+        userMessage: prompt,
+        temperature: this.chatConfig.temperature,
+        maxTokens: this.chatConfig.max_tokens,
+      });
+      markdown = (markdown || "Error generando respuesta.")
         .replace(/```markdown\n?/gi, "")
         .replace(/```\n?$/g, "")
         .trim();
-
-      markdown = markdown
-        .replace(/```markdown\n?/gi, "")
-        .replace(/```\n?$/g, "")
-        .trim();
-
       return markdown;
     } catch (error) {
-      console.error("Error generando markdown:", error.message);
       console.error("Error generando markdown:", error.message);
       return this.generateFallbackMarkdown(vectorResults);
     }
   }
 
   generateFallbackMarkdown(results) {
-    if (results.length === 0)
+    if (!results.length)
       return "## Sin Resultados\n\nNo se encontraron empleados.";
-    if (results.length === 0)
-      return "## Sin Resultados\n\nNo se encontraron empleados.";
-
     let md = `## Resultados de Búsqueda\n\n**Total encontrado:** ${results.length}\n\n`;
     md += `| Nombre Completo | Edad | Género | Documento |\n|---|---|---|---|\n`;
-
-    results.slice(0, 30).forEach((r) => {
-      const nombreCompleto = `${r.primer_nombre} ${r.segundo_nombre || ""} ${
-        r.apellidos
-      }`.trim();
-      md += `| ${nombreCompleto} | ${r.edad || "N/A"} | ${
-        r.genero || "N/A"
-      } | ${r.tipo_documento || ""} ${r.numero_documento || ""} |\n`;
-
     results.slice(0, 30).forEach((r) => {
       const nombreCompleto = `${r.primer_nombre} ${r.segundo_nombre || ""} ${
         r.apellidos
@@ -1191,20 +847,13 @@ Responde DIRECTAMENTE en Markdown:`;
         r.genero || "N/A"
       } | ${r.tipo_documento || ""} ${r.numero_documento || ""} |\n`;
     });
-
     if (results.length > 30)
       md += `\n*Mostrando 30 de ${results.length} resultados*`;
-
-
-    if (results.length > 30)
-      md += `\n*Mostrando 30 de ${results.length} resultados*`;
-
     return md;
   }
 
   async checkDB() {
     try {
-      await this.pool.query("SELECT 1");
       await this.pool.query("SELECT 1");
       return true;
     } catch {
@@ -1217,9 +866,6 @@ Responde DIRECTAMENTE en Markdown:`;
       const result = await this.pool.query(
         `SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') as exists`
       );
-      const result = await this.pool.query(
-        `SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') as exists`
-      );
       return result.rows[0].exists;
     } catch {
       return false;
@@ -1228,12 +874,8 @@ Responde DIRECTAMENTE en Markdown:`;
 
   setupRoutes() {
     this.app.get("/health", async (req, res) => {
-    this.app.get("/health", async (req, res) => {
       try {
         const health = {
-          status: this.serviceState.ready ? "healthy" : "starting",
-          service: "nlp-service-v2",
-          version: "2.0.0",
           status: this.serviceState.ready ? "healthy" : "starting",
           service: "nlp-service-v2",
           version: "2.0.0",
@@ -1242,82 +884,57 @@ Responde DIRECTAMENTE en Markdown:`;
             postgresql: await this.checkDB(),
             pgvector: await this.checkPgVector(),
             azure_ai_foundry: !!(
-              process.env.AZURE_FOUNDRY_ENDPOINT && process.env.AZURE_API_KEY
-            ),
-            azure_ai_foundry: !!(
-              process.env.AZURE_FOUNDRY_ENDPOINT && process.env.AZURE_API_KEY
+              this.AZURE_FOUNDRY_ENDPOINT && this.AZURE_API_KEY
             ),
           },
           stats: {
             total_embeddings: this.serviceState.totalEmbeddings,
             last_sync: this.serviceState.lastSync,
           },
-            last_sync: this.serviceState.lastSync,
-          },
         };
-
-        const allHealthy = Object.values(health.dependencies).every((v) => v);
-        health.status =
-          allHealthy && this.serviceState.ready ? "healthy" : "degraded";
-        const allHealthy = Object.values(health.dependencies).every((v) => v);
+        const allHealthy = Object.values(health.dependencies).every(Boolean);
         health.status =
           allHealthy && this.serviceState.ready ? "healthy" : "degraded";
         res.status(allHealthy ? 200 : 503).json(health);
       } catch (error) {
         res.status(503).json({ status: "unhealthy", error: error.message });
-        res.status(503).json({ status: "unhealthy", error: error.message });
       }
     });
 
     this.app.post("/query", async (req, res) => {
-    this.app.post("/query", async (req, res) => {
       const startTime = Date.now();
       const { query } = req.body;
-
       try {
         if (!query || typeof query !== "string" || query.length > 2000) {
           return res
             .status(400)
             .json({ success: false, error: "Query inválido (max 2000 chars)" });
         }
-
-        // Validación de seguridad (CU-08: Security Risk Detection)
         const securityCheck = this.checkSecurityRisks(query);
         if (securityCheck.isDangerous) {
-          return res.status(400).json({
-            success: false,
-            error: `Consulta no permitida por seguridad: ${securityCheck.reason}`,
-          });
+          return res
+            .status(400)
+            .json({
+              success: false,
+              error: `Consulta no permitida: ${securityCheck.reason}`,
+            });
         }
-
         const parameters = await this.extractQueryParameters(query);
         const results = await this.queryVectorDatabase(query, parameters);
         const markdownResponse = await this.generateMarkdownResponse(
           query,
           results
         );
-        const markdownResponse = await this.generateMarkdownResponse(
-          query,
-          results
-        );
-
         const response = {
           success: true,
-          data: {
-            markdown: markdownResponse,
-            raw_results: results,
-          },
+          data: { markdown: markdownResponse, raw_results: results },
           metadata: {
             results_count: results.length,
             processing_time_ms: Date.now() - startTime,
             query_parameters: parameters,
             vector_search: true,
           },
-            vector_search: true,
-          },
         };
-
-        await this.logTransaction("NLP_QUERY", query, "SUCCESS", req, response);
         await this.logTransaction("NLP_QUERY", query, "SUCCESS", req, response);
         res.json(response);
       } catch (error) {
@@ -1330,27 +947,15 @@ Responde DIRECTAMENTE en Markdown:`;
           null,
           error.message
         );
-        console.error("❌ Error query:", error.message);
-        await this.logTransaction(
-          "NLP_QUERY",
-          query,
-          "ERROR",
-          req,
-          null,
-          error.message
-        );
         res.status(500).json({
           success: false,
           error: "Error procesando consulta",
-          error: "Error procesando consulta",
           details: error.message,
-          metadata: { processing_time_ms: Date.now() - startTime },
           metadata: { processing_time_ms: Date.now() - startTime },
         });
       }
     });
 
-    this.app.post("/update-embedding", async (req, res) => {
     this.app.post("/update-embedding", async (req, res) => {
       try {
         const { persona_id } = req.body;
@@ -1358,46 +963,23 @@ Responde DIRECTAMENTE en Markdown:`;
           return res
             .status(400)
             .json({ success: false, error: "persona_id requerido" });
-        if (!persona_id)
-          return res
-            .status(400)
-            .json({ success: false, error: "persona_id requerido" });
-
         const result = await this.pool.query(
           "SELECT * FROM personas_con_edad WHERE id = $1",
           [persona_id]
         );
-        if (result.rows.length === 0)
+        if (!result.rows.length)
           return res
             .status(404)
             .json({ success: false, error: "Persona no encontrada" });
-        const result = await this.pool.query(
-          "SELECT * FROM personas_con_edad WHERE id = $1",
-          [persona_id]
-        );
-        if (result.rows.length === 0)
-          return res
-            .status(404)
-            .json({ success: false, error: "Persona no encontrada" });
-
         const persona = result.rows[0];
         const embeddingText = this.buildEmbeddingText(persona);
         const embedding = await this.generateEmbedding(embeddingText);
-
         await this.pool.query(
-          `
-        await this.pool.query(
-          `
-          INSERT INTO personas_embeddings (persona_id, embedding, content_text)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP
-        `,
+          `INSERT INTO personas_embeddings (persona_id, embedding, content_text)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
           [persona.id, pgvector.toSql(embedding), embeddingText]
         );
-        `,
-          [persona.id, pgvector.toSql(embedding), embeddingText]
-        );
-
         await this.updateServiceStats();
         await this.logTransaction(
           "UPDATE_EMBEDDING",
@@ -1405,18 +987,6 @@ Responde DIRECTAMENTE en Markdown:`;
           "SUCCESS",
           req
         );
-        await this.logTransaction(
-          "UPDATE_EMBEDDING",
-          `persona_id: ${persona_id}`,
-          "SUCCESS",
-          req
-        );
-
-        res.json({
-          success: true,
-          message: "Embedding actualizado",
-          persona_id,
-        });
         res.json({
           success: true,
           message: "Embedding actualizado",
@@ -1432,15 +1002,16 @@ Responde DIRECTAMENTE en Markdown:`;
           null,
           error.message
         );
-        res.status(500).json({
-          success: false,
-          error: "Error actualizando embedding",
-          details: error.message,
-        });
+        res
+          .status(500)
+          .json({
+            success: false,
+            error: "Error actualizando embedding",
+            details: error.message,
+          });
       }
     });
 
-    this.app.post("/sync-embeddings", async (req, res) => {
     this.app.post("/sync-embeddings", async (req, res) => {
       try {
         const result = await this.pool.query(
@@ -1449,13 +1020,6 @@ Responde DIRECTAMENTE en Markdown:`;
         const { successCount, errorCount } = await this.processBatchEmbeddings(
           result.rows
         );
-        const result = await this.pool.query(
-          "SELECT * FROM personas_con_edad ORDER BY id"
-        );
-        const { successCount, errorCount } = await this.processBatchEmbeddings(
-          result.rows
-        );
-
         this.serviceState.lastSync = new Date().toISOString();
         await this.updateServiceStats();
         await this.logTransaction(
@@ -1465,23 +1029,8 @@ Responde DIRECTAMENTE en Markdown:`;
           req,
           { successCount, errorCount }
         );
-        await this.logTransaction(
-          "SYNC_EMBEDDINGS",
-          `Total: ${result.rows.length}`,
-          "SUCCESS",
-          req,
-          { successCount, errorCount }
-        );
-
         res.json({
           success: true,
-          message: "Sincronización completada",
-          stats: {
-            total: result.rows.length,
-            success: successCount,
-            errors: errorCount,
-            synced_at: this.serviceState.lastSync,
-          },
           message: "Sincronización completada",
           stats: {
             total: result.rows.length,
@@ -1500,29 +1049,27 @@ Responde DIRECTAMENTE en Markdown:`;
           null,
           error.message
         );
-        res.status(500).json({
-          success: false,
-          error: "Error en sincronización",
-          details: error.message,
-        });
+        res
+          .status(500)
+          .json({
+            success: false,
+            error: "Error en sincronización",
+            details: error.message,
+          });
       }
     });
 
     this.app.get("/stats", async (req, res) => {
-    this.app.get("/stats", async (req, res) => {
       try {
         const dbStats = await this.pool.query(`
-          SELECT COUNT(*) as total_personas, COUNT(CASE WHEN fecha_nacimiento IS NOT NULL THEN 1 END) as personas_con_edad,
-          COUNT(CASE WHEN correo_electronico IS NOT NULL THEN 1 END) as personas_con_email, MAX(created_at) as ultima_persona_creada
-          FROM personas
-        `);
+          SELECT COUNT(*) as total_personas,
+                 COUNT(CASE WHEN fecha_nacimiento IS NOT NULL THEN 1 END) as personas_con_edad,
+                 COUNT(CASE WHEN correo_electronico IS NOT NULL THEN 1 END) as personas_con_email,
+                 MAX(created_at) as ultima_persona_creada
+          FROM personas`);
         const embeddingsStats = await this.pool.query(
           `SELECT COUNT(*) as total_embeddings FROM personas_embeddings`
         );
-        const embeddingsStats = await this.pool.query(
-          `SELECT COUNT(*) as total_embeddings FROM personas_embeddings`
-        );
-
         res.json({
           success: true,
           stats: {
@@ -1531,27 +1078,15 @@ Responde DIRECTAMENTE en Markdown:`;
               personas_con_edad: parseInt(dbStats.rows[0].personas_con_edad),
               personas_con_email: parseInt(dbStats.rows[0].personas_con_email),
               ultima_persona: dbStats.rows[0].ultima_persona_creada,
-              ultima_persona: dbStats.rows[0].ultima_persona_creada,
             },
             embeddings: {
               total_embeddings: parseInt(
                 embeddingsStats.rows[0].total_embeddings
               ),
-              vector_size: 1536,
-              distance_metric: "cosine",
-            },
-            embeddings: {
-              total_embeddings: parseInt(
-                embeddingsStats.rows[0].total_embeddings
-              ),
-              vector_size: 1536,
+              vector_size: this.VECTOR_SIZE,
               distance_metric: "cosine",
             },
             service: {
-              version: "2.0.0",
-              uptime_seconds: Math.floor(
-                (Date.now() - this.serviceState.startTime) / 1000
-              ),
               version: "2.0.0",
               uptime_seconds: Math.floor(
                 (Date.now() - this.serviceState.startTime) / 1000
@@ -1560,31 +1095,22 @@ Responde DIRECTAMENTE en Markdown:`;
               ready: this.serviceState.ready,
             },
           },
-              ready: this.serviceState.ready,
-            },
-          },
         });
       } catch (error) {
         console.error("Error stats:", error.message);
-        res.status(500).json({
-          success: false,
-          error: "Error obteniendo estadísticas",
-          details: error.message,
-        });
+        res
+          .status(500)
+          .json({
+            success: false,
+            error: "Error obteniendo estadísticas",
+            details: error.message,
+          });
       }
     });
 
     this.app.use((req, res) => {
       res.status(404).json({
         success: false,
-        error: "Ruta no encontrada",
-        endpoints: [
-          "GET /health",
-          "POST /query",
-          "POST /update-embedding",
-          "POST /sync-embeddings",
-          "GET /stats",
-        ],
         error: "Ruta no encontrada",
         endpoints: [
           "GET /health",
@@ -1601,10 +1127,6 @@ Responde DIRECTAMENTE en Markdown:`;
       res
         .status(500)
         .json({ success: false, error: "Error interno", details: err.message });
-      console.error("Error:", err.message);
-      res
-        .status(500)
-        .json({ success: false, error: "Error interno", details: err.message });
     });
   }
 
@@ -1613,24 +1135,9 @@ Responde DIRECTAMENTE en Markdown:`;
       serviceId: "nlp-service-v2",
       name: "nlp-service",
       host: "nlp-service",
-      serviceId: "nlp-service-v2",
-      name: "nlp-service",
-      host: "nlp-service",
       port: parseInt(this.PORT),
       protocol: "http",
-      protocol: "http",
       metadata: {
-        version: "2.0.0",
-        description: "NLP service with RAG using Azure AI Foundry and pgvector",
-        healthEndpoint: "/health",
-        tags: ["nlp", "ai", "azure", "pgvector", "rag"],
-        capabilities: [
-          "nlp-query",
-          "vector-search",
-          "embeddings",
-          "semantic-search",
-        ],
-      },
         version: "2.0.0",
         description: "NLP service with RAG using Azure AI Foundry and pgvector",
         healthEndpoint: "/health",
@@ -1660,13 +1167,6 @@ nlpService.start();
 // Manejo de cierre graceful
 process.on("SIGTERM", async () => {
   console.log("\n🔄 Cerrando servicio...");
-process.on("SIGTERM", async () => {
-  console.log("\n🔄 Cerrando servicio...");
-  if (nlpService.syncInterval) {
-    clearInterval(nlpService.syncInterval);
-    console.log("⏰ Sincronización periódica detenida");
-    console.log("⏰ Sincronización periódica detenida");
-  }
   await nlpService.pool.end();
   process.exit(0);
 });

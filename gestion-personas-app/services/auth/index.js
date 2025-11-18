@@ -23,6 +23,15 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Helper para habilitar/deshabilitar rate limiting en entornos no productivos
+const isRateLimitEnabled = () => {
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.DISABLE_RATE_LIMIT === "1") return false;
+  // En test deshabilitado explícitamente
+  if (process.env.NODE_ENV === "test") return false;
+  return true; // por defecto habilitado en dev a menos que se desactive
+};
+
 // ============================================================================
 // RATE LIMITING CONFIGURATION
 // ============================================================================
@@ -30,12 +39,13 @@ const PORT = process.env.PORT || 3001;
 /**
  * Rate Limiter para Login
  * Previene ataques de fuerza bruta limitando intentos de login
- * - 5 intentos por 15 minutos por IP
+ * - Production: 5 intentos por 15 minutos por IP
+ * - Development/Test: 1000 intentos (para tests de performance)
  * - Resetea después del período de ventana
  */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Límite de 5 intentos
+  max: process.env.NODE_ENV === "production" ? 5 : 1000, // Límite alto en dev/test
   message: {
     error:
       "Demasiados intentos de inicio de sesión. Por favor, intenta de nuevo en 15 minutos.",
@@ -59,11 +69,12 @@ const loginLimiter = rateLimit({
 /**
  * Rate Limiter para Registro
  * Previene creación masiva de cuentas falsas
- * - 3 intentos por hora por IP
+ * - Production: 3 intentos por hora por IP
+ * - Development/Test: 1000 intentos (para tests de performance)
  */
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 3, // Límite de 3 intentos
+  max: process.env.NODE_ENV === "production" ? 3 : 1000, // Límite alto en dev/test
   message: {
     error:
       "Demasiados intentos de registro. Por favor, intenta de nuevo en 1 hora.",
@@ -87,11 +98,12 @@ const registerLimiter = rateLimit({
 /**
  * Rate Limiter General para Auth API
  * Protección contra abuso general de la API de autenticación
- * - 100 requests por 15 minutos por IP
+ * - Production: 100 requests por 15 minutos por IP
+ * - Development/Test: 10000 requests por 15 minutos (para tests de performance)
  */
 const authApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Límite de 100 requests
+  max: process.env.NODE_ENV === "production" ? 100 : 10000, // Límite alto en dev/test
   message: {
     error: "Demasiadas peticiones. Por favor, intenta de nuevo más tarde.",
     retryAfter: "15 minutos",
@@ -143,8 +155,8 @@ const passwordChangeLimiter = rateLimit({
 // MIDDLEWARE
 // ============================================================================
 
-// Aplicar rate limiter general a todas las rutas (skip en tests)
-if (process.env.NODE_ENV !== "test") {
+// Aplicar rate limiter general a todas las rutas si está habilitado
+if (isRateLimitEnabled()) {
   app.use(authApiLimiter);
 }
 
@@ -1059,7 +1071,7 @@ app.get("/health", (req, res) => {
 // ============================================================================
 app.post(
   "/login",
-  process.env.NODE_ENV === "test" ? [] : loginLimiter,
+  isRateLimitEnabled() ? loginLimiter : [],
   async (req, res, next) => {
     try {
       // =========================================================================
@@ -1128,7 +1140,7 @@ app.post(
 // ============================================================================
 app.post(
   "/register",
-  process.env.NODE_ENV === "test" ? [] : registerLimiter,
+  isRateLimitEnabled() ? registerLimiter : [],
   async (req, res) => {
     try {
       // =========================================================================

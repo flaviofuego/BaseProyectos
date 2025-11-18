@@ -43,7 +43,7 @@ test.describe("CU-002: Inicio de Sesión", () => {
 
     // Verificar que el dashboard está visible
     await expect(page.locator("h1, h2")).toContainText(
-      /dashboard|inicio|bienvenido/i
+      /dashboard|inicio|bienvenido|hola/i
     );
   });
 

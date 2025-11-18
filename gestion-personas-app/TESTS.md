@@ -1,117 +1,138 @@
-# Tests
+# Tests - Guía Central
 
-Este documento unifica cómo ejecutar todas las pruebas del proyecto.
-Siguiendo las reglas del repositorio, usa siempre `make` (Makefile). Si no tienes `make`, ejecuta los comandos Docker Compose equivalentes desde los targets del Makefile.
+**265+ tests totales** | ✅ 264 passing | ❌ 1 failing
+
+## Ejecutar Tests
+
+```bash
+# Todos los tests (sin performance)
+make test
+
+# Performance
+make test-performance    # Tests de performance (TC-PERF)
+make test-all            # Todo incluyendo performance
+make test-warmup         # Opcional: precalentar cache/pools
+
+# Por categoría
+make test-unit           # Unit tests backend
+make test-integration    # Integration tests backend
+make test-frontend       # Frontend tests
+make test-e2e            # End-to-end tests
+```
 
 ## Requisitos
 
-- Docker y Docker Compose activos con servicios corriendo (`docker-compose up -d`)
-- Archivo `.env` configurado con las variables de entorno necesarias
-- `make` disponible (en Windows puedes usar Git Bash o WSL)
+- Docker y Docker Compose corriendo: `docker-compose -f docker-compose.dev.yml up -d`
+- Para E2E: App disponible en `http://localhost:5000`
+- WSL/Git Bash en Windows para ejecutar `make`
 
-## Ejecutar todo
+## Tests Disponibles
 
-- Todos los tests (unit + integration + frontend):
-  - `make test`
+### Unit Tests Backend (160 tests) ✅
 
-## Unit tests (Backend)
+**Auth Service (124 tests)**
 
-- Ejecutar únicamente unit tests de Node.js:
-  - `make test-unit`
-- **Servicios probados:**
-  - Auth: Validación, normalización, hashing (124 tests)
-  - Personas: CRUD, validación, upload CSV (36 tests)
-  - Consulta: Búsqueda, stats, cache (tests unitarios)
-  - Registry: Registro de servicios, heartbeat, health checks
+- JWT: Generación y verificación de tokens (35 tests)
+- Middleware: Autenticación en rutas (17 tests)
+- Joi Validation: Passwords, emails, usernames (50 tests)
+- Helpers: Preferencias, cache, logging (29 tests)
 
-## Integration tests (Backend)
+**Personas Service (36 tests)**
 
-- Ejecutar únicamente integration tests de Node.js:
-  - `make test-integration`
-- **Arquitectura:** Los tests corren dentro de containers Docker existentes y conectan a servicios reales (PostgreSQL, Redis)
-- **Servicios probados:**
-  - **Auth (11 tests):** Integración con PostgreSQL (esquema users, logs) y Redis (sesiones)
-  - **Personas (4 tests):** Integración vía API Gateway (crear, duplicado, existe, eliminar)
-  - **Consulta (12 tests):** Integración con PostgreSQL (queries, transacciones) y Redis (cache TTL)
-  - **Registry:** Registro y descubrimiento de servicios
-- **Nota:** Los endpoints HTTP se prueban en E2E. Integration tests verifican solo conectividad BD/cache
+- Image Processing: Sharp para redimensionar/comprimir imágenes
 
-## Frontend tests (Python + JS)
+### Integration Tests Backend (49 tests) ✅
 
-- Ejecutar pruebas del frontend (Pytest para rutas Flask y Jest para JS):
-  - `make test-frontend`
+**Auth (11 tests):** PostgreSQL + Redis (sesiones, usuarios, logs)
+**Personas (4 tests):** CRUD vía Gateway
+**Consulta (12 tests):** PostgreSQL + Redis (cache, TTL, queries)
+**Registry (22 tests):** Service discovery, heartbeat, load balancing
 
-## Frontend tests (Python + JS)
+### Frontend Tests (163 tests) ✅
 
-- Ejecutar pruebas del frontend (Pytest para rutas Flask y Jest para JS):
-  - `make test-frontend`
-- **Cobertura actual:**
-  - FormValidator: 42/42 tests (100%)
-  - FormatUtils: 39/46 tests (85%)
-  - ThemeManager: 38/39 tests (97%)
-  - NotificationManager: 0/6 tests (requiere DOM init)
+**Python/Flask (27 tests)**
 
-## End-to-End (Playwright)
+- Autenticación: login, register, logout
+- CRUD Personas: crear, consultar, modificar, borrar
+- Módulos: NLP, bulk upload, logs, reportes
 
-- Ejecutar E2E en modo headless:
-  - `make test-e2e`
-- UI interactiva (útil para depurar):
-  - `make test-e2e-ui`
-- Reporte HTML de E2E:
-  - `make test-e2e-report`
-- **Tests E2E (4 specs):**
-  - 01-auth.spec.ts: Login, registro, logout
-  - 02-personas-crud.spec.ts: CRUD completo de personas
-  - 03-nlp-query.spec.ts: Consultas en lenguaje natural
-  - 04-auditoria.spec.ts: Visualización de logs y auditoría
+**JavaScript/Jest (136 tests)**
 
-## Performance tests
+- FormValidator (42 tests): Validación de 10+ tipos de campos
+- FormatUtils (50 tests): Fechas, moneda, teléfonos, slugs
+- ThemeManager (38 tests): Temas, transiciones, loaders
+- NotificationManager (6 tests): Sistema de notificaciones
 
-- Ejecutar tests de performance y carga (TC-PERF):
-  - `make test-performance`
-- **Tests incluidos:**
-  - TC-PERF-001: Response time < 2s
-  - TC-PERF-002: Throughput > 10 req/s
-  - TC-PERF-003: Cache hit ratio > 70%
-  - TC-PERF-004: Connection pooling < 100ms
+### E2E Tests (30 tests) ⚠️
 
-## Cobertura y resultados
+**Login Flow (8 tests):** Autenticación completa
+**Crear Persona (22 tests):** Formulario, validaciones, imágenes
 
-- Generar reportes de cobertura (Node):
-  - `make test-coverage`
-- Ver resumen de resultados disponibles:
-  - `make test-results`
+**1 test failing**: Validación de campos requeridos en crear persona
 
-## Arquitectura de Tests
+## Estructura de Archivos
 
-### Unit Tests
+```
+services/
+├── auth/tests/
+│   ├── unit/ (124 tests)
+│   └── integration/ (11 tests)
+├── personas/tests/
+│   ├── unit/ (36 tests)
+│   └── integration/ (4 tests)
+├── consulta/tests/integration/ (12 tests)
+└── registry/tests/integration/ (22 tests)
 
-- Corren dentro del container de cada servicio
-- Prueban funciones aisladas sin dependencias externas
-- Usan mocks para DB/Redis/servicios externos
+frontend/tests/
+├── test_routes.py (27 tests Python)
+└── unit/ (136 tests JavaScript)
 
-### Integration Tests
+tests/e2e/specs/
+├── 01-login.spec.js (8 tests)
+└── 02-crear-persona.spec.js (22 tests)
+```
 
-- Corren dentro de containers Docker (`docker exec <service>_dev npm run test:integration`)
-- Conectan a servicios reales: `personas_db`, `personas_redis`
-- **NO usan Testcontainers** - conectan a infraestructura existente
-- Verifican integración con BD y cache, no lógica HTTP
+## Características Importantes
 
-### E2E Tests
+### ✅ Sin Mocks en Integration Tests
 
-- Corren con Playwright contra sistema completo
-- Prueban flujos de usuario end-to-end
-- Validan integración entre frontend, gateway y microservicios
+Los tests de integración usan servicios reales de Docker (PostgreSQL, Redis)
 
-### Performance Tests
+### ✅ Sin Coverage Reporting
 
-- Miden rendimiento bajo carga
-- Validan SLAs de tiempo de respuesta
-- Verifican eficiencia de cache
+Pytest configurado para mostrar solo pass/fail (sin porcentajes de cobertura)
 
-## Notas importantes
+### ✅ Tests Rápidos
 
-- **Prerequisito:** Servicios deben estar corriendo (`docker-compose up -d`)
-- Los tests de integración ahora usan servicios Docker existentes (no Testcontainers)
-- Rate limiting deshabilitado en tests (NODE_ENV=test)
-- Los targets del Makefile aplican configuración automáticamente
+- Unit tests: ~10 segundos
+- Integration tests: ~20 segundos
+- Frontend tests: ~40 segundos
+- E2E tests: ~2 minutos
+- **Total: ~3 minutos**
+
+## Comandos Útiles
+
+```bash
+# Ver solo resumen de resultados
+make test 2>&1 | grep -E "(passed|failed|Test Suites)"
+
+# Tests de un servicio específico
+cd services/auth && npm test
+cd services/personas && npm test
+
+# Frontend Python verbose
+cd frontend && pytest -vv
+
+# E2E con UI (debug)
+cd tests/e2e && npx playwright test --ui
+
+# Ver último reporte E2E
+cd tests/e2e && npx playwright show-report
+```
+
+## Notas
+
+- **Docker debe estar corriendo** antes de ejecutar tests
+- **NO usar mocks** en integration tests
+- Tests E2E generan screenshots en `tests/e2e/test-results/` si fallan
+- Coverage de JavaScript deshabilitado en CI (solo para desarrollo local)

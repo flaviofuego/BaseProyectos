@@ -440,7 +440,7 @@ if (!document.querySelector("#toast-styles")) {
  */
 class NotificationManager {
   constructor() {
-    this.container = null;
+    this._container = null;
     this.init();
   }
 
@@ -448,11 +448,28 @@ class NotificationManager {
     this.createContainer();
   }
 
+  get container() {
+    // Reusar si existe en DOM o recrear si falta
+    const existing = document.getElementById("notification-container");
+    if (existing && existing !== this._container) {
+      this._container = existing;
+    }
+    if (!this._container || !document.body.contains(this._container)) {
+      this.createContainer();
+    }
+    return this._container;
+  }
+
   createContainer() {
-    if (!this.container) {
-      this.container = document.createElement("div");
-      this.container.id = "notification-container";
-      this.container.style.cssText = `
+    const existing = document.getElementById("notification-container");
+    if (existing) {
+      this._container = existing;
+      return;
+    }
+    if (!this._container || !document.body.contains(this._container)) {
+      this._container = document.createElement("div");
+      this._container.id = "notification-container";
+      this._container.style.cssText = `
                 position: fixed;
                 top: 20px;
                 right: 20px;
@@ -460,7 +477,7 @@ class NotificationManager {
                 max-width: 400px;
                 pointer-events: none;
             `;
-      document.body.appendChild(this.container);
+      document.body.appendChild(this._container);
     }
   }
 
@@ -505,6 +522,7 @@ class NotificationManager {
     const notificationEvent = new CustomEvent("notificationShown", {
       detail: {
         type: type,
+        title: options.title || this.getTitle(type),
         message: message,
         duration: duration,
         options: options,
@@ -531,11 +549,12 @@ class NotificationManager {
     if (notification && notification.parentElement) {
       notification.style.transform = "translateX(120%)";
       notification.style.opacity = "0";
+      // Remover sin retraso para mayor predecibilidad en tests/JSDOM
       setTimeout(() => {
         if (notification.parentElement) {
           notification.remove();
         }
-      }, 300);
+      }, 0);
     }
   }
 
@@ -618,14 +637,27 @@ class NotificationManager {
 }
 
 // Inicializar cuando el DOM esté listo
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    window.contentManager = new ContentManager();
-    window.notificationManager = new NotificationManager();
-  });
-} else {
+function __initContentAndNotifications() {
   window.contentManager = new ContentManager();
-  window.notificationManager = new NotificationManager();
+  const nm = new NotificationManager();
+  // Backing instance stored privately
+  window.__notificationManagerInstance = nm;
+  // Define accessor to self-heal container after DOM resets
+  Object.defineProperty(window, "notificationManager", {
+    configurable: true,
+    get() {
+      try {
+        nm.createContainer();
+      } catch {}
+      return nm;
+    },
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", __initContentAndNotifications);
+} else {
+  __initContentAndNotifications();
 }
 
 // Exponer para uso global

@@ -119,7 +119,7 @@ app.get("/discover/:serviceName", (req, res) => {
 
     if (healthyServices.length === 0) {
       return res.status(404).json({
-        error: `No healthy instances found for service: ${serviceName}`,
+        error: `Service not found: ${serviceName}`,
       });
     }
 
@@ -130,6 +130,7 @@ app.get("/discover/:serviceName", (req, res) => {
     res.json({
       service: serviceName,
       instance: randomInstance,
+      instances: healthyServices,
       totalHealthyInstances: healthyServices.length,
       allInstances: healthyServices,
     });
@@ -194,7 +195,7 @@ app.post("/heartbeat/:serviceId?", (req, res) => {
     console.log(`💓 Heartbeat received from ${service.name} (${serviceId})`);
 
     res.json({
-      message: "Heartbeat received",
+      message: "Heartbeat updated",
       serviceId: service.serviceId,
       status: service.status,
       lastHeartbeat: service.lastHeartbeat,
@@ -229,7 +230,7 @@ app.post("/heartbeat", (req, res) => {
     console.log(`💓 Heartbeat received from ${service.name} (${serviceId})`);
 
     res.json({
-      message: "Heartbeat received",
+      message: "Heartbeat updated",
       serviceId: service.serviceId,
       status: service.status,
       lastHeartbeat: service.lastHeartbeat,
@@ -266,7 +267,7 @@ app.delete("/deregister/:serviceId", (req, res) => {
 // 🏥 Health Check for Registry itself
 app.get("/health", (req, res) => {
   res.json({
-    status: "UP",
+    status: "healthy",
     timestamp: new Date(),
     registry: {
       totalServices: services.size,
@@ -278,26 +279,46 @@ app.get("/health", (req, res) => {
 });
 
 // 🔄 Periodic Health Check (Clean up unhealthy services)
-cron.schedule("*/30 * * * * *", () => {
-  // Every 30 seconds
-  const now = new Date();
-  let removedServices = 0;
+if (
+  process.env.NODE_ENV !== "test" &&
+  String(process.env.SERVICE_REGISTRY_ENABLE_CRON || "true").toLowerCase() !==
+    "false"
+) {
+  cron.schedule("*/30 * * * * *", () => {
+    // Every 30 seconds
+    const now = new Date();
+    let removedServices = 0;
 
-  for (const [serviceId, service] of services) {
-    if (!service.isHealthy(30000)) {
-      // 30 seconds timeout
-      console.log(
-        `🚨 Removing unhealthy service: ${service.name} (${serviceId})`
-      );
-      services.delete(serviceId);
-      removedServices++;
+    for (const [serviceId, service] of services) {
+      if (!service.isHealthy(30000)) {
+        // 30 seconds timeout
+        console.log(
+          `🚨 Removing unhealthy service: ${service.name} (${serviceId})`
+        );
+        services.delete(serviceId);
+        removedServices++;
+      }
     }
-  }
 
-  if (removedServices > 0) {
-    console.log(
-      `🧹 Cleanup completed. Removed ${removedServices} unhealthy services`
-    );
+    if (removedServices > 0) {
+      console.log(
+        `🧹 Cleanup completed. Removed ${removedServices} unhealthy services`
+      );
+    }
+  });
+}
+
+// 📈 Registry status endpoint
+app.get("/status", (req, res) => {
+  try {
+    const all = Array.from(services.values());
+    const totalServices = all.length;
+    const healthyServices = all.filter((s) => s.isHealthy()).length;
+    const unhealthyServices = totalServices - healthyServices;
+    res.json({ totalServices, healthyServices, unhealthyServices });
+  } catch (error) {
+    console.error("Error getting status:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

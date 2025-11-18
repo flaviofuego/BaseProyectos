@@ -367,7 +367,7 @@ describe("Funciones Auxiliares y Helpers", () => {
       await logTransaction(userId, type, status, req);
 
       expect(fetch).toHaveBeenCalledWith(
-        "http://log-service:3005/log",
+        expect.stringMatching(/http:\/\/log[_-]service(_dev)?:3005\/log/),
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },

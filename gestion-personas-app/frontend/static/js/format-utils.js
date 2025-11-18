@@ -182,8 +182,8 @@ class FormatUtils {
 
     if (isNaN(d.getTime())) return "";
 
-    const now = new Date();
-    const diffMs = now - d;
+    const nowMs = Date.now();
+    const diffMs = nowMs - d.getTime();
     const diffSec = Math.floor(diffMs / 1000);
     const diffMin = Math.floor(diffSec / 60);
     const diffHour = Math.floor(diffMin / 60);

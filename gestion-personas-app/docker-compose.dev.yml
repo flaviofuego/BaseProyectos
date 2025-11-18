@@ -46,6 +46,7 @@ services:
       - //var/run/docker.sock:/var/run/docker.sock # Docker socket para control de contenedores (Windows)
     environment:
       - NODE_ENV=development
+      - DISABLE_RATE_LIMIT=1
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=${REDIS_URL}
       - DATABASE_URL=${DATABASE_URL_TEST}
@@ -74,6 +75,7 @@ services:
       - ./services/shared:/app/shared
     environment:
       - NODE_ENV=development
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
       - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
       - LOG_SERVICE_URL=${LOG_SERVICE_URL}
       - NLP_SERVICE_URL=${NLP_SERVICE_URL}
@@ -93,6 +95,8 @@ services:
       - //var/run/docker.sock:/var/run/docker.sock # Docker socket para Testcontainers (Windows)
     environment:
       - NODE_ENV=development
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
+      - REDIS_URL=redis://redis:6379
       - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
       - LOG_SERVICE_URL=${LOG_SERVICE_URL}
     deploy:
@@ -112,6 +116,7 @@ services:
       - ./services/shared:/app/shared
     environment:
       - NODE_ENV=development
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
       - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
       - LOG_SERVICE_URL=${LOG_SERVICE_URL}
       - AZURE_FOUNDRY_ENDPOINT=${AZURE_FOUNDRY_ENDPOINT}
@@ -133,6 +138,7 @@ services:
       - ./services/shared:/app/shared
     environment:
       - NODE_ENV=development
+      - DATABASE_URL=postgresql://admin:admin123@postgres:5432/personas_db
       - SERVICE_REGISTRY_URL=${SERVICE_REGISTRY_URL}
     networks:
       - app-network

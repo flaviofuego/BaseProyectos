@@ -129,9 +129,13 @@ app.use(morgan("combined"));
 app.use(express.json());
 
 // Rate limiting
+// En producción limitamos a 100 req/15min; en desarrollo/test elevamos el límite
+// para no bloquear pruebas de carga y performance.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // límite de 100 requests por ventana
+  max: process.env.NODE_ENV === "production" ? 100 : 100000, // límite alto en dev/test
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use("/api/", limiter);
 

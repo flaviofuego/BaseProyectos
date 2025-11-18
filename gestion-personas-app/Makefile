@@ -42,10 +42,11 @@ help:
 	@echo "  make test-e2e-report   - Show E2E test report"
 	@echo "  make test-e2e-suite    - Run specific E2E test suite (interactive)"
 	@echo "  make test-frontend     - Run frontend tests"
-	@echo "  make test-coverage     - Generate coverage report"
 	@echo "  make test-watch        - Run tests in watch mode"
 	@echo "  make test-clean        - Clean test artifacts and volumes"
 	@echo "  make test-results      - Show test results summary"
+	@echo "  make test-all          - Run all tests including performance"
+	@echo "  make test-warmup       - Pre-warm caches and DB/pools"
 	@echo "  make test-service      - Test specific service (interactive)"
 	@echo "  make test-auth         - Test auth service"
 	@echo "  make test-personas     - Test personas service"
@@ -124,6 +125,18 @@ clean:
 # 🧪 TESTING COMMANDS
 # ==========================================
 
+# Ensure dev containers are running for tests
+ensure-dev-up:
+	@echo "🔍 Verificando entorno dev..."
+	@if [ -z "$$(/usr/bin/env docker ps -q -f name=api_gateway_dev)" ] || [ -z "$$(/usr/bin/env docker ps -q -f name=flask_app_dev)" ]; then \
+		echo "⚠️  Entorno dev no está corriendo. Iniciando..."; \
+		docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d; \
+		sleep 10; \
+		echo "✅ Entorno dev listo."; \
+	else \
+		echo "✅ Entorno dev en ejecución."; \
+	fi
+
 # Build test environment
 test-build:
 	@echo "🏗️  Building test environment..."
@@ -138,18 +151,13 @@ test-up:
 	@sleep 10
 	@echo "✅ Test environment is ready!"
 
-# Stop test environment
-test-down:
-	@echo "🛑 Stopping test environment..."
-	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml down
-	@echo "✅ Test environment stopped!"
-
 # Run ALL tests (unit + integration + frontend + e2e + performance)
 test:
 	@echo "🧪 =========================================="
 	@echo "🧪 RUNNING ALL TESTS"
 	@echo "🧪 =========================================="
 	@echo ""
+	@make ensure-dev-up
 	@make test-unit
 	@echo ""
 	@make test-integration
@@ -158,9 +166,19 @@ test:
 	@echo ""
 	@make test-e2e
 	@echo ""
+	@echo "✅ All tests completed!"
+
+# Run everything including performance
+test-all:
+	@echo "🧪 =========================================="
+	@echo "🧪 RUNNING ALL TESTS (INCLUDING PERFORMANCE)"
+	@echo "🧪 =========================================="
+	@echo ""
+	@make test
+	@echo ""
 	@make test-performance
 	@echo ""
-	@echo "✅ All tests completed!"
+	@echo "✅ All tests (incl. performance) completed!"
 
 # Run unit tests only
 test-unit:
@@ -168,6 +186,7 @@ test-unit:
 	@echo "🧪 RUNNING UNIT TESTS"
 	@echo "🧪 =========================================="
 	@echo ""
+	@make ensure-dev-up
 	@echo "🔍 Testing Auth Service..."
 	@docker exec auth_service_dev npm test -- --testPathPattern=unit || true
 	@echo ""
@@ -182,6 +201,7 @@ test-integration:
 	@echo "🧪 RUNNING INTEGRATION TESTS"
 	@echo "🧪 =========================================="
 	@echo ""
+	@make ensure-dev-up
 	@echo "🔍 Testing Auth Service Integration..."
 	@docker exec auth_service_dev npm run test:integration || true
 	@echo ""
@@ -205,7 +225,7 @@ test-e2e:
 	@echo "🔍 Verificando que Docker Compose está corriendo..."
 	@if [ -z "$$(docker compose ps --services --filter 'status=running' 2>/dev/null)" ]; then \
 		echo "⚠️  ADVERTENCIA: Docker Compose no está corriendo. Iniciando..."; \
-		docker compose up -d; \
+		docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d; \
 		sleep 5; \
 	fi
 	@echo "✅ Docker Compose está corriendo"
@@ -221,7 +241,13 @@ test-e2e:
 			npm install && npx playwright install chromium; \
 		fi && \
 		echo "🚀 Ejecutando tests E2E..." && \
-		npx playwright test
+		API_BASE_URL=http://localhost:8001 \
+		PERF_CONCURRENCY=15 \
+		PERF_DURATION_MS=15000 \
+		PERF_MIN_REQ_PER_MIN=200 \
+		PERF_POOL_CONCURRENT=15 \
+		PERF_STRICT=0 \
+		npm test
 	@echo ""
 	@echo "✅ E2E tests completed!"
 	@echo "📊 Ver reporte HTML: cd tests/e2e && npm run test:report"
@@ -262,24 +288,16 @@ test-e2e-report:
 test-e2e-suite:
 	@echo "🧪 Running specific E2E test suite..."
 	@echo "Available suites:"
-	@echo "  1) registro    - CU-001 Registrarse"
-	@echo "  2) login       - CU-002 Login"
-	@echo "  3) crear       - CU-006 Crear Persona"
-	@echo "  4) consultar   - CU-007 Consultar Personas"
-	@echo "  5) actualizar  - CU-008 Actualizar Persona"
-	@echo "  6) eliminar    - CU-009 Eliminar Persona"
-	@echo "  7) nlp         - CU-012 Consulta NLP"
-	@echo "  8) journey     - CU-FULL Full Journey"
+	@echo "  1) login       - CU-002 Login"
+	@echo "  2) crear       - CU-006 Crear Persona"
+	@echo "  3) nlp         - CU-012 Consulta NLP"
+	@echo "  4) auditoria   - CU-010 Auditoría"
 	@read -p "Enter suite name or number: " suite; \
 	case "$$suite" in \
-		1|registro) file="01-registro.spec.js" ;; \
-		2|login) file="02-login.spec.js" ;; \
-		3|crear) file="03-crear-persona.spec.js" ;; \
-		4|consultar) file="04-consultar-personas.spec.js" ;; \
-		5|actualizar) file="05-actualizar-persona.spec.js" ;; \
-		6|eliminar) file="06-eliminar-persona.spec.js" ;; \
-		7|nlp) file="07-consulta-nlp.spec.js" ;; \
-		8|journey) file="08-full-journey.spec.js" ;; \
+		1|login) file="01-login.spec.js" ;; \
+		2|crear) file="02-crear-persona.spec.js" ;; \
+		3|nlp) file="03-consulta-nlp.spec.js" ;; \
+		4|auditoria) file="04-auditoria.spec.js" ;; \
 		*) echo "❌ Invalid option: $$suite"; exit 1 ;; \
 	esac; \
 	echo "🚀 Running $$file..."; \
@@ -295,18 +313,12 @@ test-frontend:
 	@echo "🧪 RUNNING FRONTEND TESTS"
 	@echo "🧪 =========================================="
 	@echo ""
+	@make ensure-dev-up
 	@echo "🔍 Testing Frontend (Flask + Jest)..."
 	@docker exec flask_app_dev sh -c "pytest tests/test_routes.py -v || true" || true
 	@docker exec flask_app_dev sh -c "cd /app && npm test || true" || true
 	@echo ""
 	@echo "✅ Frontend tests completed!"
-
-# Generate coverage report
-test-coverage:
-	@echo "📊 Generating coverage report..."
-	@if [ -f .env ]; then set -a; . .env; set +a; fi; docker-compose -f tests/config/docker-compose.test.yml run --rm test-runner-node npm run test:coverage
-	@echo "📊 Coverage report available at: tests/results/coverage/index.html"
-	@echo "📊 Open in browser with: open tests/results/coverage/index.html"
 
 # Run tests in watch mode (for development)
 test-watch:
@@ -332,7 +344,6 @@ test-results:
 		find tests/results -name "*.html" -o -name "*.xml" -o -name "*.json" | head -20; \
 		echo ""; \
 		echo "📊 Main Report: tests/results/index.html"; \
-		echo "📊 Python Coverage: tests/results/coverage-python/index.html"; \
 		echo ""; \
 	else \
 		echo "❌ No test results found. Run 'make test' first."; \
@@ -390,7 +401,7 @@ test-registry:
 
 test-frontend-dev:
 	@echo "🧪 Testing frontend..."
-	@docker exec -it frontend_dev sh -c "pytest --cov -v || npm test"
+	@docker exec flask_app_dev sh -c "pytest -v || npm test"
 
 # Run performance tests (TC-PERF)
 test-performance:
@@ -401,7 +412,7 @@ test-performance:
 	@echo "🔍 Verificando que Docker Compose está corriendo..."
 	@if [ -z "$$(docker compose ps --services --filter 'status=running' 2>/dev/null)" ]; then \
 		echo "⚠️  ADVERTENCIA: Docker Compose no está corriendo. Iniciando..."; \
-		docker compose up -d; \
+		docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d; \
 		sleep 10; \
 	fi
 	@echo "✅ Docker Compose está corriendo"
@@ -417,9 +428,41 @@ test-performance:
 			npm install; \
 		fi && \
 		echo "🚀 Ejecutando tests de performance..." && \
+		API_BASE_URL=http://localhost:8001 \
+		PERF_CONCURRENCY=15 \
+		PERF_DURATION_MS=15000 \
+		PERF_MIN_REQ_PER_MIN=200 \
+		PERF_POOL_CONCURRENT=15 \
+		PERF_STRICT=0 \
 		npm test
 	@echo ""
 	@echo "✅ Performance tests completed!"
+
+# Optional warm-up: precalienta cache (Redis), pools y buffers
+test-warmup:
+	@echo "🔥 Warming up services (API, DB, Redis)..."
+	@echo "🔍 Verificando que Docker Compose está corriendo..."
+	@if [ -z "$$(${SHELL} -lc 'docker compose ps --services --filter '\''status=running'\'' 2>/dev/null')" ]; then \
+		echo "⚠️  ADVERTENCIA: Docker Compose no está corriendo. Iniciando..."; \
+		docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d; \
+		sleep 10; \
+	fi
+	@echo "✅ Docker Compose está corriendo"
+	@echo "🔍 Verificando que la API está disponible..."
+	@timeout 30 bash -c 'until curl -sf http://localhost:8001/health > /dev/null 2>&1; do sleep 2; done' && \
+		echo "✅ API disponible en http://localhost:8001" || \
+		(echo "❌ ERROR: API no responde en http://localhost:8001" && exit 1)
+	@echo "🚀 Precalentando endpoints personas..."
+	@for i in $$(seq 1 50); do \
+		curl -s -o /dev/null -H "Authorization: Bearer temp-admin-token" "http://localhost:8001/api/personas?limit=5"; \
+	done
+	@echo "🚀 Precalentando endpoints consulta (cache Redis)..."
+	@for q in "Juan" "María" "Pedro"; do \
+		for i in $$(seq 1 30); do \
+			curl -s -o /dev/null -H "Authorization: Bearer temp-admin-token" "http://localhost:8001/api/consulta/search?nombre=$$q&limit=5"; \
+		done; \
+	done
+	@echo "✅ Warm-up completado"
 
 # Initialize database with sample data
 init-db:

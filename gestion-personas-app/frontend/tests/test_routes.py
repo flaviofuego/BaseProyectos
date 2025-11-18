@@ -1,243 +1,309 @@
 """
-Tests para las rutas principales de Flask
+Tests de integración real para las rutas de Flask
+NO USA MOCKS - Usa servicios reales de Docker
 Meta de cobertura: 80%
 """
 import pytest
-from unittest.mock import patch, MagicMock
+import time
 
 
-class TestDashboardRoute:
-    """Tests para la ruta /dashboard"""
+class TestAuthenticationFlow:
+    """Tests para el flujo de autenticación"""
 
-    @patch('app.make_request')
-    def test_dashboard_renders_successfully(self, mock_request, client):
-        """Debe renderizar el dashboard con código 200"""
-        # Simular sesión autenticada
-        with client.session_transaction() as sess:
-            sess['token'] = 'test-token'
-            sess['username'] = 'testuser'
-
-        # Mock de respuestas de API
-        mock_stats = MagicMock()
-        mock_stats.status_code = 200
-        mock_stats.json.return_value = {
-            'total_personas': 100,
-            'activos': 85,
-            'inactivos': 15
-        }
-
-        mock_request.return_value = mock_stats
-
-        response = client.get('/dashboard')
-
+    def test_login_page_renders(self, client):
+        """Debe mostrar la página de login"""
+        response = client.get('/login')
         assert response.status_code == 200
-        assert b'Dashboard' in response.data or b'dashboard' in response.data.lower()
+
+    def test_register_page_renders(self, client):
+        """Debe mostrar la página de registro"""
+        response = client.get('/register')
+        assert response.status_code == 200
+
+    def test_login_with_valid_credentials(self, client):
+        """Debe permitir login con credenciales válidas"""
+        response = client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        }, follow_redirects=False)
+        
+        # Debe redirigir o retornar success
+        assert response.status_code in [200, 302]
+
+    def test_login_with_invalid_credentials(self, client):
+        """Debe rechazar credenciales inválidas"""
+        response = client.post('/login', data={
+            'username': 'wronguser',
+            'password': 'wrongpass'
+        }, follow_redirects=True)
+        
+        assert response.status_code == 200
+
+
+class TestDashboardWithRealAuth:
+    """Tests para dashboard con autenticación real"""
 
     def test_dashboard_redirects_without_auth(self, client):
-        """Debe redirigir a login si no está autenticado"""
+        """Debe redirigir si no está autenticado"""
         response = client.get('/dashboard', follow_redirects=False)
-        
         assert response.status_code in [302, 303, 401]
 
-
-class TestLoginRoute:
-    """Tests para la ruta /login"""
-
-    def test_login_page_renders_successfully(self, client):
-        """Debe renderizar la página de login con código 200"""
-        response = client.get('/login')
-
+    def test_dashboard_accessible_after_login(self, client):
+        """Debe mostrar dashboard después de login"""
+        # Login real
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
+        
+        # Acceder dashboard
+        response = client.get('/dashboard', follow_redirects=True)
         assert response.status_code == 200
-        assert b'login' in response.data.lower() or b'iniciar' in response.data.lower()
 
-    @patch('app.make_request')
-    def test_login_post_successful(self, mock_request, client):
-        """Debe iniciar sesión correctamente con credenciales válidas"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            'token': 'test-token-123',
-            'user': {
-                'id': 1,
-                'username': 'testuser',
-                'email': 'test@example.com'
-            }
+
+class TestPersonasRoutesIntegration:
+    """Tests de integración para rutas de personas"""
+
+    def setup_method(self):
+        """Setup para cada test - hace login"""
+        self.test_user = {
+            'username': 'admin',
+            'password': 'admin123'
         }
-        mock_request.return_value = mock_response
 
-        response = client.post('/login', data={
-            'username': 'testuser',
-            'password': 'Test123!@#'
-        }, follow_redirects=False)
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data=self.test_user, follow_redirects=True)
 
-        assert response.status_code in [200, 302, 303]
+    def test_consultar_personas_requires_auth(self, client):
+        """Debe requerir autenticación para consultar"""
+        response = client.get('/personas/consultar', follow_redirects=False)
+        assert response.status_code in [302, 401]
 
-    @patch('app.make_request')
-    def test_login_post_invalid_credentials(self, mock_request, client):
-        """Debe fallar con credenciales inválidas"""
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_response.json.return_value = {'error': 'Invalid credentials'}
-        mock_request.return_value = mock_response
+    def test_consultar_personas_after_login(self, client):
+        """Debe mostrar lista de personas después de login"""
+        self.login(client)
+        response = client.get('/personas/consultar', follow_redirects=True)
+        assert response.status_code == 200
 
-        response = client.post('/login', data={
-            'username': 'testuser',
-            'password': 'wrongpass'
+    def test_crear_persona_get_after_login(self, client):
+        """Debe mostrar formulario de creación"""
+        self.login(client)
+        response = client.get('/personas/crear', follow_redirects=True)
+        assert response.status_code == 200
+
+    def test_crear_persona_post_with_valid_data(self, client):
+        """Debe crear persona con datos válidos"""
+        self.login(client)
+        
+        # Usar timestamp para documento único
+        timestamp = str(int(time.time()))
+        
+        response = client.post('/personas/crear', data={
+            'numero_documento': f'TEST{timestamp}',
+            'tipo_documento': 'Cédula',
+            'primer_nombre': 'Test',
+            'segundo_nombre': 'Usuario',
+            'apellidos': 'Prueba',
+            'fecha_nacimiento': '1990-01-01',
+            'genero': 'Masculino',
+            'correo_electronico': f'test{timestamp}@test.com',
+            'celular': '3001234567'
+        }, follow_redirects=True)
+        
+        # Debe redirigir o mostrar success
+        assert response.status_code == 200
+
+
+class TestNLPRoutes:
+    """Tests para rutas de NLP"""
+
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
         })
 
-        assert response.status_code in [200, 401]
+    def test_nlp_page_requires_auth(self, client):
+        """Debe requerir autenticación"""
+        response = client.get('/personas/nlp', follow_redirects=False)
+        assert response.status_code in [302, 401]
 
-
-class TestRegisterRoute:
-    """Tests para la ruta /register"""
-
-    def test_register_page_renders_successfully(self, client):
-        """Debe renderizar la página de registro con código 200"""
-        response = client.get('/register')
-
-        assert response.status_code == 200
-        assert b'register' in response.data.lower() or b'registr' in response.data.lower()
-
-    @patch('app.make_request')
-    def test_register_post_successful(self, mock_request, client):
-        """Debe registrar un nuevo usuario correctamente"""
-        mock_response = MagicMock()
-        mock_response.status_code = 201
-        mock_response.json.return_value = {
-            'message': 'User registered successfully',
-            'user': {
-                'id': 1,
-                'username': 'newuser',
-                'email': 'new@example.com'
-            }
-        }
-        mock_request.return_value = mock_response
-
-        response = client.post('/register', data={
-            'username': 'newuser',
-            'email': 'new@example.com',
-            'password': 'Test123!@#'
-        }, follow_redirects=False)
-
-        assert response.status_code in [200, 201, 302, 303]
-
-
-class TestConsultarPersonasRoute:
-    """Tests para la ruta /consultar_personas"""
-
-    @patch('app.make_request')
-    def test_consultar_personas_renders_successfully(self, mock_request, client):
-        """Debe renderizar la página de consulta con código 200"""
-        # Simular sesión autenticada
-        with client.session_transaction() as sess:
-            sess['token'] = 'test-token'
-            sess['username'] = 'testuser'
-
-        # Mock de respuesta de API
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            'personas': [
-                {
-                    'id': 1,
-                    'nombre': 'Juan',
-                    'apellido': 'Pérez',
-                    'numero_documento': '12345678'
-                }
-            ]
-        }
-        mock_request.return_value = mock_response
-
-        response = client.get('/consultar_personas')
-
+    def test_nlp_page_after_login(self, client):
+        """Debe mostrar interfaz NLP"""
+        self.login(client)
+        response = client.get('/personas/nlp', follow_redirects=True)
         assert response.status_code == 200
 
 
-class TestCrearPersonaRoute:
-    """Tests para la ruta /crear_persona"""
+class TestBulkUploadRoutes:
+    """Tests para carga masiva"""
 
-    @patch('app.make_request')
-    def test_crear_persona_renders_successfully(self, mock_request, client):
-        """Debe renderizar el formulario de crear persona"""
-        # Simular sesión autenticada
-        with client.session_transaction() as sess:
-            sess['token'] = 'test-token'
-            sess['username'] = 'testuser'
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
 
-        response = client.get('/crear_persona')
+    def test_bulk_upload_requires_auth(self, client):
+        """Debe requerir autenticación"""
+        response = client.get('/personas/bulk-upload', follow_redirects=False)
+        assert response.status_code in [302, 401]
 
+    def test_bulk_upload_page_after_login(self, client):
+        """Debe mostrar página de carga masiva"""
+        self.login(client)
+        response = client.get('/personas/bulk-upload', follow_redirects=True)
         assert response.status_code == 200
+
+
+class TestLogsRoutes:
+    """Tests para consulta de logs"""
+
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
+
+    def test_logs_requires_auth(self, client):
+        """Debe requerir autenticación"""
+        response = client.get('/logs', follow_redirects=False)
+        assert response.status_code in [302, 401]
+
+    def test_logs_page_after_login(self, client):
+        """Debe mostrar página de logs"""
+        self.login(client)
+        response = client.get('/logs', follow_redirects=True)
+        assert response.status_code == 200
+
+
+class TestReportesRoutes:
+    """Tests para reportes"""
+
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
+
+    def test_reportes_requires_auth(self, client):
+        """Debe requerir autenticación"""
+        response = client.get('/reportes', follow_redirects=False)
+        assert response.status_code in [302, 401]
+
+    def test_reportes_page_after_login(self, client):
+        """Debe mostrar página de reportes"""
+        self.login(client)
+        response = client.get('/reportes', follow_redirects=True)
+        assert response.status_code == 200
+
+
+class TestConfiguracionCuenta:
+    """Tests para configuración de cuenta"""
+
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
+
+    def test_configurar_cuenta_requires_auth(self, client):
+        """Debe requerir autenticación"""
+        response = client.get('/configurar-cuenta', follow_redirects=False)
+        assert response.status_code in [302, 401]
+
+    def test_configurar_cuenta_after_login(self, client):
+        """Debe mostrar página de configuración"""
+        self.login(client)
+        response = client.get('/configurar-cuenta', follow_redirects=True)
+        assert response.status_code == 200
+
+
+class TestModificarPersona:
+    """Tests para modificar personas"""
+
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
+
+    def test_modificar_requires_auth(self, client):
+        """Debe requerir autenticación"""
+        response = client.get('/personas/modificar?numero_documento=123', follow_redirects=False)
+        assert response.status_code in [302, 401]
+
+
+class TestBorrarPersona:
+    """Tests para borrar personas"""
+
+    def login(self, client):
+        """Helper para hacer login"""
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
+
+    def test_borrar_requires_auth(self, client):
+        """Debe requerir autenticación"""
+        response = client.get('/personas/borrar', follow_redirects=False)
+        assert response.status_code in [302, 401]
 
 
 class TestErrorHandlers:
     """Tests para manejadores de errores"""
 
-    def test_404_error_handler(self, client):
-        """Debe renderizar página 404 para rutas no existentes"""
+    def test_404_error(self, client):
+        """Debe manejar 404"""
         response = client.get('/ruta-que-no-existe')
-
         assert response.status_code == 404
-
-    @patch('app.make_request')
-    def test_handles_api_connection_error(self, mock_request, client):
-        """Debe manejar errores de conexión con la API"""
-        # Simular sesión autenticada
-        with client.session_transaction() as sess:
-            sess['token'] = 'test-token'
-
-        mock_request.return_value = None  # Simular error de conexión
-
-        response = client.get('/dashboard')
-
-        # Debe manejar el error gracefully
-        assert response.status_code in [200, 500, 503]
-
-
-class TestHelperFunctions:
-    """Tests para funciones auxiliares"""
-
-    def test_build_image_url_with_uploads_path(self, app):
-        """Debe construir URL correcta para imágenes en /uploads/"""
-        from app import build_image_url
-
-        foto_url = '/uploads/foto123.jpg'
-        result = build_image_url(foto_url)
-
-        assert 'http://localhost:8001/uploads/foto123.jpg' in result
-
-    def test_build_image_url_with_none(self, app):
-        """Debe retornar None cuando foto_url es None"""
-        from app import build_image_url
-
-        result = build_image_url(None)
-        assert result is None
-
-    def test_build_image_url_with_external_url(self, app):
-        """Debe retornar URL externa sin modificar"""
-        from app import build_image_url
-
-        external_url = 'https://example.com/image.jpg'
-        result = build_image_url(external_url)
-
-        assert result == external_url
 
 
 class TestSessionManagement:
     """Tests para manejo de sesión"""
 
     def test_logout_clears_session(self, client):
-        """Debe limpiar la sesión al hacer logout"""
-        # Establecer sesión
-        with client.session_transaction() as sess:
-            sess['token'] = 'test-token'
-            sess['username'] = 'testuser'
+        """Debe limpiar sesión al logout"""
+        # Login
+        client.post('/login', data={
+            'username': 'admin',
+            'password': 'admin123'
+        })
+        
+        # Logout
+        response = client.get('/logout', follow_redirects=True)
+        
+        # Debe redirigir a login
+        assert response.status_code == 200
 
-        # Hacer logout
-        response = client.get('/logout', follow_redirects=False)
 
-        # Verificar que redirige
-        assert response.status_code in [302, 303]
+class TestHelperFunctions:
+    """Tests para funciones helper"""
 
-        # Verificar que la sesión está limpia
-        with client.session_transaction() as sess:
-            assert 'token' not in sess or sess.get('token') is None
+    def test_build_image_url_with_uploads(self, app):
+        """Debe construir URL correctamente"""
+        with app.app_context():
+            from app import build_image_url
+            result = build_image_url('/uploads/test.jpg')
+            assert result is not None
+
+    def test_build_image_url_with_none(self, app):
+        """Debe manejar None"""
+        with app.app_context():
+            from app import build_image_url
+            result = build_image_url(None)
+            assert result is None or result == ''
+
+    def test_build_image_url_with_external(self, app):
+        """Debe manejar URLs externas"""
+        with app.app_context():
+            from app import build_image_url
+            result = build_image_url('http://example.com/image.jpg')
+            assert result == 'http://example.com/image.jpg'

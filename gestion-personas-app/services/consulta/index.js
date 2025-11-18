@@ -182,22 +182,31 @@ app.get("/search", async (req, res) => {
       genero,
       edad_min,
       edad_max,
+      nombre, // filtro por nombre (parcial) para primer_nombre o apellidos
       page = 1,
       limit = 10,
     } = req.query;
 
-    // Disable caching for real-time updates
-    // const cacheKey = getCacheKey('search', req.query);
-    // const cachedData = await redisClient.get(cacheKey);
-    // if (cachedData) {
-    //   const result = JSON.parse(cachedData);
-    //   await logTransaction('SEARCH_CACHED', null, null, 'SUCCESS', req, { count: result.personas.length });
-    //   return res.json({
-    //     ...result,
-    //     _cache: true,
-    //     _responseTime: Date.now() - startTime
-    //   });
-    // }
+    // Check cache
+    const cacheKey = getCacheKey("search", req.query);
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      const result = JSON.parse(cachedData);
+      await logTransaction("SEARCH_CACHED", null, null, "SUCCESS", req, {
+        count: result.personas.length,
+        filters: req.query,
+      });
+
+      res.set({
+        "X-Cache": "HIT",
+      });
+
+      return res.json({
+        ...result,
+        _cache: true,
+        _responseTime: Date.now() - startTime,
+      });
+    }
 
     // Build query
     let query = "SELECT * FROM personas_con_edad WHERE 1=1";
@@ -228,6 +237,13 @@ app.get("/search", async (req, res) => {
       paramCount++;
     }
 
+    if (nombre) {
+      // Búsqueda parcial case-insensitive en primer_nombre o apellidos
+      query += ` AND (primer_nombre ILIKE $${paramCount} OR apellidos ILIKE $${paramCount})`;
+      params.push(`%${nombre}%`);
+      paramCount++;
+    }
+
     // Count total results
     const countQuery = query.replace("SELECT *", "SELECT COUNT(*)");
     const countResult = await pool.query(countQuery, params);
@@ -253,8 +269,8 @@ app.get("/search", async (req, res) => {
       },
     };
 
-    // Disable caching for real-time updates
-    // await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(response));
+    // Cachear el resultado
+    await redisClient.setEx(cacheKey, CACHE_TTL, JSON.stringify(response));
 
     // Log search
     await logTransaction("SEARCH", null, null, "SUCCESS", req, {
@@ -262,11 +278,9 @@ app.get("/search", async (req, res) => {
       filters: req.query,
     });
 
-    // Add headers to prevent caching
+    // Señalizar cache MISS
     res.set({
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-      Pragma: "no-cache",
-      Expires: "0",
+      "X-Cache": "MISS",
     });
 
     res.json({
