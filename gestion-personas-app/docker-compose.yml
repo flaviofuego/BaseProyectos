@@ -39,13 +39,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/backups:/backups
-      - ./database/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-      - ./database/init.sql:/init-scripts/init.sql
-      - ./database/migrations:/init-scripts/migrations
-      - ./database/backup.sh:/backups/backup.sh
-      - ./database/restore.sh:/backups/restore.sh
+      - ./database/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
+      - ./database/init.sql:/init-scripts/init.sql:ro
+      - ./database/migrations:/init-scripts/migrations:ro
+      - ./database/backup.sh:/backups/backup.sh:ro
+      - ./database/restore.sh:/backups/restore.sh:ro
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d personas_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - app-network
 

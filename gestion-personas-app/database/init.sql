@@ -123,11 +123,11 @@ ON CONFLICT (user_id) DO NOTHING;
 -- ============================================
 -- Tabla de embeddings vectoriales (pgvector)
 -- ============================================
--- Tabla para almacenar embeddings de personas (768 dimensiones para Gemini embedding-001)
+-- Tabla para almacenar embeddings de personas (1536 dimensiones para text-embedding-ada-002 de Azure OpenAI)
 CREATE TABLE IF NOT EXISTS personas_embeddings (
     id SERIAL PRIMARY KEY,
     persona_id INTEGER NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
-    embedding vector(768) NOT NULL,
+    embedding vector(1536) NOT NULL,
     content_text TEXT NOT NULL, -- Texto usado para generar el embedding
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -152,7 +152,7 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Función auxiliar para búsqueda de similitud con límite
 CREATE OR REPLACE FUNCTION search_similar_personas(
-    query_embedding vector(768),
+    query_embedding vector(1536),
     similarity_threshold FLOAT DEFAULT 0.5,
     max_results INTEGER DEFAULT 10
 )
@@ -176,7 +176,7 @@ $$ LANGUAGE plpgsql;
 
 -- Comentarios informativos
 COMMENT ON TABLE personas_embeddings IS 'Almacena embeddings vectoriales de personas para búsqueda semántica usando pgvector';
-COMMENT ON COLUMN personas_embeddings.embedding IS 'Vector de 768 dimensiones generado por Google Gemini embedding-001';
+COMMENT ON COLUMN personas_embeddings.embedding IS 'Vector de 1536 dimensiones generado por Azure OpenAI text-embedding-ada-002';
 COMMENT ON COLUMN personas_embeddings.content_text IS 'Texto concatenado usado para generar el embedding (nombre, documento, edad, etc)';
 COMMENT ON FUNCTION search_similar_personas IS 'Función auxiliar para búsqueda de similitud semántica con threshold y límite';
 

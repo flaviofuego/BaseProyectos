@@ -25,6 +25,7 @@ help:
 	@echo "  make db-backup   - Create manual backup of database"
 	@echo "  make db-restore  - Restore database from latest backup"
 	@echo "  make db-reset    - Reset database (delete all tables and restore)"
+	@echo "  make db-reinit   - Reinitialize database (re-run init.sql)"
 	@echo "  make db-migrations - List applied migrations"
 	@echo "  make db-status   - Show database statistics"
 	@echo ""
@@ -89,7 +90,7 @@ dev:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 	@echo "Waiting for services to be ready..."
 	@echo "Development services are starting up with hot reload enabled."
-	@echo "Access the application at http://localhost:5000"
+	@echo "Access the application at http://localhost:5001"
 	@echo "API Gateway at http://localhost:8001"
 
 # Stop all services
@@ -514,6 +515,11 @@ db-restore:
 	@echo "Restoring database from backup..."
 	@docker exec personas_db bash /backups/restore.sh
 	@echo "Database restored successfully!"
+
+db-reinit:
+	@echo "🔄 Reinitializing database (re-running init.sql)..."
+	@bash database/reinit-db.sh
+	@echo "✅ Database reinitialized successfully!"
 
 db-reset:
 	@echo "WARNING: This will delete all data and restore from backup!"
