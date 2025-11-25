@@ -163,7 +163,7 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
-      - API_GATEWAY_URL=${API_GATEWAY_URL}
+      - API_GATEWAY_URL=http://gateway:8001
     networks:
       - app-network
 
