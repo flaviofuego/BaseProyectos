@@ -29,7 +29,7 @@ COPY . .
 RUN mkdir -p uploads
 
 # Expose Flask port// cambiarlo en el app.py tambien
-EXPOSE 5001
+EXPOSE 5000
 
 # Set Flask environment for development
 ENV FLASK_ENV=development

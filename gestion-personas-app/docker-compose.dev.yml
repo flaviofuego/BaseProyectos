@@ -155,6 +155,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: flask_app_dev
+    ports:
+      - "5000:5000"
     volumes:
       - ./frontend:/app
       - /app/__pycache__

@@ -19,7 +19,7 @@ COPY . .
 RUN mkdir -p uploads
 
 # Expose Flask port
-EXPOSE 5001
+EXPOSE 5000
 
 # Run Flask
 CMD ["python", "app.py"]
