@@ -90,7 +90,7 @@ dev:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 	@echo "Waiting for services to be ready..."
 	@echo "Development services are starting up with hot reload enabled."
-	@echo "Access the application at http://localhost:5001"
+	@echo "Access the application at http://localhost:5000"
 	@echo "API Gateway at http://localhost:8001"
 
 # Stop all services
