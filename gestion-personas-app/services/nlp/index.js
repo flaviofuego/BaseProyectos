@@ -527,7 +527,6 @@ Usa títulos, listas, tablas y métricas en negritas:
 **Ejemplos:**
 - "el más viejo" → limit=1, sort_by="edad_desc", query_type="analytical"
 - "top 5 jóvenes" → limit=5, sort_by="edad_asc", query_type="analytical"
-- "hombres más viejos" → genero="Masculino", limit=10, sort_by="edad_desc", query_type="analytical"
 - "último adulto registrado" → grupo_edad="Adulto", limit=1, sort_by="created_at_desc", query_type="analytical"
 
 ### 2. AGREGACIONES (cálculos estadísticos)
@@ -549,7 +548,7 @@ Usa títulos, listas, tablas y métricas en negritas:
 **Estrategia:** Filtros explícitos + ordenamiento relevante + limit moderado
 **Aplicar:**
 - Extrae TODOS los filtros mencionados (explícitos e implícitos contextuales)
-- limit=50-100 (cantidad esperada moderada)
+- limit=50-100 (cantidad esperada moderada, ajusta según contexto)
 - sort_by="nombre" (alfabético) o "similarity" (relevancia)
 - query_type="filtered"
 
@@ -594,11 +593,6 @@ Usa títulos, listas, tablas y métricas en negritas:
    - "mayores de edad" → edad_min=18
    - "ancianos/tercera edad" → grupo_edad="Adulto mayor"
 
-5. **Ajusta limit dinámicamente:**
-   - Superlativos: 1-20 según N mencionado
-   - Agregaciones: 150-200
-   - Filtrados específicos: 50-100 según detalle y filtros
-   - Búsquedas vagas: 30-50
 
 ## FORMATO DE RESPUESTA
 
