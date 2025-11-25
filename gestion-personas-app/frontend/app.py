@@ -1375,7 +1375,7 @@ def consultar_logs():
             if transaction_type and transaction_type.strip() and transaction_type != 'Todos':
                 params['transaction_type'] = transaction_type
             if entity_type and entity_type.strip() and entity_type != 'Todos':
-                params['entity_type'] = entity_type
+                params['entity_type'] = entity_type.upper()
             if numero_documento and numero_documento.strip():
                 params['numero_documento'] = numero_documento
             if status and status.strip() and status != 'Todos':
@@ -1566,4 +1566,4 @@ def rate_limit_status():
     return jsonify(status)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    app.run(host='0.0.0.0', port=5001, debug=True) 

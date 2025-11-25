@@ -33,6 +33,8 @@
                             <select class="form-select" id="transaction_type" name="transaction_type">
                                 <option value="">Todos</option>
                                 <option value="CREATE" {{ 'selected' if request.args.transaction_type == 'CREATE' }}>CREATE</option>
+                                <option value="CREATE_BULK" {{ 'selected' if request.args.transaction_type == 'CREATE_BULK' }}>CREATE_BULK</option>
+                                <option value="BULK_UPLOAD" {{ 'selected' if request.args.transaction_type == 'BULK_UPLOAD' }}>BULK_UPLOAD</option>
                                 <option value="READ" {{ 'selected' if request.args.transaction_type == 'READ' }}>READ</option>
                                 <option value="UPDATE" {{ 'selected' if request.args.transaction_type == 'UPDATE' }}>UPDATE</option>
                                 <option value="DELETE" {{ 'selected' if request.args.transaction_type == 'DELETE' }}>DELETE</option>
