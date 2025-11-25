@@ -473,82 +473,136 @@ Usa títulos, listas, tablas y métricas en negritas:
   }
 
   async extractQueryParameters(query) {
-    const prompt = `Analiza la siguiente consulta y determina si es una CONSULTA ANALÍTICA o CONSULTA DE FILTRADO.
+    const prompt = `Analiza profundamente la consulta del usuario y extrae parámetros de filtrado, ordenamiento y límite optimizados.
 
-**CONSULTA DEL USUARIO:** "${query}"
+**CONSULTA:** "${query}"
 
-## 🎯 TIPOS DE CONSULTA
+## ANÁLISIS CONTEXTUAL
 
-### CONSULTA ANALÍTICA (NO aplicar filtros restrictivos)
-Son preguntas que requieren analizar TODOS los datos o un gran conjunto:
-- Superlativos: "el más viejo", "el más joven", "el mayor", "el menor"
-- Agregaciones: "promedio de edad", "cuántos empleados", "total de"
-- Comparaciones: "diferencia entre", "comparar"
-- Estadísticas: "distribución", "porcentaje", "media"
-- Rankings: "top 10", "los 5 más", "ranking de"
-- Análisis generales: "empleados", "personas", "todos"
+**Lee la consulta completa** e identifica:
+1. **Intención**: ¿Busca registros específicos, valores extremos, o cálculos agregados?
+2. **Restricciones explícitas**: Filtros mencionados directamente (edad, género, nombres, fechas)
+3. **Restricciones implícitas**: Contexto que sugiere filtrado (ej: "adultos" → grupo_edad, "recién registrados" → created_at reciente)
+4. **Criterio de ordenamiento**: ¿Qué campo determina el resultado? (edad, nombre, fecha)
+5. **Cantidad esperada**: ¿Cuántos resultados necesita? (1, varios, todos)
 
-**Para consultas analíticas:** Devuelve todos los parámetros en null y limit alto (150-200)
+## PARÁMETROS DISPONIBLES
 
-### CONSULTA DE FILTRADO (aplicar filtros específicos)
-Son preguntas que buscan subconjuntos específicos:
-- Búsquedas exactas: "Juan Pérez", "documento 12345678", "correo@email.com"
-- Rangos específicos: "personas entre 25 y 35 años", "nacidos en 1990"
-- Categorías específicas: "solo hombres mayores de 40", "mujeres adultas"
-- Combinaciones: "empleados masculinos con correo gmail"
-- Patrones de nombre/apellido: "apellido termina en 'ez'", "nombre empieza con 'Mar'", "apellido contiene 'rod'"
+**Identificación:**
+- numero_documento, tipo_documento ("Cédula", "Tarjeta de identidad")
 
-**Para consultas de filtrado:** Extrae SOLO los filtros explícitos mencionados
+**Nombres (con patrones):**
+- primer_nombre, segundo_nombre, apellidos → Usa % para patrones: "Gó%" (empieza), "%or" (termina), "%rod%" (contiene)
+- nombre → Búsqueda general en todos los campos de nombre
 
-## 📊 PARÁMETROS DISPONIBLES
-- numero_documento, tipo_documento
-- primer_nombre, segundo_nombre, apellidos, nombre (búsqueda general)
-- fecha_nacimiento_min, fecha_nacimiento_max
-- edad_min, edad_max
-- genero: "Masculino", "Femenino", "No binario", "Prefiero no reportar"
-- correo_electronico, celular
-- grupo_edad: "Menor de edad", "Adulto", "Adulto mayor"
-- created_at_min, created_at_max (formato: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
-- updated_at_min, updated_at_max (formato: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
-- limit: 10-200 (usa 150-200 para consultas analíticas, 50-100 para filtros)
+**Datos personales:**
+- edad_min, edad_max → Valores numéricos
+- genero → "Masculino", "Femenino", "No binario", "Prefiero no reportar"
+- grupo_edad → "Menor de edad", "Adulto", "Adulto mayor"
+- fecha_nacimiento_min, fecha_nacimiento_max → YYYY-MM-DD
 
-## ⚠️ REGLAS CRÍTICAS
+**Contacto:**
+- correo_electronico, celular → Soportan patrones %
 
-1. **NO extraigas filtros implícitos de preguntas analíticas**
-   ❌ "el más viejo" NO debe generar edad_min ni edad_max
-   ❌ "cuántos empleados" NO debe aplicar ningún filtro
-   ❌ "promedio de edad" NO debe restringir edades
-   
-2. **SOLO aplica filtros cuando son EXPLÍCITOS**
-   ✅ "empleados mayores de 30" → edad_min=30
-   ✅ "mujeres entre 25 y 40" → genero=Femenino, edad_min=25, edad_max=40
-   ✅ "Juan Pérez" → nombre="Juan Pérez"
-   ✅ "apellido termina en 'or'" → apellidos="%or"
-   ✅ "apellido empieza con 'Gó'" → apellidos="Gó%"
-   ✅ "apellido contiene 'rod'" → apellidos="%rod%"
-   ✅ "nombre empieza con 'Mar'" → primer_nombre="Mar%"
-   ✅ "segundo nombre es 'José'" → segundo_nombre="José"
-   ✅ "registrados en 2024" → created_at_min=2024-01-01, created_at_max=2024-12-31
-   ✅ "actualizados esta semana" → updated_at_min=FECHA_INICIO_SEMANA
-   ✅ "creados después de enero 2025" → created_at_min=2025-01-01
+**Auditoría:**
+- created_at_min, created_at_max → YYYY-MM-DD o YYYY-MM-DD HH:MM:SS
+- updated_at_min, updated_at_max → YYYY-MM-DD o YYYY-MM-DD HH:MM:SS
 
-3. **DISTRIBUCIÓN DE NOMBRES**
-   - Si la consulta menciona "apellido" o "apellidos", usa el parámetro **apellidos**
-   - Si menciona "primer nombre", usa **primer_nombre**
-   - Si menciona "segundo nombre", usa **segundo_nombre**
-   - Si menciona "nombre completo" o solo "nombre" sin especificar, usa **nombre**
-   - Soporta patrones con comodines:
-     * "termina en X" → "%X"
-     * "empieza con X" → "X%"
-     * "contiene X" → "%X%"
+**Control de consulta:**
+- limit → 1-200 (ajusta según necesidad)
+- sort_by → "similarity", "edad_desc", "edad_asc", "nombre", "fecha_nacimiento_desc", "fecha_nacimiento_asc", "created_at_desc"
+- query_type → "analytical", "filtered", "semantic"
 
-4. **Usa limit alto para consultas analíticas**
-   - Preguntas con "más", "menos", "promedio", "total": limit=200
-   - Búsquedas específicas: limit=50-100
-   - Búsquedas con patrones (termina, empieza, contiene): limit=100
+## ESTRATEGIAS DE OPTIMIZACIÓN
 
-## 📤 FORMATO DE RESPUESTA
-Responde SOLO con JSON válido (sin markdown):
+### 1. SUPERLATIVOS (valores extremos)
+**Patrones:** "más/menos X", "mayor/menor", "top N", "primeros/últimos N", "ranking"
+**Estrategia:** Ordenamiento + limit pequeño
+**Aplicar:**
+- Identifica el campo de comparación (edad, fecha_nacimiento, created_at)
+- Determina dirección: DESC (más/mayor/primeros) o ASC (menos/menor/últimos)
+- limit = N mencionado o 1 si no especifica
+- Permite filtros de otros campos si son explícitos (o implícitos contextuales)
+
+**Ejemplos:**
+- "el más viejo" → limit=1, sort_by="edad_desc", query_type="analytical"
+- "top 5 jóvenes" → limit=5, sort_by="edad_asc", query_type="analytical"
+- "hombres más viejos" → genero="Masculino", limit=10, sort_by="edad_desc", query_type="analytical"
+- "último adulto registrado" → grupo_edad="Adulto", limit=1, sort_by="created_at_desc", query_type="analytical"
+
+### 2. AGREGACIONES (cálculos estadísticos)
+**Patrones:** "promedio", "media", "total", "cuántos", "distribución", "porcentaje"
+**Estrategia:** Sin filtros restrictivos + limit alto
+**Aplicar:**
+- limit=200 (necesita todos los datos)
+- sort_by="similarity" (orden no crítico)
+- query_type="analytical"
+- NO agregues filtros a menos que sean MUY explícitos
+
+**Ejemplos:**
+- "promedio de edad" → limit=200, sort_by="similarity"
+- "cuántos empleados" → limit=200, sort_by="similarity"
+- "distribución de adultos por género" → grupo_edad="Adulto", limit=200
+
+### 3. FILTRADO ESPECÍFICO (búsquedas con criterios)
+**Patrones:** Menciones directas de valores, rangos, categorías, patrones
+**Estrategia:** Filtros explícitos + ordenamiento relevante + limit moderado
+**Aplicar:**
+- Extrae TODOS los filtros mencionados (explícitos e implícitos contextuales)
+- limit=50-100 (cantidad esperada moderada)
+- sort_by="nombre" (alfabético) o "similarity" (relevancia)
+- query_type="filtered"
+
+**Filtros explícitos:** "mayores de 30", "mujeres", "apellido Rodríguez"
+**Filtros implícitos contextuales:**
+- "adultos" → grupo_edad="Adulto"
+- "cédulas" → tipo_documento="Cédula"
+- "registrados este año" → created_at_min=2025-01-01
+- "terminan en García" → apellidos="%García"
+
+**Ejemplos:**
+- "mujeres adultas mayores de 40" → genero="Femenino", grupo_edad="Adulto", edad_min=40, limit=100
+- "adultos con gmail" → grupo_edad="Adulto", correo_electronico="%gmail%", limit=100
+- "hombres apellido empieza con Ro" → genero="Masculino", apellidos="Ro%", limit=100
+
+### 4. BÚSQUEDAS SEMÁNTICAS (vagas o conceptuales)
+**Patrones:** Preguntas sin filtros claros, búsquedas generales
+**Estrategia:** Sin filtros + ordenamiento por similitud + limit moderado
+**Aplicar:**
+- limit=50-100 (según vaguedad)
+- sort_by="similarity"
+- query_type="semantic"
+
+**Ejemplos:**
+- "personas relacionadas con tecnología" → limit=50, sort_by="similarity"
+- "empleados del área" → limit=100, sort_by="similarity"
+
+## REGLAS DE EXTRACCIÓN
+
+1. **Prioriza contexto sobre literalidad:** Si dice "adultos", aplica grupo_edad="Adulto" aunque no diga explícitamente "grupo_edad adulto"
+
+2. **Combina filtros inteligentemente:** Permite superlativos con filtros de otros campos: "hombre más viejo" = genero + sort_by edad
+
+3. **Patrones de nombres:** Detecta intención:
+   - "termina/acaba/finaliza con X" → "%X"
+   - "empieza/inicia/comienza con X" → "X%"
+   - "contiene/incluye X" → "%X%"
+   - Nombre exacto sin indicadores → "%X%"
+
+4. **Interpreta rangos implícitos:**
+   - "treintañeros" → edad_min=30, edad_max=39
+   - "mayores de edad" → edad_min=18
+   - "ancianos/tercera edad" → grupo_edad="Adulto mayor"
+
+5. **Ajusta limit dinámicamente:**
+   - Superlativos: 1-20 según N mencionado
+   - Agregaciones: 150-200
+   - Filtrados específicos: 50-100 según detalle y filtros
+   - Búsquedas vagas: 30-50
+
+## FORMATO DE RESPUESTA
+
+Responde SOLO con JSON válido (sin markdown ni comentarios):
 {
   "numero_documento":null,
   "tipo_documento":null,
@@ -568,16 +622,12 @@ Responde SOLO con JSON válido (sin markdown):
   "created_at_max":null,
   "updated_at_min":null,
   "updated_at_max":null,
-  "limit":100
+  "limit":100,
+  "sort_by":"similarity",
+  "query_type":"semantic"
 }
 
-**EJEMPLOS ESPECÍFICOS:**
-- "lista las personas con apellido que termina en 'or'" → {"apellidos":"%or", "limit":100}
-- "personas con nombre que empieza con 'Mar'" → {"primer_nombre":"Mar%", "limit":100}
-- "apellido contiene 'rígu'" → {"apellidos":"%rígu%", "limit":100}
-- "Juan Pérez" → {"nombre":"Juan Pérez", "limit":50}
-
-**IMPORTANTE:** Si la consulta pide análisis o superlativos, deja todos los filtros en null y usa limit alto (150-200).`;
+**Valida antes de responder:** ¿Los parámetros reflejan fielmente la intención del usuario? ¿El limit es apropiado? ¿El ordenamiento es óptimo?`;
 
     try {
       let text = await this.callAzureAI({
@@ -592,6 +642,9 @@ Responde SOLO con JSON válido (sin markdown):
         .replace(/```\n?/g, "")
         .trim();
       const params = JSON.parse(text);
+      const validSortBy = ["similarity", "edad_desc", "edad_asc", "nombre", "fecha_nacimiento_desc", "fecha_nacimiento_asc", "created_at_desc"];
+      const validQueryType = ["analytical", "filtered", "semantic"];
+      
       return {
         numero_documento: params.numero_documento || null,
         tipo_documento: ["Cédula", "Tarjeta de identidad"].includes(
@@ -636,6 +689,8 @@ Responde SOLO con JSON válido (sin markdown):
           params.limit && !isNaN(params.limit)
             ? Math.min(Math.max(parseInt(params.limit), 10), 200)
             : 100,
+        sort_by: validSortBy.includes(params.sort_by) ? params.sort_by : "similarity",
+        query_type: validQueryType.includes(params.query_type) ? params.query_type : "semantic",
       };
     } catch (error) {
       console.error("Error extracción params:", error.message);
@@ -659,17 +714,41 @@ Responde SOLO con JSON válido (sin markdown):
         updated_at_min: null,
         updated_at_max: null,
         limit: 100,
+        sort_by: "similarity",
+        query_type: "semantic",
       };
     }
+  }
+
+  buildOrderByClause(sortBy, similarityParamIndex) {
+    const orderByMap = {
+      similarity: `pe.embedding <=> $${similarityParamIndex}`,
+      edad_desc: `edad DESC, pe.embedding <=> $${similarityParamIndex}`,
+      edad_asc: `edad ASC, pe.embedding <=> $${similarityParamIndex}`,
+      nombre: `p.apellidos ASC, p.primer_nombre ASC, pe.embedding <=> $${similarityParamIndex}`,
+      fecha_nacimiento_desc: `p.fecha_nacimiento DESC, pe.embedding <=> $${similarityParamIndex}`,
+      fecha_nacimiento_asc: `p.fecha_nacimiento ASC, pe.embedding <=> $${similarityParamIndex}`,
+      created_at_desc: `p.created_at DESC, pe.embedding <=> $${similarityParamIndex}`,
+    };
+    return orderByMap[sortBy] || orderByMap.similarity;
   }
 
   async queryVectorDatabase(query, parameters) {
     const queryEmbedding = await this.generateEmbedding(query);
     const { whereClauses, queryParams, paramCounter } =
       this.buildWhereClause(parameters);
+    
+    const similarityThreshold = parameters.query_type === "filtered" ? 0.3 : 0.0;
+    if (similarityThreshold > 0) {
+      whereClauses.push(`1 - (pe.embedding <=> $${paramCounter}) >= ${similarityThreshold}`);
+    }
+    
     const whereSQL = whereClauses.length
       ? `WHERE ${whereClauses.join(" AND ")}`
       : "";
+    
+    const orderByClause = this.buildOrderByClause(parameters.sort_by || "similarity", paramCounter);
+    
     const sqlQuery = `
       SELECT p.*, EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
         CASE WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
@@ -679,7 +758,7 @@ Responde SOLO con JSON válido (sin markdown):
       FROM personas_embeddings pe
       JOIN personas p ON pe.persona_id = p.id
       ${whereSQL}
-      ORDER BY pe.embedding <=> $${paramCounter}
+      ORDER BY ${orderByClause}
       LIMIT $${paramCounter + 1}`;
     queryParams.push(pgvector.toSql(queryEmbedding), parameters.limit || 100);
     const results = (await this.pool.query(sqlQuery, queryParams)).rows;
@@ -690,6 +769,7 @@ Responde SOLO con JSON válido (sin markdown):
     const whereClauses = [];
     const queryParams = [];
     let paramCounter = 1;
+    
     if (params.numero_documento) {
       whereClauses.push(`p.numero_documento = $${paramCounter++}`);
       queryParams.push(params.numero_documento);
@@ -698,22 +778,23 @@ Responde SOLO con JSON válido (sin markdown):
       whereClauses.push(`p.tipo_documento = $${paramCounter++}`);
       queryParams.push(params.tipo_documento);
     }
-    const patternField = (value) =>
-      value.includes("%") ? value : `%${value}%`;
+    
+    const applyPattern = (value) => value.includes("%") ? value : `%${value}%`;
+    
     if (params.primer_nombre) {
       whereClauses.push(`p.primer_nombre ILIKE $${paramCounter++}`);
-      queryParams.push(patternField(params.primer_nombre));
+      queryParams.push(applyPattern(params.primer_nombre));
     }
     if (params.segundo_nombre) {
       whereClauses.push(`p.segundo_nombre ILIKE $${paramCounter++}`);
-      queryParams.push(patternField(params.segundo_nombre));
+      queryParams.push(applyPattern(params.segundo_nombre));
     }
     if (params.apellidos) {
       whereClauses.push(`p.apellidos ILIKE $${paramCounter++}`);
-      queryParams.push(patternField(params.apellidos));
+      queryParams.push(applyPattern(params.apellidos));
     }
     if (params.nombre) {
-      const pattern = patternField(params.nombre);
+      const pattern = applyPattern(params.nombre);
       whereClauses.push(
         `(p.primer_nombre ILIKE $${paramCounter} OR p.segundo_nombre ILIKE $${paramCounter} OR p.apellidos ILIKE $${paramCounter})`
       );
@@ -771,11 +852,11 @@ Responde SOLO con JSON válido (sin markdown):
     }
     if (params.correo_electronico) {
       whereClauses.push(`p.correo_electronico ILIKE $${paramCounter++}`);
-      queryParams.push(patternField(params.correo_electronico));
+      queryParams.push(applyPattern(params.correo_electronico));
     }
     if (params.celular) {
       whereClauses.push(`p.celular LIKE $${paramCounter++}`);
-      queryParams.push(patternField(params.celular));
+      queryParams.push(applyPattern(params.celular));
     }
     if (params.created_at_min && params.created_at_max) {
       whereClauses.push(
