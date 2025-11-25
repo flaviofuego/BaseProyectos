@@ -417,7 +417,7 @@ Usa títulos, listas, tablas y métricas en negritas:
     timeout = 30000,
   }) {
     const response = await axios.post(
-      `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_CHAT_MODEL}/chat/completions?api-version=2025-01-01-preview`,
+      `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_CHAT_MODEL}/chat/completions?api-version=2024-08-01-preview`,
       {
         messages: [
           { role: "system", content: systemMessage },
@@ -425,7 +425,7 @@ Usa títulos, listas, tablas y métricas en negritas:
         ],
         temperature,
         top_p: topP,
-        max_tokens: maxTokens,
+        max_completion_tokens: maxTokens, // GPT-5.x requiere max_completion_tokens
       },
       {
         headers: {
@@ -442,6 +442,8 @@ Usa títulos, listas, tablas y métricas en negritas:
     const response = await axios.post(
       `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_EMBEDDING_MODEL}/embeddings?api-version=2023-05-15`,
       { model: this.AZURE_EMBEDDING_MODEL, input: text },
+      // { input: text },
+
       {
         headers: {
           "Content-Type": "application/json",
