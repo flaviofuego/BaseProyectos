@@ -28,7 +28,14 @@ class NLPService {
     this.AZURE_CHAT_MODEL = process.env.AZURE_CHAT_MODEL;
     this.AZURE_API_KEY = process.env.AZURE_API_KEY;
 
-    this.chatConfig = { temperature: 0.7, top_p: 0.95, max_tokens: 2048 };
+    // Configuración del chat adaptada al modelo
+    // gpt-5.1-chat solo acepta temperature=1.0
+    const isGpt51 = this.AZURE_CHAT_MODEL?.includes("gpt-5.1");
+    this.chatConfig = {
+      temperature: isGpt51 ? 1.0 : 0.7,
+      top_p: isGpt51 ? undefined : 0.95,
+      max_tokens: 2048,
+    };
     this.VECTOR_SIZE = 1536;
 
     this.SYSTEM_PROMPT = this.buildSystemPrompt();
@@ -416,17 +423,29 @@ Usa títulos, listas, tablas y métricas en negritas:
     topP = this.chatConfig.top_p,
     timeout = 30000,
   }) {
+    // gpt-5.1-chat solo acepta temperature=1.0 (valor por defecto)
+    // Construir payload según las restricciones del modelo
+    const payload = {
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: userMessage },
+      ],
+      max_completion_tokens: maxTokens,
+    };
+
+    // Solo agregar temperature si NO es gpt-5.1-chat o si es exactamente 1.0
+    if (!this.AZURE_CHAT_MODEL.includes("gpt-5.1") || temperature === 1.0) {
+      payload.temperature = temperature;
+    }
+
+    // Solo agregar top_p si el modelo lo soporta
+    if (!this.AZURE_CHAT_MODEL.includes("gpt-5.1")) {
+      payload.top_p = topP;
+    }
+
     const response = await axios.post(
-      `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_CHAT_MODEL}/chat/completions?api-version=2025-01-01-preview`,
-      {
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: userMessage },
-        ],
-        temperature,
-        top_p: topP,
-        max_tokens: maxTokens,
-      },
+      `${this.AZURE_FOUNDRY_ENDPOINT}/openai/deployments/${this.AZURE_CHAT_MODEL}/chat/completions?api-version=2024-08-01-preview`,
+      payload,
       {
         headers: {
           "Content-Type": "application/json",
@@ -565,7 +584,7 @@ Responde SOLO con JSON válido (sin markdown):
         systemMessage:
           "Eres un extractor de parámetros preciso. Responde solo con JSON válido.",
         userMessage: prompt,
-        temperature: 0.2,
+        temperature: 1.0, // Usar temperatura fija para gpt-5.1
         maxTokens: 400,
       });
       text = (text || "{}")
