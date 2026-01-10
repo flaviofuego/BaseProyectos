@@ -351,10 +351,15 @@ Usa títulos, listas, tablas y métricas en negritas:
             const embeddingText = this.buildEmbeddingText(persona);
             const embedding = await this.generateEmbedding(embeddingText);
             await this.pool.query(
-              `INSERT INTO personas_embeddings (persona_id, embedding, content_text)
-               VALUES ($1, $2, $3)
-               ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
-              [persona.id, pgvector.toSql(embedding), embeddingText]
+              `INSERT INTO personas_embeddings (persona_id, numero_documento, embedding, content_text)
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (persona_id) DO UPDATE SET numero_documento = EXCLUDED.numero_documento, embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
+              [
+                persona.id,
+                persona.numero_documento,
+                pgvector.toSql(embedding),
+                embeddingText,
+              ]
             );
             successCount++;
           } catch (error) {
@@ -636,9 +641,17 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
         .replace(/```\n?/g, "")
         .trim();
       const params = JSON.parse(text);
-      const validSortBy = ["similarity", "edad_desc", "edad_asc", "nombre", "fecha_nacimiento_desc", "fecha_nacimiento_asc", "created_at_desc"];
+      const validSortBy = [
+        "similarity",
+        "edad_desc",
+        "edad_asc",
+        "nombre",
+        "fecha_nacimiento_desc",
+        "fecha_nacimiento_asc",
+        "created_at_desc",
+      ];
       const validQueryType = ["analytical", "filtered", "semantic"];
-      
+
       return {
         numero_documento: params.numero_documento || null,
         tipo_documento: ["Cédula", "Tarjeta de identidad"].includes(
@@ -683,8 +696,12 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
           params.limit && !isNaN(params.limit)
             ? Math.min(Math.max(parseInt(params.limit), 10), 200)
             : 100,
-        sort_by: validSortBy.includes(params.sort_by) ? params.sort_by : "similarity",
-        query_type: validQueryType.includes(params.query_type) ? params.query_type : "semantic",
+        sort_by: validSortBy.includes(params.sort_by)
+          ? params.sort_by
+          : "similarity",
+        query_type: validQueryType.includes(params.query_type)
+          ? params.query_type
+          : "semantic",
       };
     } catch (error) {
       console.error("Error extracción params:", error.message);
@@ -731,18 +748,24 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
     const queryEmbedding = await this.generateEmbedding(query);
     const { whereClauses, queryParams, paramCounter } =
       this.buildWhereClause(parameters);
-    
-    const similarityThreshold = parameters.query_type === "filtered" ? 0.3 : 0.0;
+
+    const similarityThreshold =
+      parameters.query_type === "filtered" ? 0.3 : 0.0;
     if (similarityThreshold > 0) {
-      whereClauses.push(`1 - (pe.embedding <=> $${paramCounter}) >= ${similarityThreshold}`);
+      whereClauses.push(
+        `1 - (pe.embedding <=> $${paramCounter}) >= ${similarityThreshold}`
+      );
     }
-    
+
     const whereSQL = whereClauses.length
       ? `WHERE ${whereClauses.join(" AND ")}`
       : "";
-    
-    const orderByClause = this.buildOrderByClause(parameters.sort_by || "similarity", paramCounter);
-    
+
+    const orderByClause = this.buildOrderByClause(
+      parameters.sort_by || "similarity",
+      paramCounter
+    );
+
     const sqlQuery = `
       SELECT p.*, EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) AS edad,
         CASE WHEN EXTRACT(YEAR FROM AGE(p.fecha_nacimiento)) < 18 THEN 'Menor de edad'
@@ -763,7 +786,7 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
     const whereClauses = [];
     const queryParams = [];
     let paramCounter = 1;
-    
+
     if (params.numero_documento) {
       whereClauses.push(`p.numero_documento = $${paramCounter++}`);
       queryParams.push(params.numero_documento);
@@ -772,9 +795,10 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
       whereClauses.push(`p.tipo_documento = $${paramCounter++}`);
       queryParams.push(params.tipo_documento);
     }
-    
-    const applyPattern = (value) => value.includes("%") ? value : `%${value}%`;
-    
+
+    const applyPattern = (value) =>
+      value.includes("%") ? value : `%${value}%`;
+
     if (params.primer_nombre) {
       whereClauses.push(`p.primer_nombre ILIKE $${paramCounter++}`);
       queryParams.push(applyPattern(params.primer_nombre));
@@ -1006,12 +1030,10 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
         }
         const securityCheck = this.checkSecurityRisks(query);
         if (securityCheck.isDangerous) {
-          return res
-            .status(400)
-            .json({
-              success: false,
-              error: `Consulta no permitida: ${securityCheck.reason}`,
-            });
+          return res.status(400).json({
+            success: false,
+            error: `Consulta no permitida: ${securityCheck.reason}`,
+          });
         }
         const parameters = await this.extractQueryParameters(query);
         const results = await this.queryVectorDatabase(query, parameters);
@@ -1069,10 +1091,15 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
         const embeddingText = this.buildEmbeddingText(persona);
         const embedding = await this.generateEmbedding(embeddingText);
         await this.pool.query(
-          `INSERT INTO personas_embeddings (persona_id, embedding, content_text)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (persona_id) DO UPDATE SET embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
-          [persona.id, pgvector.toSql(embedding), embeddingText]
+          `INSERT INTO personas_embeddings (persona_id, numero_documento, embedding, content_text)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (persona_id) DO UPDATE SET numero_documento = EXCLUDED.numero_documento, embedding = EXCLUDED.embedding, content_text = EXCLUDED.content_text, updated_at = CURRENT_TIMESTAMP`,
+          [
+            persona.id,
+            persona.numero_documento,
+            pgvector.toSql(embedding),
+            embeddingText,
+          ]
         );
         await this.updateServiceStats();
         await this.logTransaction(
@@ -1096,13 +1123,11 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
           null,
           error.message
         );
-        res
-          .status(500)
-          .json({
-            success: false,
-            error: "Error actualizando embedding",
-            details: error.message,
-          });
+        res.status(500).json({
+          success: false,
+          error: "Error actualizando embedding",
+          details: error.message,
+        });
       }
     });
 
@@ -1143,13 +1168,11 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
           null,
           error.message
         );
-        res
-          .status(500)
-          .json({
-            success: false,
-            error: "Error en sincronización",
-            details: error.message,
-          });
+        res.status(500).json({
+          success: false,
+          error: "Error en sincronización",
+          details: error.message,
+        });
       }
     });
 
@@ -1192,13 +1215,11 @@ Responde SOLO con JSON válido (sin markdown ni comentarios):
         });
       } catch (error) {
         console.error("Error stats:", error.message);
-        res
-          .status(500)
-          .json({
-            success: false,
-            error: "Error obteniendo estadísticas",
-            details: error.message,
-          });
+        res.status(500).json({
+          success: false,
+          error: "Error obteniendo estadísticas",
+          details: error.message,
+        });
       }
     });
 

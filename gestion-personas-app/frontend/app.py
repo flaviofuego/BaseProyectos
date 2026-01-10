@@ -18,10 +18,10 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-product
 if os.getenv('API_GATEWAY_URL'):
     print(f"INFO: Using API_GATEWAY_URL: {os.getenv('API_GATEWAY_URL')}")
 else:
-    print("INFO: Using default API_GATEWAY_URL: http://localhost:8001")
+    print("INFO: Using default API_GATEWAY_URL: http://gateway:8001")
 
 BROWSER_API_BASE_URL = 'http://localhost:8001'
-API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://localhost:8001')
+API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://gateway:8001')
 
 def get_browser_api_url():
     return BROWSER_API_BASE_URL
