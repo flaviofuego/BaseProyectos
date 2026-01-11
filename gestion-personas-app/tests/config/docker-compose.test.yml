@@ -4,7 +4,7 @@ services:
   # BASE DE DATOS DE PRUEBAS
   # ==========================================
   postgres-test:
-    image: pgvector/pgvector:pg15
+    image: postgres:15-alpine
     container_name: postgres_test
     environment:
       POSTGRES_DB: test_db
@@ -66,46 +66,6 @@ services:
       retries: 3
 
   # ==========================================
-  # TEST RUNNER - NODE.JS SERVICES
-  # ==========================================
-  test-runner-node:
-    build:
-      context: ../..
-      dockerfile: tests/docker/Dockerfile.test.node
-    container_name: test_runner_node
-    volumes:
-      - ../../services:/app/services
-      - ../results:/app/tests/results
-      - ../../gateway:/app/gateway
-      - /app/services/auth/node_modules
-      - /app/services/personas/node_modules
-      - /app/services/consulta/node_modules
-      - /app/services/nlp/node_modules
-      - /app/services/log/node_modules
-      - /app/gateway/node_modules
-    environment:
-      - NODE_ENV=test
-      - CI=true
-      - DATABASE_URL=postgresql://test_user:test_pass@postgres-test:5432/test_db
-      - REDIS_URL=redis://redis-test:6379
-      - SERVICE_REGISTRY_URL=http://service-registry-test:3010
-      - JWT_SECRET=${JWT_SECRET}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
-      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
-      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
-    networks:
-      - test-network
-    depends_on:
-      postgres-test:
-        condition: service_healthy
-      redis-test:
-        condition: service_healthy
-      service-registry-test:
-        condition: service_healthy
-    command: npm run test:all
-
-  # ==========================================
   # TEST RUNNER - PYTHON FRONTEND
   # ==========================================
   test-runner-python:
@@ -157,29 +117,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-
-  # ==========================================
-  # E2E TEST RUNNER
-  # ==========================================
-  test-runner-e2e:
-    build:
-      context: ../..
-      dockerfile: tests/docker/Dockerfile.test.e2e
-    container_name: test_runner_e2e
-    volumes:
-      - ../e2e:/app/tests/e2e
-      - ../results:/app/tests/results
-    environment:
-      - NODE_ENV=test
-      - API_GATEWAY_URL=http://gateway-test:8001
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=admin123
-    networks:
-      - test-network
-    depends_on:
-      gateway-test:
-        condition: service_healthy
-    command: npm run test:e2e
 
 networks:
   test-network:

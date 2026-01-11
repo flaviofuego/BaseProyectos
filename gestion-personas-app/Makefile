@@ -64,8 +64,7 @@ help:
 	@echo "  make init-db     - Initialize database with sample data"
 	@echo ""
 	@echo "🤖 NLP/AI COMMANDS:"
-	@echo "  make sync-embeddings - Synchronize embeddings with Gemini"
-	@echo "  make test-nlp    - Test NLP functionality"
+	@echo "  make test-nlp    - Test NLP Text-to-SQL functionality"
 	@echo ""
 	@echo "💡 For development, use: make dev"
 	@echo "💡 For production, use: make up"
@@ -500,10 +499,12 @@ health:
 	@echo "Checking service health..."
 	@curl -s http://localhost:8001/health | jq .
 
-# Sync embeddings for Gemini
-sync-embeddings:
-	@echo "Synchronizing embeddings with Gemini..."
-	@curl -X POST http://gateway:8001/api/nlp/sync-embeddings
+# Test NLP Text-to-SQL
+test-nlp:
+	@echo "🧠 Testing NLP Text-to-SQL..."
+	@curl -s -X POST http://localhost:8001/api/nlp/query \
+		-H "Content-Type: application/json" \
+		-d '{"query": "¿Cuántas personas hay registradas?"}' | jq .
 
 # Database management commands
 db-backup:

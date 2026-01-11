@@ -1,6 +1,6 @@
 # 🗄️ Database Management
 
-Este directorio contiene scripts y configuraciones para la gestión de la base de datos PostgreSQL con pgvector.
+Este directorio contiene scripts y configuraciones para la gestión de la base de datos PostgreSQL.
 
 ## 📁 Estructura de Archivos
 
@@ -11,23 +11,33 @@ database/
 ├── reinit-db.sh         # Script para reinicializar sin recrear el contenedor
 ├── backup.sh            # Script para crear backups
 ├── restore.sh           # Script para restaurar backups
-├── migrations/          # Directorio de migraciones SQL
-│   ├── add_user_preferences.sql
-│   └── enable_pgvector.sql
+├── flyway/              # Migraciones con Flyway
+│   ├── flyway.conf
+│   └── sql/
+│       ├── V1__initial_schema.sql
+│       └── V2__add_user_preferences.sql
+├── migrations/          # Directorio de migraciones SQL legacy
+│   └── add_user_preferences.sql
 └── backups/            # Directorio de backups automáticos
     └── latest_backup.sql
 ```
 
 ## 🚀 Inicialización Automática
 
-### Primera Vez (Contenedor Nuevo)
+### Con Flyway (Recomendado)
 
-Cuando creas el contenedor de PostgreSQL por primera vez, el script `init-db.sh` se ejecuta **automáticamente**:
+El servicio Flyway se ejecuta automáticamente al iniciar los contenedores:
 
-1. Verifica si existe un backup
-2. Si existe backup → ejecuta `restore.sh`
-3. Si NO existe backup → ejecuta `init.sql` y aplica migraciones
-4. Registra las migraciones en la tabla `schema_migrations`
+```yaml
+flyway:
+  image: flyway/flyway:10-alpine
+  depends_on:
+    postgres:
+      condition: service_healthy
+  command: migrate
+```
+
+Las migraciones se encuentran en `flyway/sql/` y siguen el patrón `V{version}__{description}.sql`.
 
 ### Contenedor Existente
 
@@ -82,51 +92,42 @@ docker exec personas_db bash /backups/restore.sh
 
 ## 📊 Componentes de la Base de Datos
 
-### Extensiones
-
-- **pgvector**: Extensión para búsqueda vectorial semántica
-  - Versión: 0.8.1
-  - Dimensiones: 1536 (text-embedding-ada-002 de Azure OpenAI)
-
 ### Tablas Principales
 
 1. **users**: Usuarios del sistema
 2. **personas**: Información de personas/empleados
 3. **user_preferences**: Preferencias de usuario
 4. **transaction_logs**: Logs de auditoría
-5. **personas_embeddings**: Vectores para búsqueda semántica
-6. **schema_migrations**: Control de migraciones
 
 ### Vistas
 
 - **personas_con_edad**: Vista con edad calculada y grupo etario
 
-### Índices Especiales
+### Tablas de Control
 
-- **HNSW Index**: Índice vectorial para búsqueda semántica eficiente
-  ```sql
-  personas_embeddings_hnsw_idx USING hnsw (embedding vector_cosine_ops)
-  ```
+- **flyway_schema_history**: Control de migraciones Flyway
+- **schema_migrations**: Control de migraciones legacy
 
-## 🔄 Sistema de Migraciones
+## 🔄 Sistema de Migraciones Flyway
 
-Las migraciones se aplican automáticamente en orden alfabético desde `migrations/`:
+Las migraciones se aplican automáticamente usando Flyway:
 
-1. Se crea tabla `schema_migrations` si no existe
-2. Se ejecutan archivos `.sql` que no estén registrados
-3. Se registra cada migración aplicada con timestamp
+1. Flyway espera a que PostgreSQL esté healthy
+2. Ejecuta migraciones en orden de versión (V1, V2, ...)
+3. Registra cada migración en `flyway_schema_history`
+4. Valida checksums para detectar cambios
 
 ### Crear Nueva Migración
 
 ```bash
-# Crear archivo con prefijo numérico
-touch database/migrations/003_add_new_feature.sql
+# Crear archivo con el formato correcto
+touch database/flyway/sql/V3__add_new_feature.sql
 
 # Editar el archivo con comandos SQL
-vim database/migrations/003_add_new_feature.sql
+vim database/flyway/sql/V3__add_new_feature.sql
 
-# Aplicar (se ejecutará automáticamente en próximo reinicio o con db-reinit)
-make db-reinit
+# Las migraciones se aplicarán automáticamente al reiniciar
+docker-compose down && docker-compose up -d
 ```
 
 ## 🐳 Configuración Docker
@@ -135,98 +136,94 @@ make db-reinit
 
 ```yaml
 postgres:
-  image: pgvector/pgvector:pg15
+  image: postgres:15-alpine
   volumes:
-    - ./database/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
-    - ./database/init.sql:/init-scripts/init.sql:ro
-    - ./database/migrations:/init-scripts/migrations:ro
+    - postgres_data:/var/lib/postgresql/data
+    - ./database/backups:/backups
   healthcheck:
     test: ["CMD-SHELL", "pg_isready -U admin -d personas_db"]
     interval: 10s
     timeout: 5s
     retries: 5
     start_period: 30s
+
+flyway:
+  image: flyway/flyway:10-alpine
+  depends_on:
+    postgres:
+      condition: service_healthy
+  volumes:
+    - ./database/flyway/sql:/flyway/sql:ro
+    - ./database/flyway/flyway.conf:/flyway/conf/flyway.conf:ro
+  command: migrate
 ```
 
 ### Puntos Importantes
 
-1. ✅ **pgvector está pre-instalado** en la imagen `pgvector/pgvector:pg15`
-2. ✅ **init-db.sh se ejecuta automáticamente** en la primera creación
-3. ⚠️ **Scripts NO se re-ejecutan** si el volumen existe
-4. ✅ **Healthcheck** asegura que PostgreSQL esté listo antes de otros servicios
+1. ✅ **Flyway gestiona migraciones** automáticamente
+2. ✅ **Healthcheck** asegura que PostgreSQL esté listo antes de otros servicios
+3. ⚠️ **Baseline on Migrate** habilitado para bases de datos existentes
+4. ✅ **Volúmenes Persistentes**: Los datos persisten entre reinicios
 
 ## 🔍 Verificación
 
-### Verificar Extensión pgvector
+### Verificar Migraciones Flyway
 
 ```bash
-docker exec personas_db psql -U admin -d personas_db -c "\dx"
+docker exec personas_db psql -U admin -d personas_db -c "SELECT * FROM flyway_schema_history;"
 ```
 
-Debe mostrar:
-```
- vector  | 0.8.1   | public     | vector data type and ivfflat and hnsw access methods
-```
-
-### Verificar Tabla de Embeddings
+### Verificar Tablas
 
 ```bash
-docker exec personas_db psql -U admin -d personas_db -c "\d personas_embeddings"
+docker exec personas_db psql -U admin -d personas_db -c "\dt"
 ```
 
-Debe mostrar `embedding | vector(1536)`
-
-### Verificar Migraciones
+### Verificar Datos
 
 ```bash
-make db-migrations
+make db-status
 ```
 
 ## 🚨 Solución de Problemas
 
-### Problema: pgvector no está instalado
+### Problema: Migración falló
 
 ```bash
-# Solución: Instalar manualmente
-docker exec personas_db psql -U admin -d personas_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+# Ver estado de Flyway
+docker-compose logs flyway
+
+# Reparar (marcar como exitoso manualmente)
+docker-compose run --rm flyway repair
 ```
 
-### Problema: Tabla personas_embeddings no existe
+### Problema: Tablas no existen
 
 ```bash
-# Solución: Reinicializar base de datos
-make db-reinit
-```
-
-### Problema: Dimensiones incorrectas (768 vs 1536)
-
-```bash
-# Solución 1: Recrear tabla
-docker exec personas_db psql -U admin -d personas_db -c "DROP TABLE IF EXISTS personas_embeddings CASCADE;"
-make db-reinit
-
-# Solución 2: Recrear contenedor (CUIDADO: pérdida de datos)
-docker-compose down -v
+# Solución: Reinicializar con Flyway
+docker-compose down
 docker-compose up -d postgres
+docker-compose run --rm flyway migrate
 ```
 
-### Problema: init.sql no se ejecutó en primera creación
+### Problema: Checksum mismatch
 
 ```bash
-# Solución: Ejecutar manualmente
-docker exec -i personas_db psql -U admin -d personas_db < database/init.sql
+# Si una migración fue modificada después de aplicarse
+docker-compose run --rm flyway repair
+docker-compose run --rm flyway migrate
 ```
 
 ## 📝 Notas Importantes
 
 1. **Backups Automáticos**: Se crean automáticamente al hacer `make down`
 2. **Volúmenes Persistentes**: Los datos persisten entre reinicios
-3. **Migraciones**: Se ejecutan solo una vez (registro en schema_migrations)
-4. **Dimensiones**: 1536 para text-embedding-ada-002 (Azure OpenAI)
-5. **Healthcheck**: Asegura disponibilidad antes de otros servicios
+3. **Migraciones**: Flyway asegura que solo se ejecuten una vez
+4. **Healthcheck**: Asegura disponibilidad antes de otros servicios
+5. **NLP**: Usa Text-to-SQL, no requiere extensiones adicionales
 
 ## 🔗 Referencias
 
-- [pgvector Documentation](https://github.com/pgvector/pgvector)
+- [Flyway Documentation](https://flywaydb.org/documentation/)
 - [PostgreSQL Docker Hub](https://hub.docker.com/_/postgres)
-- [Azure OpenAI Embeddings](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/embeddings)
+- [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/)

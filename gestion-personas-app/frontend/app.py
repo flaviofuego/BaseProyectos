@@ -1,4 +1,4 @@
-﻿from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 import requests
 import pandas as pd
 from datetime import datetime, date
@@ -15,13 +15,12 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
-if os.getenv('API_GATEWAY_URL'):
-    print(f"INFO: Using API_GATEWAY_URL: {os.getenv('API_GATEWAY_URL')}")
-else:
-    print("INFO: Using default API_GATEWAY_URL: http://gateway:8001")
-
-BROWSER_API_BASE_URL = 'http://localhost:8001'
 API_BASE_URL = os.getenv('API_GATEWAY_URL', 'http://gateway:8001')
+# URL para el navegador (acceso desde cliente)
+BROWSER_API_BASE_URL = os.getenv('BROWSER_API_URL', os.getenv('API_GATEWAY_URL', 'http://localhost:8001'))
+
+print(f"INFO: API_GATEWAY_URL (server-side): {API_BASE_URL}")
+print(f"INFO: BROWSER_API_URL (client-side): {BROWSER_API_BASE_URL}")
 
 def get_browser_api_url():
     return BROWSER_API_BASE_URL

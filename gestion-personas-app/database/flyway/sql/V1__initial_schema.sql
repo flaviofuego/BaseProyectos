@@ -1,7 +1,11 @@
--- Crear esquema de base de datos para gestión de personas
+-- V1__initial_schema.sql
+-- Esquema inicial de base de datos para gestión de personas
 -- Sistema NLP con Text-to-SQL (sin embeddings vectoriales)
+-- Flyway Migration
 
+-- ============================================
 -- Tabla de usuarios para autenticación
+-- ============================================
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
@@ -13,7 +17,9 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ============================================
 -- Tabla principal de personas
+-- ============================================
 CREATE TABLE IF NOT EXISTS personas (
     id SERIAL PRIMARY KEY,
     numero_documento VARCHAR(10) UNIQUE NOT NULL,
@@ -32,7 +38,9 @@ CREATE TABLE IF NOT EXISTS personas (
     updated_by INTEGER REFERENCES users(id)
 );
 
+-- ============================================
 -- Tabla de logs de transacciones
+-- ============================================
 CREATE TABLE IF NOT EXISTS transaction_logs (
     id SERIAL PRIMARY KEY,
     transaction_type VARCHAR(50) NOT NULL, -- CREATE, UPDATE, DELETE, QUERY, NLP_QUERY
@@ -49,18 +57,22 @@ CREATE TABLE IF NOT EXISTS transaction_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ============================================
 -- Índices para mejorar rendimiento
-CREATE INDEX idx_personas_documento ON personas(numero_documento);
-CREATE INDEX idx_personas_tipo_documento ON personas(tipo_documento);
-CREATE INDEX idx_personas_fecha_nacimiento ON personas(fecha_nacimiento);
-CREATE INDEX idx_personas_created_at ON personas(created_at);
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_personas_documento ON personas(numero_documento);
+CREATE INDEX IF NOT EXISTS idx_personas_tipo_documento ON personas(tipo_documento);
+CREATE INDEX IF NOT EXISTS idx_personas_fecha_nacimiento ON personas(fecha_nacimiento);
+CREATE INDEX IF NOT EXISTS idx_personas_created_at ON personas(created_at);
 
-CREATE INDEX idx_logs_transaction_type ON transaction_logs(transaction_type);
-CREATE INDEX idx_logs_numero_documento ON transaction_logs(numero_documento);
-CREATE INDEX idx_logs_created_at ON transaction_logs(created_at);
-CREATE INDEX idx_logs_user_id ON transaction_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_logs_transaction_type ON transaction_logs(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_logs_numero_documento ON transaction_logs(numero_documento);
+CREATE INDEX IF NOT EXISTS idx_logs_created_at ON transaction_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_logs_user_id ON transaction_logs(user_id);
 
--- Función para actualizar el timestamp de updated_at
+-- ============================================
+-- Función para actualizar timestamp
+-- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -69,15 +81,21 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Triggers para actualizar updated_at automáticamente
+-- ============================================
+-- Triggers para actualizar updated_at
+-- ============================================
+DROP TRIGGER IF EXISTS update_personas_updated_at ON personas;
 CREATE TRIGGER update_personas_updated_at BEFORE UPDATE ON personas
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Vista para consultas de personas con edad calculada
-CREATE VIEW personas_con_edad AS
+-- ============================================
+-- Vista personas con edad calculada
+-- ============================================
+CREATE OR REPLACE VIEW personas_con_edad AS
 SELECT 
     p.*,
     EXTRACT(YEAR FROM AGE(fecha_nacimiento)) AS edad,
@@ -88,30 +106,10 @@ SELECT
     END AS grupo_edad
 FROM personas p;
 
--- Tabla de preferencias de usuario
-CREATE TABLE IF NOT EXISTS user_preferences (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    consulta_service_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id)
-);
-
--- Índice para búsquedas rápidas por user_id
-CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id);
-
--- Trigger para actualizar updated_at automáticamente
-CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Datos de prueba inicial
+-- ============================================
+-- Usuario admin inicial
+-- ============================================
 -- Usuario: admin | Contraseña: admin123 (bcrypt rounds: 4 para desarrollo)
 INSERT INTO users (username, email, password_hash, provider) 
 VALUES ('admin', 'admin@example.com', '$2b$04$K8lgAt.ZHurAIqx4YmMuv.ry2BQ3vT4f6A/OgwGRBBqgf9nJgOGhu', 'local')
-ON CONFLICT DO NOTHING;
-
--- Insertar preferencias por defecto para el usuario admin
-INSERT INTO user_preferences (user_id, consulta_service_enabled)
-SELECT id, TRUE FROM users WHERE username = 'admin'
-ON CONFLICT (user_id) DO NOTHING;
+ON CONFLICT (username) DO NOTHING;

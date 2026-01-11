@@ -1,6 +1,0 @@
-#!/bin/bash
-# Script de acceso rápido para ejecutar tests
-# Redirige a la nueva ubicación de scripts
-
-cd "$(dirname "$0")"
-./tests/scripts/test-quickstart.sh "$@"

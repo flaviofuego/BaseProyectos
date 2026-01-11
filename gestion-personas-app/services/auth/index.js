@@ -162,13 +162,26 @@ if (isRateLimitEnabled()) {
 
 // Middleware
 app.use(helmet());
+// Configuración dinámica de CORS
+const getAllowedOrigins = () => {
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (envOrigins) {
+    return envOrigins.split(',').map(o => o.trim()).filter(Boolean);
+  }
+  // Defaults para desarrollo
+  if (process.env.NODE_ENV !== 'production') {
+    return [
+      `http://localhost:${process.env.FRONTEND_PORT || 5000}`,
+      `http://localhost:${process.env.GATEWAY_PORT || 8001}`,
+      "http://127.0.0.1:5000",
+    ];
+  }
+  return [];
+};
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5000",
-      "http://localhost:3000",
-      "http://localhost:8001",
-    ],
+    origin: getAllowedOrigins(),
     credentials: true,
   })
 );
@@ -1291,12 +1304,20 @@ app.get("/logout/auth0", (req, res) => {
   res.redirect(logoutURL.toString());
 });
 
+// Service Registry client para discovery de servicios
+const { ServiceRegistryClient } = require("./shared/service-registry-client");
+const discoveryClient = new ServiceRegistryClient({}, process.env.SERVICE_REGISTRY_URL);
+
 // Helper function to log transactions
 async function logTransaction(userId, type, status, req) {
   try {
-    // Send log to log service
-    const logServiceUrl =
-      process.env.LOG_SERVICE_URL || "http://log-service:3005";
+    // Descubrir el servicio de logs dinámicamente
+    const logServiceUrl = await discoveryClient.getServiceUrl('log-service').catch(() => {
+      // Fallback solo si no hay service registry configurado
+      console.warn('⚠️ Service discovery failed, using default log-service URL');
+      return process.env.LOG_SERVICE_URL || "http://log-service:3005";
+    });
+    
     await fetch(`${logServiceUrl}/log`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

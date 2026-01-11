@@ -1,0 +1,59 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@example.com",
+      "password_hash": "$2b$04$K8lgAt.ZHurAIqx4YmMuv.ry2BQ3vT4f6A/OgwGRBBqgf9nJgOGhu",
+      "provider": "local",
+      "provider_id": null
+    },
+    {
+      "id": 2,
+      "username": "testuser",
+      "email": "testuser@test.com",
+      "password_hash": "$2b$04$K8lgAt.ZHurAIqx4YmMuv.ry2BQ3vT4f6A/OgwGRBBqgf9nJgOGhu",
+      "provider": "local",
+      "provider_id": null
+    },
+    {
+      "id": 3,
+      "username": "oauthuser",
+      "email": "oauth@google.com",
+      "password_hash": null,
+      "provider": "google",
+      "provider_id": "oauth_google_123456"
+    }
+  ],
+  "credentials": {
+    "valid": {
+      "username": "admin",
+      "password": "admin123"
+    },
+    "invalid": {
+      "username": "admin",
+      "password": "wrongpassword"
+    },
+    "nonexistent": {
+      "username": "noexiste",
+      "password": "cualquiera"
+    }
+  },
+  "preferences": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "consulta_service_enabled": true
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "consulta_service_enabled": false
+    }
+  ],
+  "tokens": {
+    "valid": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInVzZXJuYW1lIjoiYWRtaW4iLCJqdGkiOiJ0ZXN0LWp0aSIsImlhdCI6MTcwNDA2NzIwMCwiZXhwIjozMzI0MDY3MjAwfQ.test-signature",
+    "expired": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInVzZXJuYW1lIjoiYWRtaW4iLCJqdGkiOiJleHBpcmVkLWp0aSIsImlhdCI6MTYwNDAwMDAwMCwiZXhwIjoxNjA0MDAwMDAxfQ.expired-signature",
+    "temp": "temp-admin-token"
+  }
+}

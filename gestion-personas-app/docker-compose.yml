@@ -28,9 +28,9 @@ services:
       - postgres
       - redis
 
-  # Base de datos PostgreSQL con pgvector
+  # Base de datos PostgreSQL
   postgres:
-    image: pgvector/pgvector:pg15
+    image: postgres:15-alpine
     container_name: personas_db
     environment:
       POSTGRES_DB: personas_db
@@ -39,9 +39,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/backups:/backups
-      - ./database/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
-      - ./database/init.sql:/init-scripts/init.sql:ro
-      - ./database/migrations:/init-scripts/migrations:ro
       - ./database/backup.sh:/backups/backup.sh:ro
       - ./database/restore.sh:/backups/restore.sh:ro
     ports:
@@ -64,16 +61,25 @@ services:
     networks:
       - app-network
 
-  # Vector Database para RAG - DEPRECATED: Ahora se usa pgvector en PostgreSQL
-  # qdrant:
-  #   image: qdrant/qdrant
-  #   container_name: personas_vectordb
-  #   ports:
-  #     - "6333:6333"
-  #   volumes:
-  #     - qdrant_data:/qdrant/storage
-  #   networks:
-  #     - app-network
+  # Flyway - Database Migrations
+  flyway:
+    image: flyway/flyway:10-alpine
+    container_name: flyway_migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./database/flyway/sql:/flyway/sql:ro
+      - ./database/flyway/flyway.conf:/flyway/conf/flyway.conf:ro
+    command: migrate
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://postgres:5432/personas_db
+      - FLYWAY_USER=admin
+      - FLYWAY_PASSWORD=admin123
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+      - FLYWAY_CONNECT_RETRIES=10
+    networks:
+      - app-network
 
   # API Gateway
   gateway:
@@ -113,10 +119,16 @@ services:
       - SERVICE_PORT=3001
       - CONSULTA_SERVICE_CONTAINER=consulta_service
     depends_on:
-      - postgres
-      - redis
-      - service-registry
-      - log-service
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      service-registry:
+        condition: service_started
+      log-service:
+        condition: service_started
     networks:
       - app-network
 
@@ -136,10 +148,16 @@ services:
       - personas_uploads:/uploads
       - ./services/shared:/app/shared
     depends_on:
-      - postgres
-      - service-registry
-      - log-service
-      - nlp-service
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      service-registry:
+        condition: service_started
+      log-service:
+        condition: service_started
+      nlp-service:
+        condition: service_started
     networks:
       - app-network
 
@@ -163,10 +181,16 @@ services:
       - SERVICE_NAME=consulta-service
       - SERVICE_PORT=3003
     depends_on:
-      - postgres
-      - redis
-      - service-registry
-      - log-service
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      service-registry:
+        condition: service_started
+      log-service:
+        condition: service_started
     networks:
       - app-network
     volumes:
@@ -188,9 +212,14 @@ services:
       - SERVICE_NAME=nlp-service
       - SERVICE_PORT=3004
     depends_on:
-      - postgres
-      - service-registry
-      - log-service
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      service-registry:
+        condition: service_started
+      log-service:
+        condition: service_started
     networks:
       - app-network
     volumes:
@@ -207,8 +236,12 @@ services:
       - SERVICE_NAME=log-service
       - SERVICE_PORT=3005
     depends_on:
-      - postgres
-      - service-registry
+      postgres:
+        condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
+      service-registry:
+        condition: service_started
     networks:
       - app-network
     volumes:
@@ -231,7 +264,6 @@ services:
 
 volumes:
   postgres_data:
-  # qdrant_data:  # DEPRECATED: Ahora se usa pgvector
   personas_uploads:
 
 networks:

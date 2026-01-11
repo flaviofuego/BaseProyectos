@@ -63,10 +63,11 @@ make test-e2e            # End-to-end tests
 - ThemeManager (38 tests): Temas, transiciones, loaders
 - NotificationManager (6 tests): Sistema de notificaciones
 
-### E2E Tests (30 tests) ⚠️
+### E2E Tests (42 tests) ⚠️
 
 **Login Flow (8 tests):** Autenticación completa
 **Crear Persona (22 tests):** Formulario, validaciones, imágenes
+**Consulta NLP (12 tests):** Text-to-SQL, consultas en lenguaje natural
 
 **1 test failing**: Validación de campos requeridos en crear persona
 
@@ -89,7 +90,12 @@ frontend/tests/
 
 tests/e2e/specs/
 ├── 01-login.spec.js (8 tests)
-└── 02-crear-persona.spec.js (22 tests)
+├── 02-crear-persona.spec.js (22 tests)
+├── 03-consulta-nlp.spec.js (12 tests)
+└── 04-auditoria.spec.js
+
+services/nlp/scripts/
+└── test-comprehensive.js (6 tests: Text-to-SQL)
 ```
 
 ## Características Importantes
@@ -128,6 +134,10 @@ cd tests/e2e && npx playwright test --ui
 
 # Ver último reporte E2E
 cd tests/e2e && npx playwright show-report
+
+# Test NLP Text-to-SQL
+make test-nlp
+cd services/nlp && node scripts/test-comprehensive.js
 ```
 
 ## Notas

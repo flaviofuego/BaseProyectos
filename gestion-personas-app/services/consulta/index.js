@@ -7,11 +7,25 @@ const compression = require("compression");
 const axios = require("axios");
 const {
   createServiceRegistryClient,
+  ServiceRegistryClient,
 } = require("./shared/service-registry-client");
 require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3003;
+
+// Service Registry client para discovery de servicios
+const discoveryClient = new ServiceRegistryClient({}, process.env.SERVICE_REGISTRY_URL);
+
+// Helper para obtener URL de servicio con fallback
+const getServiceUrl = async (serviceName, fallbackEnvVar, defaultUrl) => {
+  try {
+    return await discoveryClient.getServiceUrl(serviceName);
+  } catch (error) {
+    console.warn(`⚠️ Service discovery failed for ${serviceName}, using fallback`);
+    return process.env[fallbackEnvVar] || defaultUrl;
+  }
+};
 
 // Middleware
 app.use(helmet());
@@ -54,8 +68,7 @@ async function logTransaction(
   error = null
 ) {
   try {
-    const logServiceUrl =
-      process.env.LOG_SERVICE_URL || "http://log-service:3005";
+    const logServiceUrl = await getServiceUrl('log-service', 'LOG_SERVICE_URL', 'http://log-service:3005');
     await axios.post(`${logServiceUrl}/log`, {
       transaction_type: type,
       entity_type: "PERSONA",

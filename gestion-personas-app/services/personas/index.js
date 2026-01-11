@@ -25,15 +25,27 @@ app.use(
     crossOriginResourcePolicy: false,
   })
 );
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5000",
-      "http://localhost:8001",
-      "http://localhost:3000",
+// Configuración dinámica de CORS
+const getAllowedOrigins = () => {
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (envOrigins) {
+    return envOrigins.split(',').map(o => o.trim()).filter(Boolean);
+  }
+  // Defaults para desarrollo
+  if (process.env.NODE_ENV !== 'production') {
+    return [
+      `http://localhost:${process.env.FRONTEND_PORT || 5000}`,
+      `http://localhost:${process.env.GATEWAY_PORT || 8001}`,
       "http://127.0.0.1:5000",
       "http://127.0.0.1:8001",
-    ],
+    ];
+  }
+  return [];
+};
+
+app.use(
+  cors({
+    origin: getAllowedOrigins(),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -72,54 +84,17 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// NLP Service URL configuration
-const NLP_SERVICE_URL =
-  process.env.NLP_SERVICE_URL || "http://nlp-service:3004";
+// Service Registry client para discovery de servicios
+const { ServiceRegistryClient } = require("./shared/service-registry-client");
+const discoveryClient = new ServiceRegistryClient({}, process.env.SERVICE_REGISTRY_URL);
 
-/**
- * Sincroniza el embedding de una persona con el servicio NLP
- * @param {number} personaId - ID de la persona
- * @param {string} operation - Operación realizada (CREATE, UPDATE, DELETE)
- * @returns {Promise<void>}
- */
-const syncEmbedding = async (personaId, operation = "UPDATE") => {
+// Helper para obtener URL de servicio con fallback
+const getServiceUrl = async (serviceName, fallbackEnvVar, defaultUrl) => {
   try {
-    if (operation === "DELETE") {
-      // Para DELETE, el trigger CASCADE en la DB eliminará el embedding automáticamente
-      console.log(
-        `🗑️ Embedding eliminado automáticamente por CASCADE para persona ${personaId}`
-      );
-      return;
-    }
-
-    console.log(
-      `🔄 Sincronizando embedding para persona ${personaId} (${operation})...`
-    );
-
-    const response = await axios.post(
-      `${NLP_SERVICE_URL}/update-embedding`,
-      { persona_id: personaId },
-      {
-        timeout: 10000,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-
-    if (response.data.success) {
-      console.log(
-        `✅ Embedding sincronizado exitosamente para persona ${personaId}`
-      );
-    }
+    return await discoveryClient.getServiceUrl(serviceName);
   } catch (error) {
-    // No fallar la operación principal si falla la sincronización de embeddings
-    // El cronjob automático del NLP service lo sincronizará después
-    console.warn(
-      `⚠️ Error sincronizando embedding para persona ${personaId}:`,
-      error.message
-    );
-    console.log(
-      "ℹ️ El embedding se sincronizará automáticamente en el próximo ciclo del NLP service"
-    );
+    console.warn(`⚠️ Service discovery failed for ${serviceName}, using fallback`);
+    return process.env[fallbackEnvVar] || defaultUrl;
   }
 };
 
@@ -240,8 +215,7 @@ async function logTransaction(
   error = null
 ) {
   try {
-    const logServiceUrl =
-      process.env.LOG_SERVICE_URL || "http://log-service:3005";
+    const logServiceUrl = await getServiceUrl('log-service', 'LOG_SERVICE_URL', 'http://log-service:3005');
     await axios.post(`${logServiceUrl}/log`, {
       transaction_type: type,
       entity_type: "PERSONA",
@@ -391,10 +365,6 @@ app.post("/", upload.single("foto"), async (req, res) => {
       persona
     );
 
-    // Sincronizar embedding con NLP service (no bloqueante)
-    syncEmbedding(persona.id, "CREATE").catch((err) =>
-      console.error("Error en sincronización async:", err.message)
-    );
 
     res.status(201).json({
       message: "Persona creada exitosamente",
@@ -556,32 +526,6 @@ app.post("/bulk-upload", uploadCSV.single("csv_file"), async (req, res) => {
       req,
       results
     );
-
-    // Sincronizar embeddings para personas creadas exitosamente (en background)
-    if (results.created > 0 && results.created_ids.length > 0) {
-      console.log(
-        `🔄 Iniciando sincronización de ${results.created} embeddings en background...`
-      );
-      // Sincronizar en background sin bloquear la respuesta
-      Promise.all(
-        results.created_ids.map((personaId) =>
-          syncEmbedding(personaId, "CREATE").catch((err) =>
-            console.error(
-              `Error sincronizando persona ${personaId}:`,
-              err.message
-            )
-          )
-        )
-      )
-        .then(() => {
-          console.log(
-            `✅ Sincronización de embeddings completada para bulk upload`
-          );
-        })
-        .catch((err) => {
-          console.error("Error en sincronización masiva:", err.message);
-        });
-    }
 
     res.status(200).json({
       message: "Carga masiva completada",
@@ -798,11 +742,6 @@ app.put("/:numero_documento", upload.single("foto"), async (req, res) => {
       "SUCCESS",
       req,
       persona
-    );
-
-    // Sincronizar embedding con NLP service (no bloqueante)
-    syncEmbedding(persona.id, "UPDATE").catch((err) =>
-      console.error("Error en sincronización async:", err.message)
     );
 
     // Add headers to prevent caching

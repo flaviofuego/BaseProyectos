@@ -77,7 +77,34 @@ const serviceDiscovery = new ServiceDiscoveryClient(SERVICE_REGISTRY_URL);
 
 console.log(`🔍 Service Registry URL: ${SERVICE_REGISTRY_URL}`);
 
-// Middleware de seguridad con CSP personalizada para permitir imágenes
+// Configuración dinámica de orígenes permitidos
+const FRONTEND_PORT = process.env.FRONTEND_PORT || 5000;
+const GATEWAY_PORT = process.env.GATEWAY_PORT || PORT;
+
+// Obtener orígenes permitidos de variable de entorno o usar defaults para desarrollo
+const getAllowedOrigins = () => {
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (envOrigins) {
+    return envOrigins.split(',').map(o => o.trim()).filter(Boolean);
+  }
+  
+  // Defaults para desarrollo local
+  if (process.env.NODE_ENV !== 'production') {
+    return [
+      `http://localhost:${FRONTEND_PORT}`,
+      `http://127.0.0.1:${FRONTEND_PORT}`,
+      `http://localhost:${GATEWAY_PORT}`,
+    ];
+  }
+  
+  // En producción, requiere configuración explícita
+  return [];
+};
+
+const ALLOWED_ORIGINS = getAllowedOrigins();
+console.log(`🔐 Allowed origins: ${ALLOWED_ORIGINS.join(', ') || 'none (configure ALLOWED_ORIGINS)'}`);
+
+// Middleware de seguridad con CSP dinámica
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -85,18 +112,8 @@ app.use(
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https:"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https:"],
-        imgSrc: [
-          "'self'",
-          "data:",
-          "http://localhost:8001",
-          "http://localhost:5000",
-          "http://localhost:3002",
-        ],
-        connectSrc: [
-          "'self'",
-          "http://localhost:8001",
-          "http://localhost:5000",
-        ],
+        imgSrc: ["'self'", "data:", ...ALLOWED_ORIGINS],
+        connectSrc: ["'self'", ...ALLOWED_ORIGINS],
         fontSrc: ["'self'", "https:", "data:"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
@@ -107,13 +124,11 @@ app.use(
     crossOriginResourcePolicy: false,
   })
 );
+
+// CORS dinámico basado en orígenes configurados
 app.use(
   cors({
-    origin: [
-      "http://localhost:5000", // Frontend
-      "http://localhost:3000", // Por si se usa otro puerto
-      "http://127.0.0.1:5000", // Alternativo para localhost
-    ],
+    origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : false,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [

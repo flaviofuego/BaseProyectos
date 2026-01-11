@@ -83,27 +83,17 @@ fi
 echo ""
 echo "📊 Estadísticas de la base de datos:"
 TABLE_COUNT=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" | xargs)
-EXTENSION_COUNT=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM pg_extension;" | xargs)
 
 echo "   - Tablas: $TABLE_COUNT"
-echo "   - Extensiones: $EXTENSION_COUNT"
 
-# Verificar extensión vector
-VECTOR_EXISTS=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector');" | xargs)
-if [ "$VECTOR_EXISTS" = "t" ]; then
-    echo "   - pgvector: ✅ Instalada"
-else
-    echo "   - pgvector: ❌ No instalada"
-fi
+# Contar registros en tablas principales
+USERS_COUNT=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM users;" | xargs)
+PERSONAS_COUNT=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM personas;" | xargs)
+LOGS_COUNT=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM transaction_logs;" | xargs)
 
-# Verificar tabla de embeddings
-EMBEDDINGS_EXISTS=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'personas_embeddings');" | xargs)
-if [ "$EMBEDDINGS_EXISTS" = "t" ]; then
-    EMBEDDING_COUNT=$(docker exec $DB_CONTAINER psql -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM personas_embeddings;" | xargs)
-    echo "   - Embeddings: $EMBEDDING_COUNT registros"
-else
-    echo "   - Embeddings: ❌ Tabla no existe"
-fi
+echo "   - Usuarios: $USERS_COUNT"
+echo "   - Personas: $PERSONAS_COUNT"
+echo "   - Logs: $LOGS_COUNT"
 
 echo ""
 echo "🎉 Reinicialización completada!"

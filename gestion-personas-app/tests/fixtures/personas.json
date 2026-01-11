@@ -1,0 +1,85 @@
+{
+  "personas": [
+    {
+      "id": 1,
+      "numero_documento": "1234567890",
+      "tipo_documento": "Cédula",
+      "primer_nombre": "Juan",
+      "segundo_nombre": "Carlos",
+      "apellidos": "García López",
+      "fecha_nacimiento": "1990-05-15",
+      "genero": "Masculino",
+      "correo_electronico": "juan.garcia@test.com",
+      "celular": "3001234567"
+    },
+    {
+      "id": 2,
+      "numero_documento": "0987654321",
+      "tipo_documento": "Cédula",
+      "primer_nombre": "María",
+      "segundo_nombre": "Elena",
+      "apellidos": "Rodríguez Martínez",
+      "fecha_nacimiento": "1985-08-20",
+      "genero": "Femenino",
+      "correo_electronico": "maria.rodriguez@test.com",
+      "celular": "3109876543"
+    },
+    {
+      "id": 3,
+      "numero_documento": "5555555555",
+      "tipo_documento": "Tarjeta de identidad",
+      "primer_nombre": "Carlos",
+      "segundo_nombre": null,
+      "apellidos": "Pérez Sánchez",
+      "fecha_nacimiento": "2010-03-10",
+      "genero": "Masculino",
+      "correo_electronico": "carlos.perez@test.com",
+      "celular": "3205555555"
+    },
+    {
+      "id": 4,
+      "numero_documento": "1111111111",
+      "tipo_documento": "Cédula",
+      "primer_nombre": "Ana",
+      "segundo_nombre": "Sofía",
+      "apellidos": "Torres González",
+      "fecha_nacimiento": "1955-12-01",
+      "genero": "Femenino",
+      "correo_electronico": "ana.torres@test.com",
+      "celular": "3111111111"
+    },
+    {
+      "id": 5,
+      "numero_documento": "2222222222",
+      "tipo_documento": "Cédula",
+      "primer_nombre": "Alex",
+      "segundo_nombre": null,
+      "apellidos": "Ramírez Hernández",
+      "fecha_nacimiento": "1995-07-25",
+      "genero": "No binario",
+      "correo_electronico": "alex.ramirez@test.com",
+      "celular": "3012222222"
+    }
+  ],
+  "personaInvalid": {
+    "numero_documento": "ABC",
+    "tipo_documento": "Invalido",
+    "primer_nombre": "",
+    "apellidos": "",
+    "fecha_nacimiento": "invalid-date",
+    "genero": "Unknown",
+    "correo_electronico": "not-an-email",
+    "celular": "123"
+  },
+  "personaDuplicateDoc": {
+    "numero_documento": "1234567890",
+    "tipo_documento": "Cédula",
+    "primer_nombre": "Duplicado",
+    "segundo_nombre": null,
+    "apellidos": "Test User",
+    "fecha_nacimiento": "2000-01-01",
+    "genero": "Masculino",
+    "correo_electronico": "duplicado@test.com",
+    "celular": "3009999999"
+  }
+}

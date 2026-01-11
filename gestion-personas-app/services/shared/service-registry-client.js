@@ -1,5 +1,16 @@
 const axios = require('axios');
 
+/**
+ * Error personalizado para cuando un servicio no está disponible
+ */
+class ServiceUnavailableError extends Error {
+  constructor(serviceName) {
+    super(`Service unavailable: ${serviceName}`);
+    this.name = 'ServiceUnavailableError';
+    this.serviceName = serviceName;
+  }
+}
+
 class ServiceRegistryClient {
   constructor(serviceConfig, registryUrl = process.env.SERVICE_REGISTRY_URL) {
     this.serviceConfig = serviceConfig;
@@ -7,6 +18,8 @@ class ServiceRegistryClient {
     this.registrationInterval = null;
     this.heartbeatInterval = null;
     this.isRegistered = false;
+    this.discoveryCache = new Map();
+    this.discoveryCacheTTL = 30000; // 30 segundos
   }
 
   /**
@@ -124,6 +137,56 @@ class ServiceRegistryClient {
     process.on('SIGINT', cleanup);
     process.on('SIGUSR2', cleanup); // Para nodemon
   }
+
+  /**
+   * Descubre un servicio por nombre usando el Service Registry
+   * @param {string} serviceName - Nombre del servicio a descubrir
+   * @returns {Promise<string>} URL del servicio
+   */
+  async discoverService(serviceName) {
+    if (!this.registryUrl) {
+      throw new ServiceUnavailableError(serviceName);
+    }
+
+    try {
+      const response = await axios.get(
+        `${this.registryUrl}/discover/${serviceName}`,
+        { timeout: 3000 }
+      );
+      return response.data.instance.url;
+    } catch (error) {
+      console.error(`❌ Service discovery failed for ${serviceName}:`, error.message);
+      throw new ServiceUnavailableError(serviceName);
+    }
+  }
+
+  /**
+   * Obtiene la URL de un servicio con cache
+   * @param {string} serviceName - Nombre del servicio
+   * @param {boolean} useCache - Usar cache (default: true)
+   * @returns {Promise<string>} URL del servicio
+   */
+  async getServiceUrl(serviceName, useCache = true) {
+    const cacheKey = `service:${serviceName}`;
+
+    if (useCache && this.discoveryCache.has(cacheKey)) {
+      const cached = this.discoveryCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.discoveryCacheTTL) {
+        return cached.url;
+      }
+    }
+
+    const url = await this.discoverService(serviceName);
+    this.discoveryCache.set(cacheKey, { url, timestamp: Date.now() });
+    return url;
+  }
+
+  /**
+   * Limpia el cache de discovery
+   */
+  clearDiscoveryCache() {
+    this.discoveryCache.clear();
+  }
 }
 
 /**
@@ -145,5 +208,6 @@ function createServiceRegistryClient(serviceConfig) {
 
 module.exports = {
   ServiceRegistryClient,
+  ServiceUnavailableError,
   createServiceRegistryClient
 };

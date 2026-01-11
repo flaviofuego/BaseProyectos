@@ -8,7 +8,7 @@ const { login } = require("../helpers/test-helpers");
  * Flujo:
  * 1. Usuario autenticado accede a consulta NLP
  * 2. Escribe pregunta en lenguaje natural
- * 3. Sistema procesa con Gemini
+ * 3. Sistema procesa con Text-to-SQL (Azure AI)
  * 4. Sistema muestra respuesta
  */
 
